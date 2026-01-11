@@ -250,3 +250,169 @@ $string['casesdeleted'] = '{$a} cases deleted successfully';
 $string['casesmoved'] = '{$a} cases moved successfully';
 $string['casespublished'] = '{$a} cases published successfully';
 $string['casesarchived'] = '{$a} cases archived successfully';
+<?php
+// Additional strings for bulk operations, workflow, audit - English.
+
+// Workflow statuses.
+$string['status_pending_review'] = 'Pending review';
+$string['status_in_review'] = 'In review';
+$string['status_approved'] = 'Approved';
+
+// Review statuses.
+$string['review_pending'] = 'Pending';
+$string['review_approved'] = 'Approved';
+$string['review_rejected'] = 'Rejected';
+$string['review_revision'] = 'Revision requested';
+
+// Workflow actions.
+$string['submitforreview'] = 'Submit for review';
+$string['assignreviewer'] = 'Assign reviewer';
+$string['approve'] = 'Approve';
+$string['reject'] = 'Reject';
+$string['requestrevision'] = 'Request revision';
+$string['publish'] = 'Publish';
+$string['archive'] = 'Archive';
+$string['unarchive'] = 'Unarchive';
+
+// Workflow messages.
+$string['casesubmittedreview'] = 'Case submitted for review';
+$string['caseapproved'] = 'Case approved';
+$string['caserejected'] = 'Case rejected';
+$string['casepublished'] = 'Case published';
+$string['casearchived'] = 'Case archived';
+$string['invalidtransition'] = 'Invalid status transition';
+$string['noquestionsforsubmit'] = 'Case must have at least one question before submitting for review';
+$string['invalidstatusforreviewer'] = 'Case is not in a reviewable status';
+$string['notassignedreviewer'] = 'You are not assigned as reviewer for this case';
+$string['invaliddecision'] = 'Invalid review decision';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Bulk operations';
+$string['selectall'] = 'Select all';
+$string['deselectall'] = 'Deselect all';
+$string['withselected'] = 'With selected...';
+$string['bulkdelete'] = 'Delete selected';
+$string['bulkmove'] = 'Move to category';
+$string['bulkpublish'] = 'Publish selected';
+$string['bulkarchive'] = 'Archive selected';
+$string['bulkexport'] = 'Export selected';
+$string['bulkexportpdf'] = 'Export as PDF';
+$string['bulkexportcsv'] = 'Export as CSV';
+$string['confirmdeleteselected'] = 'Are you sure you want to delete {$a} selected cases? This action cannot be undone.';
+$string['confirmpublishselected'] = 'Are you sure you want to publish {$a} selected cases?';
+$string['confirmarchiveselected'] = 'Are you sure you want to archive {$a} selected cases?';
+$string['casesdeleted'] = '{$a} cases deleted successfully';
+$string['casesmoved'] = '{$a} cases moved successfully';
+$string['casespublished'] = '{$a} cases published successfully';
+$string['casesarchived'] = '{$a} cases archived successfully';
+$string['selectedcases'] = '{$a} selected';
+$string['nocasesselected'] = 'No cases selected';
+$string['moveto'] = 'Move to...';
+$string['selecttargetcategory'] = 'Select target category';
+
+// Audit log.
+$string['auditlog'] = 'Audit log';
+$string['auditlogs'] = 'Audit logs';
+$string['viewauditlog'] = 'View audit log';
+$string['noauditlogs'] = 'No audit logs found';
+$string['audit:action_create'] = 'Created';
+$string['audit:action_update'] = 'Updated';
+$string['audit:action_delete'] = 'Deleted';
+$string['audit:action_publish'] = 'Published';
+$string['audit:action_archive'] = 'Archived';
+$string['audit:action_submit_review'] = 'Submitted for review';
+$string['audit:action_approve'] = 'Approved';
+$string['audit:action_reject'] = 'Rejected';
+$string['audit:action_bulk_delete'] = 'Bulk deleted';
+$string['audit:action_bulk_move'] = 'Bulk moved';
+$string['audit:action_bulk_publish'] = 'Bulk published';
+$string['audit:action_bulk_archive'] = 'Bulk archived';
+$string['audit:action_import'] = 'Imported';
+$string['audit:action_export'] = 'Exported';
+$string['auditobjecttype'] = 'Object type';
+$string['auditaction'] = 'Action';
+$string['audituser'] = 'User';
+$string['audittime'] = 'Time';
+$string['auditchanges'] = 'Changes';
+$string['auditipaddress'] = 'IP address';
+$string['filterbyaction'] = 'Filter by action';
+$string['filterbyuser'] = 'Filter by user';
+$string['filterbydaterange'] = 'Filter by date range';
+$string['exportauditlog'] = 'Export audit log';
+
+// Advanced filters.
+$string['advancedfilters'] = 'Advanced filters';
+$string['searchcases'] = 'Search cases';
+$string['filterbycat'] = 'Filter by category';
+$string['filterbystatus'] = 'Filter by status';
+$string['filterbydifficulty'] = 'Filter by difficulty';
+$string['filterbytags'] = 'Filter by tags';
+$string['filterbycreator'] = 'Filter by creator';
+$string['filterbydatefrom'] = 'Created from';
+$string['filterbydateto'] = 'Created to';
+$string['filterbyquestioncount'] = 'Question count';
+$string['allcategories'] = 'All categories';
+$string['allstatuses'] = 'All statuses';
+$string['alldifficulties'] = 'All difficulties';
+$string['alltags'] = 'All tags';
+$string['allcreators'] = 'All creators';
+$string['clearsearch'] = 'Clear search';
+$string['clearfilters'] = 'Clear all filters';
+$string['applyfilters'] = 'Apply filters';
+$string['activefilters'] = 'Active filters';
+$string['noresults'] = 'No cases found matching your criteria';
+$string['showing'] = 'Showing {$a->start} to {$a->end} of {$a->total}';
+
+// Sorting.
+$string['sortby'] = 'Sort by';
+$string['sortbyname'] = 'Name';
+$string['sortbycreated'] = 'Date created';
+$string['sortbymodified'] = 'Date modified';
+$string['sortbydifficulty'] = 'Difficulty';
+$string['sortbyquestions'] = 'Question count';
+$string['sortasc'] = 'Ascending';
+$string['sortdesc'] = 'Descending';
+
+// Export formats.
+$string['exportformat'] = 'Export format';
+$string['exportpdf'] = 'Export as PDF';
+$string['exportcsv'] = 'Export as CSV';
+$string['exportxml'] = 'Export as XML';
+$string['exportjson'] = 'Export as JSON';
+$string['exportoptions'] = 'Export options';
+$string['includeanswers'] = 'Include answers';
+$string['includecorrect'] = 'Mark correct answers';
+$string['includefeedback'] = 'Include feedback';
+$string['pagebreakpercase'] = 'Page break between cases';
+$string['flatformat'] = 'Flat format (one row per question)';
+
+// Reviews.
+$string['reviews'] = 'Reviews';
+$string['reviewhistory'] = 'Review history';
+$string['pendingreviews'] = 'Pending reviews';
+$string['myreviews'] = 'My reviews';
+$string['reviewcase'] = 'Review case';
+$string['reviewcomments'] = 'Review comments';
+$string['submitreview'] = 'Submit review';
+$string['nopendingreviews'] = 'No pending reviews';
+$string['reviewedon'] = 'Reviewed on {$a}';
+$string['reviewedby'] = 'Reviewed by {$a}';
+$string['awaitingreview'] = 'Awaiting review';
+
+// Settings additions.
+$string['settings:workflow'] = 'Workflow settings';
+$string['settings:enableworkflow'] = 'Enable approval workflow';
+$string['settings:enableworkflow_desc'] = 'Require cases to be reviewed and approved before publishing';
+$string['settings:auditretention'] = 'Audit log retention (days)';
+$string['settings:auditretention_desc'] = 'Number of days to keep audit log entries. Set to 0 to keep forever.';
+
+// Capabilities.
+$string['casospracticos:review'] = 'Review practical cases';
+$string['casospracticos:viewauditlog'] = 'View audit log';
+$string['casospracticos:bulkoperations'] = 'Perform bulk operations';
+
+// Errors.
+$string['error:bulkdeletefailed'] = 'Failed to delete some cases';
+$string['error:bulkmovefailed'] = 'Failed to move some cases';
+$string['error:categorynotfound'] = 'Category not found';
+$string['error:invalidformat'] = 'Invalid export format';

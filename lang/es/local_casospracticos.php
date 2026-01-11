@@ -250,3 +250,169 @@ $string['casesdeleted'] = '{$a} casos eliminados correctamente';
 $string['casesmoved'] = '{$a} casos movidos correctamente';
 $string['casespublished'] = '{$a} casos publicados correctamente';
 $string['casesarchived'] = '{$a} casos archivados correctamente';
+<?php
+// Additional strings for bulk operations, workflow, audit - Spanish.
+
+// Workflow statuses.
+$string['status_pending_review'] = 'Pendiente de revisión';
+$string['status_in_review'] = 'En revisión';
+$string['status_approved'] = 'Aprobado';
+
+// Review statuses.
+$string['review_pending'] = 'Pendiente';
+$string['review_approved'] = 'Aprobado';
+$string['review_rejected'] = 'Rechazado';
+$string['review_revision'] = 'Revisión solicitada';
+
+// Workflow actions.
+$string['submitforreview'] = 'Enviar a revisión';
+$string['assignreviewer'] = 'Asignar revisor';
+$string['approve'] = 'Aprobar';
+$string['reject'] = 'Rechazar';
+$string['requestrevision'] = 'Solicitar revisión';
+$string['publish'] = 'Publicar';
+$string['archive'] = 'Archivar';
+$string['unarchive'] = 'Desarchivar';
+
+// Workflow messages.
+$string['casesubmittedreview'] = 'Caso enviado a revisión';
+$string['caseapproved'] = 'Caso aprobado';
+$string['caserejected'] = 'Caso rechazado';
+$string['casepublished'] = 'Caso publicado';
+$string['casearchived'] = 'Caso archivado';
+$string['invalidtransition'] = 'Transición de estado inválida';
+$string['noquestionsforsubmit'] = 'El caso debe tener al menos una pregunta antes de enviarlo a revisión';
+$string['invalidstatusforreviewer'] = 'El caso no está en un estado revisable';
+$string['notassignedreviewer'] = 'No está asignado como revisor de este caso';
+$string['invaliddecision'] = 'Decisión de revisión inválida';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Operaciones en lote';
+$string['selectall'] = 'Seleccionar todo';
+$string['deselectall'] = 'Deseleccionar todo';
+$string['withselected'] = 'Con los seleccionados...';
+$string['bulkdelete'] = 'Eliminar seleccionados';
+$string['bulkmove'] = 'Mover a categoría';
+$string['bulkpublish'] = 'Publicar seleccionados';
+$string['bulkarchive'] = 'Archivar seleccionados';
+$string['bulkexport'] = 'Exportar seleccionados';
+$string['bulkexportpdf'] = 'Exportar como PDF';
+$string['bulkexportcsv'] = 'Exportar como CSV';
+$string['confirmdeleteselected'] = '¿Está seguro de que desea eliminar {$a} casos seleccionados? Esta acción no se puede deshacer.';
+$string['confirmpublishselected'] = '¿Está seguro de que desea publicar {$a} casos seleccionados?';
+$string['confirmarchiveselected'] = '¿Está seguro de que desea archivar {$a} casos seleccionados?';
+$string['casesdeleted'] = '{$a} casos eliminados correctamente';
+$string['casesmoved'] = '{$a} casos movidos correctamente';
+$string['casespublished'] = '{$a} casos publicados correctamente';
+$string['casesarchived'] = '{$a} casos archivados correctamente';
+$string['selectedcases'] = '{$a} seleccionados';
+$string['nocasesselected'] = 'No hay casos seleccionados';
+$string['moveto'] = 'Mover a...';
+$string['selecttargetcategory'] = 'Seleccionar categoría destino';
+
+// Audit log.
+$string['auditlog'] = 'Registro de auditoría';
+$string['auditlogs'] = 'Registros de auditoría';
+$string['viewauditlog'] = 'Ver registro de auditoría';
+$string['noauditlogs'] = 'No se encontraron registros de auditoría';
+$string['audit:action_create'] = 'Creado';
+$string['audit:action_update'] = 'Actualizado';
+$string['audit:action_delete'] = 'Eliminado';
+$string['audit:action_publish'] = 'Publicado';
+$string['audit:action_archive'] = 'Archivado';
+$string['audit:action_submit_review'] = 'Enviado a revisión';
+$string['audit:action_approve'] = 'Aprobado';
+$string['audit:action_reject'] = 'Rechazado';
+$string['audit:action_bulk_delete'] = 'Eliminación masiva';
+$string['audit:action_bulk_move'] = 'Movimiento masivo';
+$string['audit:action_bulk_publish'] = 'Publicación masiva';
+$string['audit:action_bulk_archive'] = 'Archivado masivo';
+$string['audit:action_import'] = 'Importado';
+$string['audit:action_export'] = 'Exportado';
+$string['auditobjecttype'] = 'Tipo de objeto';
+$string['auditaction'] = 'Acción';
+$string['audituser'] = 'Usuario';
+$string['audittime'] = 'Fecha/Hora';
+$string['auditchanges'] = 'Cambios';
+$string['auditipaddress'] = 'Dirección IP';
+$string['filterbyaction'] = 'Filtrar por acción';
+$string['filterbyuser'] = 'Filtrar por usuario';
+$string['filterbydaterange'] = 'Filtrar por rango de fechas';
+$string['exportauditlog'] = 'Exportar registro de auditoría';
+
+// Advanced filters.
+$string['advancedfilters'] = 'Filtros avanzados';
+$string['searchcases'] = 'Buscar casos';
+$string['filterbycat'] = 'Filtrar por categoría';
+$string['filterbystatus'] = 'Filtrar por estado';
+$string['filterbydifficulty'] = 'Filtrar por dificultad';
+$string['filterbytags'] = 'Filtrar por etiquetas';
+$string['filterbycreator'] = 'Filtrar por creador';
+$string['filterbydatefrom'] = 'Creado desde';
+$string['filterbydateto'] = 'Creado hasta';
+$string['filterbyquestioncount'] = 'Número de preguntas';
+$string['allcategories'] = 'Todas las categorías';
+$string['allstatuses'] = 'Todos los estados';
+$string['alldifficulties'] = 'Todas las dificultades';
+$string['alltags'] = 'Todas las etiquetas';
+$string['allcreators'] = 'Todos los creadores';
+$string['clearsearch'] = 'Limpiar búsqueda';
+$string['clearfilters'] = 'Limpiar todos los filtros';
+$string['applyfilters'] = 'Aplicar filtros';
+$string['activefilters'] = 'Filtros activos';
+$string['noresults'] = 'No se encontraron casos con los criterios especificados';
+$string['showing'] = 'Mostrando {$a->start} a {$a->end} de {$a->total}';
+
+// Sorting.
+$string['sortby'] = 'Ordenar por';
+$string['sortbyname'] = 'Nombre';
+$string['sortbycreated'] = 'Fecha de creación';
+$string['sortbymodified'] = 'Fecha de modificación';
+$string['sortbydifficulty'] = 'Dificultad';
+$string['sortbyquestions'] = 'Número de preguntas';
+$string['sortasc'] = 'Ascendente';
+$string['sortdesc'] = 'Descendente';
+
+// Export formats.
+$string['exportformat'] = 'Formato de exportación';
+$string['exportpdf'] = 'Exportar como PDF';
+$string['exportcsv'] = 'Exportar como CSV';
+$string['exportxml'] = 'Exportar como XML';
+$string['exportjson'] = 'Exportar como JSON';
+$string['exportoptions'] = 'Opciones de exportación';
+$string['includeanswers'] = 'Incluir respuestas';
+$string['includecorrect'] = 'Marcar respuestas correctas';
+$string['includefeedback'] = 'Incluir retroalimentación';
+$string['pagebreakpercase'] = 'Salto de página entre casos';
+$string['flatformat'] = 'Formato plano (una fila por pregunta)';
+
+// Reviews.
+$string['reviews'] = 'Revisiones';
+$string['reviewhistory'] = 'Historial de revisiones';
+$string['pendingreviews'] = 'Revisiones pendientes';
+$string['myreviews'] = 'Mis revisiones';
+$string['reviewcase'] = 'Revisar caso';
+$string['reviewcomments'] = 'Comentarios de revisión';
+$string['submitreview'] = 'Enviar revisión';
+$string['nopendingreviews'] = 'No hay revisiones pendientes';
+$string['reviewedon'] = 'Revisado el {$a}';
+$string['reviewedby'] = 'Revisado por {$a}';
+$string['awaitingreview'] = 'Esperando revisión';
+
+// Settings additions.
+$string['settings:workflow'] = 'Configuración del flujo de trabajo';
+$string['settings:enableworkflow'] = 'Habilitar flujo de aprobación';
+$string['settings:enableworkflow_desc'] = 'Requerir que los casos sean revisados y aprobados antes de publicar';
+$string['settings:auditretention'] = 'Retención del registro de auditoría (días)';
+$string['settings:auditretention_desc'] = 'Número de días para mantener las entradas del registro de auditoría. Establecer en 0 para mantener indefinidamente.';
+
+// Capabilities.
+$string['casospracticos:review'] = 'Revisar casos prácticos';
+$string['casospracticos:viewauditlog'] = 'Ver registro de auditoría';
+$string['casospracticos:bulkoperations'] = 'Realizar operaciones en lote';
+
+// Errors.
+$string['error:bulkdeletefailed'] = 'Error al eliminar algunos casos';
+$string['error:bulkmovefailed'] = 'Error al mover algunos casos';
+$string['error:categorynotfound'] = 'Categoría no encontrada';
+$string['error:invalidformat'] = 'Formato de exportación inválido';
