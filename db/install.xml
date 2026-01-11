@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026011100" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026011102" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -23,6 +23,7 @@
       <INDEXES>
         <INDEX NAME="parent" UNIQUE="false" FIELDS="parent"/>
         <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid"/>
+        <INDEX NAME="ctx_parent_sort" UNIQUE="false" FIELDS="contextid, parent, sortorder"/>
       </INDEXES>
     </TABLE>
 
@@ -34,12 +35,13 @@
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Case name/title"/>
         <FIELD NAME="statement" TYPE="text" NOTNULL="true" COMMENT="Long statement/description of the case"/>
         <FIELD NAME="statementformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
-        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="draft" COMMENT="draft, published, archived"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="draft" COMMENT="draft, pending_review, in_review, approved, published, archived"/>
         <FIELD NAME="difficulty" TYPE="int" LENGTH="2" NOTNULL="false" COMMENT="Difficulty level 1-5"/>
         <FIELD NAME="tags" TYPE="text" NOTNULL="false" COMMENT="JSON array of tags"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="createdby" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID who created"/>
+        <FIELD NAME="version" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1" COMMENT="Version number"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -49,6 +51,9 @@
       <INDEXES>
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
         <INDEX NAME="categoryid_status" UNIQUE="false" FIELDS="categoryid, status"/>
+        <INDEX NAME="difficulty" UNIQUE="false" FIELDS="difficulty"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+        <INDEX NAME="cat_status_time" UNIQUE="false" FIELDS="categoryid, status, timemodified"/>
       </INDEXES>
     </TABLE>
 
@@ -75,6 +80,7 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="caseid_sortorder" UNIQUE="false" FIELDS="caseid, sortorder"/>
+        <INDEX NAME="qtype" UNIQUE="false" FIELDS="qtype"/>
       </INDEXES>
     </TABLE>
 
@@ -96,6 +102,74 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="questionid_sortorder" UNIQUE="false" FIELDS="questionid, sortorder"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Audit Log -->
+    <TABLE NAME="local_cp_audit_log" COMMENT="Audit log for all changes">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="objecttype" TYPE="char" LENGTH="50" NOTNULL="true" COMMENT="Type: case, question, category, answer"/>
+        <FIELD NAME="objectid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID of the object"/>
+        <FIELD NAME="action" TYPE="char" LENGTH="50" NOTNULL="true" COMMENT="Action: create, update, delete, publish, archive, etc"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User who performed the action"/>
+        <FIELD NAME="changes" TYPE="text" NOTNULL="false" COMMENT="JSON of field changes (old/new values)"/>
+        <FIELD NAME="ipaddress" TYPE="char" LENGTH="45" NOTNULL="false" COMMENT="IP address"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="objecttype_objectid" UNIQUE="false" FIELDS="objecttype, objectid"/>
+        <INDEX NAME="userid_time" UNIQUE="false" FIELDS="userid, timecreated"/>
+        <INDEX NAME="action" UNIQUE="false" FIELDS="action"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Case Reviews (Workflow) -->
+    <TABLE NAME="local_cp_reviews" COMMENT="Case review workflow">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case being reviewed"/>
+        <FIELD NAME="reviewerid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User assigned as reviewer"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" COMMENT="pending, approved, rejected, revision_requested"/>
+        <FIELD NAME="comments" TYPE="text" NOTNULL="false" COMMENT="Reviewer comments"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+        <KEY NAME="reviewerid" TYPE="foreign" FIELDS="reviewerid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="caseid_status" UNIQUE="false" FIELDS="caseid, status"/>
+        <INDEX NAME="reviewerid_status" UNIQUE="false" FIELDS="reviewerid, status"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Case Usage Tracking -->
+    <TABLE NAME="local_cp_usage" COMMENT="Track case usage in quizzes">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case ID"/>
+        <FIELD NAME="quizid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Quiz ID where used"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Course ID"/>
+        <FIELD NAME="views" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="View count"/>
+        <FIELD NAME="insertions" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Times inserted into quiz"/>
+        <FIELD NAME="lastused" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Last time used"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="caseid_quizid" UNIQUE="true" FIELDS="caseid, quizid"/>
+        <INDEX NAME="views" UNIQUE="false" FIELDS="views"/>
       </INDEXES>
     </TABLE>
   </TABLES>
