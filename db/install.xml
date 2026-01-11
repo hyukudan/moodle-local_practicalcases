@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/casospracticos/db" VERSION="2026011100" COMMENT="local_casospracticos database tables"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <!-- Categorías de casos prácticos -->
+    <TABLE NAME="local_cp_categories" COMMENT="Categories for practical cases">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Category name"/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false" COMMENT="Category description"/>
+        <FIELD NAME="descriptionformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="parent" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Parent category ID for hierarchy"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1" COMMENT="Moodle context ID"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="parent" UNIQUE="false" FIELDS="parent"/>
+        <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Casos prácticos (enunciados) -->
+    <TABLE NAME="local_cp_cases" COMMENT="Practical cases with long statements">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="categoryid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Category ID"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Case name/title"/>
+        <FIELD NAME="statement" TYPE="text" NOTNULL="true" COMMENT="Long statement/description of the case"/>
+        <FIELD NAME="statementformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="draft" COMMENT="draft, published, archived"/>
+        <FIELD NAME="difficulty" TYPE="int" LENGTH="2" NOTNULL="false" COMMENT="Difficulty level 1-5"/>
+        <FIELD NAME="tags" TYPE="text" NOTNULL="false" COMMENT="JSON array of tags"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="createdby" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID who created"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="categoryid" TYPE="foreign" FIELDS="categoryid" REFTABLE="local_cp_categories" REFFIELDS="id"/>
+        <KEY NAME="createdby" TYPE="foreign" FIELDS="createdby" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
+        <INDEX NAME="categoryid_status" UNIQUE="false" FIELDS="categoryid, status"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Preguntas de cada caso práctico -->
+    <TABLE NAME="local_cp_questions" COMMENT="Questions belonging to a practical case">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case ID this question belongs to"/>
+        <FIELD NAME="questiontext" TYPE="text" NOTNULL="true" COMMENT="Question text"/>
+        <FIELD NAME="questiontextformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="qtype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="multichoice" COMMENT="Question type: multichoice, truefalse, shortanswer"/>
+        <FIELD NAME="defaultmark" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="1" DECIMALS="7" COMMENT="Default points for this question"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="generalfeedback" TYPE="text" NOTNULL="false" COMMENT="Feedback shown after answering"/>
+        <FIELD NAME="generalfeedbackformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="single" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" COMMENT="For multichoice: 1=single answer, 0=multiple"/>
+        <FIELD NAME="shuffleanswers" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" COMMENT="Whether to shuffle answers"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="caseid_sortorder" UNIQUE="false" FIELDS="caseid, sortorder"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Respuestas de cada pregunta -->
+    <TABLE NAME="local_cp_answers" COMMENT="Answers for practical case questions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Question ID"/>
+        <FIELD NAME="answer" TYPE="text" NOTNULL="true" COMMENT="Answer text"/>
+        <FIELD NAME="answerformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="fraction" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="7" COMMENT="Score fraction: 1.0=correct, 0=wrong"/>
+        <FIELD NAME="feedback" TYPE="text" NOTNULL="false" COMMENT="Feedback for this answer"/>
+        <FIELD NAME="feedbackformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="local_cp_questions" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="questionid_sortorder" UNIQUE="false" FIELDS="questionid, sortorder"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
