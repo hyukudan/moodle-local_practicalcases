@@ -157,3 +157,96 @@ $string['privacy:metadata:local_cp_cases'] = 'Almacena los casos prácticos crea
 $string['privacy:metadata:local_cp_cases:createdby'] = 'El ID del usuario que creó el caso';
 $string['privacy:metadata:local_cp_cases:timecreated'] = 'La fecha de creación del caso';
 $string['privacy:metadata:local_cp_cases:timemodified'] = 'La fecha de última modificación del caso';
+<?php
+// Additional strings for events, settings, search - Spanish.
+
+// Events.
+$string['eventcasecreated'] = 'Caso práctico creado';
+$string['eventcaseupdated'] = 'Caso práctico actualizado';
+$string['eventcasedeleted'] = 'Caso práctico eliminado';
+$string['eventcasepublished'] = 'Caso práctico publicado';
+
+// Search.
+$string['search:case'] = 'Casos prácticos';
+
+// Settings.
+$string['settings:general'] = 'Configuración general';
+$string['settings:enablequizintegration'] = 'Habilitar integración con cuestionarios';
+$string['settings:enablequizintegration_desc'] = 'Permitir insertar casos prácticos en cuestionarios de Moodle';
+$string['settings:enablesearch'] = 'Habilitar indexación de búsqueda';
+$string['settings:enablesearch_desc'] = 'Indexar casos prácticos en la búsqueda global de Moodle';
+$string['settings:defaultdifficulty'] = 'Dificultad por defecto';
+$string['settings:defaultdifficulty_desc'] = 'Nivel de dificultad predeterminado para nuevos casos';
+$string['settings:importexport'] = 'Importar/Exportar';
+$string['settings:maximportsize'] = 'Tamaño máximo de archivo de importación';
+$string['settings:maximportsize_desc'] = 'Tamaño máximo en bytes para importar casos';
+$string['settings:defaultexportformat'] = 'Formato de exportación por defecto';
+$string['settings:defaultexportformat_desc'] = 'Formato predeterminado al exportar casos';
+$string['settings:questiontypes'] = 'Tipos de pregunta';
+$string['settings:questiontypes_desc'] = 'Configurar qué tipos de pregunta están disponibles';
+$string['settings:allowedqtypes'] = 'Tipos de pregunta permitidos';
+$string['settings:allowedqtypes_desc'] = 'Seleccione qué tipos de pregunta se pueden usar en los casos';
+$string['settings:display'] = 'Configuración de visualización';
+$string['settings:casesperpage'] = 'Casos por página';
+$string['settings:casesperpage_desc'] = 'Número de casos a mostrar por página en la lista';
+$string['settings:showquestioncount'] = 'Mostrar número de preguntas';
+$string['settings:showquestioncount_desc'] = 'Mostrar el número de preguntas de cada caso en la lista';
+$string['settings:showdifficulty'] = 'Mostrar dificultad';
+$string['settings:showdifficulty_desc'] = 'Mostrar el nivel de dificultad en la lista de casos';
+$string['settings:notifications'] = 'Notificaciones';
+$string['settings:notifyonpublish'] = 'Notificar al publicar';
+$string['settings:notifyonpublish_desc'] = 'Enviar notificación a los administradores cuando se publica un caso';
+
+// Difficulty levels.
+$string['difficulty1'] = 'Muy fácil';
+$string['difficulty2'] = 'Fácil';
+$string['difficulty3'] = 'Medio';
+$string['difficulty4'] = 'Difícil';
+$string['difficulty5'] = 'Muy difícil';
+
+// Question types.
+$string['qtype_multichoice'] = 'Opción múltiple';
+$string['qtype_truefalse'] = 'Verdadero/Falso';
+$string['qtype_shortanswer'] = 'Respuesta corta';
+$string['qtype_matching'] = 'Emparejamiento';
+
+// Statuses.
+$string['status_draft'] = 'Borrador';
+$string['status_published'] = 'Publicado';
+$string['status_archived'] = 'Archivado';
+
+// Default category.
+$string['defaultcategory'] = 'Casos importados';
+
+// Pagination.
+$string['page'] = 'Página';
+$string['of'] = 'de';
+$string['showingcases'] = 'Mostrando {$a->start} a {$a->end} de {$a->total} casos';
+$string['nocasesfound'] = 'No se encontraron casos con los criterios especificados';
+
+// Search and filter.
+$string['searchcases'] = 'Buscar casos';
+$string['filterbycat'] = 'Filtrar por categoría';
+$string['filterbystatus'] = 'Filtrar por estado';
+$string['filterbydifficulty'] = 'Filtrar por dificultad';
+$string['allcategories'] = 'Todas las categorías';
+$string['allstatuses'] = 'Todos los estados';
+$string['alldifficulties'] = 'Todas las dificultades';
+$string['clearsearch'] = 'Limpiar búsqueda';
+$string['advancedfilters'] = 'Filtros avanzados';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Operaciones en lote';
+$string['selectall'] = 'Seleccionar todo';
+$string['deselectall'] = 'Deseleccionar todo';
+$string['withselected'] = 'Con los seleccionados...';
+$string['bulkdelete'] = 'Eliminar seleccionados';
+$string['bulkmove'] = 'Mover a categoría';
+$string['bulkpublish'] = 'Publicar seleccionados';
+$string['bulkarchive'] = 'Archivar seleccionados';
+$string['bulkexport'] = 'Exportar seleccionados';
+$string['confirmdeleteselected'] = '¿Está seguro de que desea eliminar los casos seleccionados? Esta acción no se puede deshacer.';
+$string['casesdeleted'] = '{$a} casos eliminados correctamente';
+$string['casesmoved'] = '{$a} casos movidos correctamente';
+$string['casespublished'] = '{$a} casos publicados correctamente';
+$string['casesarchived'] = '{$a} casos archivados correctamente';

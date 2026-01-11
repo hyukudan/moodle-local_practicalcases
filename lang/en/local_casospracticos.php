@@ -157,3 +157,96 @@ $string['privacy:metadata:local_cp_cases'] = 'Stores practical cases created by 
 $string['privacy:metadata:local_cp_cases:createdby'] = 'The ID of the user who created the case';
 $string['privacy:metadata:local_cp_cases:timecreated'] = 'The time when the case was created';
 $string['privacy:metadata:local_cp_cases:timemodified'] = 'The time when the case was last modified';
+<?php
+// Additional strings for events, settings, search - English.
+
+// Events.
+$string['eventcasecreated'] = 'Practical case created';
+$string['eventcaseupdated'] = 'Practical case updated';
+$string['eventcasedeleted'] = 'Practical case deleted';
+$string['eventcasepublished'] = 'Practical case published';
+
+// Search.
+$string['search:case'] = 'Practical cases';
+
+// Settings.
+$string['settings:general'] = 'General settings';
+$string['settings:enablequizintegration'] = 'Enable quiz integration';
+$string['settings:enablequizintegration_desc'] = 'Allow inserting practical cases into Moodle quizzes';
+$string['settings:enablesearch'] = 'Enable search indexing';
+$string['settings:enablesearch_desc'] = 'Index practical cases in Moodle global search';
+$string['settings:defaultdifficulty'] = 'Default difficulty';
+$string['settings:defaultdifficulty_desc'] = 'Default difficulty level for new cases';
+$string['settings:importexport'] = 'Import/Export';
+$string['settings:maximportsize'] = 'Maximum import file size';
+$string['settings:maximportsize_desc'] = 'Maximum file size in bytes for importing cases';
+$string['settings:defaultexportformat'] = 'Default export format';
+$string['settings:defaultexportformat_desc'] = 'Default format when exporting cases';
+$string['settings:questiontypes'] = 'Question types';
+$string['settings:questiontypes_desc'] = 'Configure which question types are available';
+$string['settings:allowedqtypes'] = 'Allowed question types';
+$string['settings:allowedqtypes_desc'] = 'Select which question types can be used in cases';
+$string['settings:display'] = 'Display settings';
+$string['settings:casesperpage'] = 'Cases per page';
+$string['settings:casesperpage_desc'] = 'Number of cases to display per page in the list view';
+$string['settings:showquestioncount'] = 'Show question count';
+$string['settings:showquestioncount_desc'] = 'Display the number of questions for each case in the list';
+$string['settings:showdifficulty'] = 'Show difficulty';
+$string['settings:showdifficulty_desc'] = 'Display the difficulty level in the case list';
+$string['settings:notifications'] = 'Notifications';
+$string['settings:notifyonpublish'] = 'Notify on publish';
+$string['settings:notifyonpublish_desc'] = 'Send notification to administrators when a case is published';
+
+// Difficulty levels.
+$string['difficulty1'] = 'Very easy';
+$string['difficulty2'] = 'Easy';
+$string['difficulty3'] = 'Medium';
+$string['difficulty4'] = 'Hard';
+$string['difficulty5'] = 'Very hard';
+
+// Question types.
+$string['qtype_multichoice'] = 'Multiple choice';
+$string['qtype_truefalse'] = 'True/False';
+$string['qtype_shortanswer'] = 'Short answer';
+$string['qtype_matching'] = 'Matching';
+
+// Statuses.
+$string['status_draft'] = 'Draft';
+$string['status_published'] = 'Published';
+$string['status_archived'] = 'Archived';
+
+// Default category.
+$string['defaultcategory'] = 'Imported cases';
+
+// Pagination.
+$string['page'] = 'Page';
+$string['of'] = 'of';
+$string['showingcases'] = 'Showing {$a->start} to {$a->end} of {$a->total} cases';
+$string['nocasesfound'] = 'No cases found matching your criteria';
+
+// Search and filter.
+$string['searchcases'] = 'Search cases';
+$string['filterbycat'] = 'Filter by category';
+$string['filterbystatus'] = 'Filter by status';
+$string['filterbydifficulty'] = 'Filter by difficulty';
+$string['allcategories'] = 'All categories';
+$string['allstatuses'] = 'All statuses';
+$string['alldifficulties'] = 'All difficulties';
+$string['clearsearch'] = 'Clear search';
+$string['advancedfilters'] = 'Advanced filters';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Bulk operations';
+$string['selectall'] = 'Select all';
+$string['deselectall'] = 'Deselect all';
+$string['withselected'] = 'With selected...';
+$string['bulkdelete'] = 'Delete selected';
+$string['bulkmove'] = 'Move to category';
+$string['bulkpublish'] = 'Publish selected';
+$string['bulkarchive'] = 'Archive selected';
+$string['bulkexport'] = 'Export selected';
+$string['confirmdeleteselected'] = 'Are you sure you want to delete the selected cases? This action cannot be undone.';
+$string['casesdeleted'] = '{$a} cases deleted successfully';
+$string['casesmoved'] = '{$a} cases moved successfully';
+$string['casespublished'] = '{$a} cases published successfully';
+$string['casesarchived'] = '{$a} cases archived successfully';

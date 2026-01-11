@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other metadata.
+ * Event observers for local_casospracticos.
  *
  * @package    local_casospracticos
  * @copyright  2026 Sergio C.
@@ -24,8 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011101;  // Added backup/restore, events, caching, search.
-$plugin->requires  = 2024042200;  // Moodle 4.4+
-$plugin->maturity  = MATURITY_BETA;
-$plugin->release   = '0.2.0';
+$observers = [
+    [
+        'eventname' => '\core\event\user_deleted',
+        'callback' => '\local_casospracticos\observer::user_deleted',
+    ],
+    [
+        'eventname' => '\core\event\course_deleted',
+        'callback' => '\local_casospracticos\observer::course_deleted',
+    ],
+];
