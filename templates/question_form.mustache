@@ -1,0 +1,124 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_casospracticos/question_form
+
+    Template for the inline question editor modal.
+
+    Context variables required for this template:
+    * caseid - Case ID
+    * question - Question object (optional, for editing)
+    * qtypes - Array of question types
+
+    Example context (json):
+    {
+        "caseid": 1,
+        "qtypes": [
+            {"value": "multichoice", "label": "Opción múltiple", "selected": true},
+            {"value": "truefalse", "label": "Verdadero/Falso", "selected": false}
+        ],
+        "question": {
+            "id": 1,
+            "questiontext": "¿Cuál es...?",
+            "qtype": "multichoice",
+            "defaultmark": 1
+        }
+    }
+}}
+<div class="local-casospracticos-question-form" id="question-form-{{uniqid}}">
+    <form id="questionform-{{uniqid}}" data-caseid="{{caseid}}">
+        <input type="hidden" name="caseid" value="{{caseid}}">
+        {{#question.id}}
+        <input type="hidden" name="id" value="{{question.id}}">
+        {{/question.id}}
+
+        <div class="mb-3">
+            <label for="qtype-{{uniqid}}" class="form-label">
+                {{#str}}questiontype, local_casospracticos{{/str}}
+            </label>
+            <select class="form-select" id="qtype-{{uniqid}}" name="qtype">
+                {{#qtypes}}
+                <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
+                {{/qtypes}}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="questiontext-{{uniqid}}" class="form-label">
+                {{#str}}questiontext, local_casospracticos{{/str}} *
+            </label>
+            <textarea class="form-control" id="questiontext-{{uniqid}}" name="questiontext"
+                      rows="4" required>{{question.questiontext}}</textarea>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="defaultmark-{{uniqid}}" class="form-label">
+                    {{#str}}defaultmark, local_casospracticos{{/str}}
+                </label>
+                <input type="number" class="form-control" id="defaultmark-{{uniqid}}"
+                       name="defaultmark" value="{{#question.defaultmark}}{{question.defaultmark}}{{/question.defaultmark}}{{^question.defaultmark}}1{{/question.defaultmark}}"
+                       min="0" step="0.1">
+            </div>
+            <div class="col-md-6">
+                <label for="shuffleanswers-{{uniqid}}" class="form-label">
+                    {{#str}}shuffleanswers, local_casospracticos{{/str}}
+                </label>
+                <select class="form-select" id="shuffleanswers-{{uniqid}}" name="shuffleanswers">
+                    <option value="1" {{#question.shuffleanswers}}selected{{/question.shuffleanswers}}>{{#str}}yes{{/str}}</option>
+                    <option value="0" {{^question.shuffleanswers}}selected{{/question.shuffleanswers}}>{{#str}}no{{/str}}</option>
+                </select>
+            </div>
+        </div>
+
+        {{! Answers Section }}
+        <div class="answers-section mb-3">
+            <label class="form-label">{{#str}}answers, local_casospracticos{{/str}}</label>
+            <div id="answers-container-{{uniqid}}" class="answers-container">
+                {{#question.answers}}
+                {{> local_casospracticos/answer_row }}
+                {{/question.answers}}
+                {{^question.answers}}
+                {{> local_casospracticos/answer_row }}
+                {{> local_casospracticos/answer_row }}
+                {{> local_casospracticos/answer_row }}
+                {{> local_casospracticos/answer_row }}
+                {{/question.answers}}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-answer-{{uniqid}}">
+                {{#pix}}t/add, core{{/pix}} {{#str}}newanswer, local_casospracticos{{/str}}
+            </button>
+        </div>
+
+        <div class="mb-3">
+            <label for="generalfeedback-{{uniqid}}" class="form-label">
+                {{#str}}generalfeedback, local_casospracticos{{/str}}
+            </label>
+            <textarea class="form-control" id="generalfeedback-{{uniqid}}" name="generalfeedback"
+                      rows="2">{{question.generalfeedback}}</textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-action="cancel">
+                {{#str}}cancel{{/str}}
+            </button>
+            <button type="submit" class="btn btn-primary">
+                {{#str}}savechanges{{/str}}
+            </button>
+        </div>
+    </form>
+</div>
