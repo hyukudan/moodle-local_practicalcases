@@ -30,12 +30,17 @@ $string['casospracticos'] = 'Practical Cases';
 // Capabilities.
 $string['casospracticos:view'] = 'View practical cases';
 $string['casospracticos:create'] = 'Create practical cases';
-$string['casospracticos:edit'] = 'Edit practical cases';
-$string['casospracticos:delete'] = 'Delete practical cases';
+$string['casospracticos:edit'] = 'Edit own practical cases';
+$string['casospracticos:editall'] = 'Edit any practical case';
+$string['casospracticos:delete'] = 'Delete own practical cases';
+$string['casospracticos:deleteall'] = 'Delete any practical case';
 $string['casospracticos:managecategories'] = 'Manage categories';
 $string['casospracticos:export'] = 'Export practical cases';
 $string['casospracticos:import'] = 'Import practical cases';
 $string['casospracticos:insertquiz'] = 'Insert cases into quizzes';
+$string['casospracticos:review'] = 'Review practical cases';
+$string['casospracticos:viewaudit'] = 'View audit log';
+$string['casospracticos:bulk'] = 'Perform bulk operations';
 
 // Categories.
 $string['categories'] = 'Categories';
@@ -76,6 +81,9 @@ $string['tags'] = 'Tags';
 // Status.
 $string['status'] = 'Status';
 $string['status_draft'] = 'Draft';
+$string['status_pending_review'] = 'Pending review';
+$string['status_in_review'] = 'In review';
+$string['status_approved'] = 'Approved';
 $string['status_published'] = 'Published';
 $string['status_archived'] = 'Archived';
 
@@ -101,6 +109,7 @@ $string['multipleanswers'] = 'Multiple answers';
 $string['qtype_multichoice'] = 'Multiple choice';
 $string['qtype_truefalse'] = 'True/False';
 $string['qtype_shortanswer'] = 'Short answer';
+$string['qtype_matching'] = 'Matching';
 
 // Answers.
 $string['answers'] = 'Answers';
@@ -123,6 +132,7 @@ $string['importfile'] = 'Import file';
 $string['exportsuccessful'] = 'Export completed successfully';
 $string['importsuccessful'] = 'Import completed successfully. {$a->cases} cases and {$a->questions} questions imported.';
 $string['importerror'] = 'Error during import: {$a}';
+$string['exporthelp'] = 'Select the cases to export or a complete category. If you do not select any specific cases and the category is set to "All", all cases will be exported.';
 
 // Quiz integration.
 $string['insertintoquiz'] = 'Insert into quiz';
@@ -140,31 +150,109 @@ $string['backtocases'] = 'Back to cases';
 $string['backtocategories'] = 'Back to categories';
 $string['actions'] = 'Actions';
 $string['preview'] = 'Preview';
+$string['print'] = 'Print';
 $string['numquestions'] = '{$a} questions';
 $string['created'] = 'Created';
 $string['modified'] = 'Modified';
 $string['createdby'] = 'Created by';
+$string['filter'] = 'Filter';
+$string['clear'] = 'Clear';
+$string['selected'] = 'Selected';
+$string['move'] = 'Move';
+$string['publish'] = 'Publish';
+$string['archive'] = 'Archive';
 
-// Errors.
-$string['error:categorynotfound'] = 'Category not found';
-$string['error:casenotfound'] = 'Case not found';
-$string['error:questionnotfound'] = 'Question not found';
-$string['error:nopermission'] = 'You do not have permission to perform this action';
-$string['error:invaliddata'] = 'Invalid data provided';
+// Difficulty levels.
+$string['difficulty1'] = 'Very easy';
+$string['difficulty2'] = 'Easy';
+$string['difficulty3'] = 'Medium';
+$string['difficulty4'] = 'Hard';
+$string['difficulty5'] = 'Very hard';
 
-// Privacy.
-$string['privacy:metadata:local_cp_cases'] = 'Stores practical cases created by users';
-$string['privacy:metadata:local_cp_cases:createdby'] = 'The ID of the user who created the case';
-$string['privacy:metadata:local_cp_cases:timecreated'] = 'The time when the case was created';
-$string['privacy:metadata:local_cp_cases:timemodified'] = 'The time when the case was last modified';
-<?php
-// Additional strings for events, settings, search - English.
+// Pagination and display.
+$string['showingcases'] = 'Showing {$a->from} to {$a->to} of {$a->total} cases';
+$string['showingitems'] = 'Showing {$a->from} to {$a->to} of {$a->total} items';
+$string['searchcases'] = 'Search cases...';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Bulk operations';
+$string['selectall'] = 'Select all';
+$string['deselectall'] = 'Deselect all';
+$string['withselected'] = 'With selected...';
+$string['bulkdelete'] = 'Delete selected';
+$string['bulkmove'] = 'Move to category';
+$string['bulkpublish'] = 'Publish selected';
+$string['bulkarchive'] = 'Archive selected';
+$string['bulkexport'] = 'Export selected';
+$string['confirmdeleteselected'] = 'Are you sure you want to delete {$a} selected cases? This action cannot be undone.';
+$string['confirmpublishselected'] = 'Are you sure you want to publish {$a} selected cases?';
+$string['confirmarchiveselected'] = 'Are you sure you want to archive {$a} selected cases?';
+$string['casesdeleted'] = '{$a} cases deleted successfully';
+$string['casesmoved'] = '{$a} cases moved successfully';
+$string['casespublished'] = '{$a} cases published successfully';
+$string['casesarchived'] = '{$a} cases archived successfully';
+$string['nocasesselected'] = 'No cases selected';
+$string['selecttargetcategory'] = 'Select target category';
+
+// Workflow.
+$string['submitforreview'] = 'Submit for review';
+$string['assignreviewer'] = 'Assign reviewer';
+$string['approve'] = 'Approve';
+$string['reject'] = 'Reject';
+$string['requestrevision'] = 'Request revision';
+$string['unarchive'] = 'Unarchive';
+$string['casesubmittedreview'] = 'Case submitted for review';
+$string['caseapproved'] = 'Case approved';
+$string['caserejected'] = 'Case rejected';
+$string['casepublished'] = 'Case published';
+$string['casearchived'] = 'Case archived';
+$string['invalidtransition'] = 'Invalid status transition';
+$string['noquestionsforsubmit'] = 'Case must have at least one question before submitting for review';
+
+// Review dashboard.
+$string['reviewdashboard'] = 'Review dashboard';
+$string['pendingreview'] = 'Pending review';
+$string['myreviews'] = 'My reviews';
+$string['mypendingreview'] = 'My pending reviews';
+$string['approvedcases'] = 'Approved cases';
+$string['allreviews'] = 'All reviews';
+$string['reviews'] = 'Reviews';
+$string['reviewer'] = 'Reviewer';
+$string['caseswaitingassignment'] = 'Cases waiting for assignment';
+$string['assigntome'] = 'Assign to me';
+$string['reviewsubmitted'] = 'Review submitted successfully';
+$string['reviewerassigned'] = 'Reviewer assigned successfully';
+$string['noitemsfound'] = 'No items found';
+$string['reviewstatus_pending'] = 'Pending';
+$string['reviewstatus_approved'] = 'Approved';
+$string['reviewstatus_rejected'] = 'Rejected';
+$string['reviewstatus_revision'] = 'Revision requested';
+
+// Audit log.
+$string['auditlog'] = 'Audit log';
+$string['noauditlogs'] = 'No audit log entries found';
+$string['objecttype'] = 'Object type';
+$string['objectid'] = 'Object ID';
+$string['action'] = 'Action';
+$string['changes'] = 'Changes';
+$string['ipaddress'] = 'IP address';
+$string['unknownuser'] = 'Unknown user';
+$string['action_create'] = 'Create';
+$string['action_update'] = 'Update';
+$string['action_delete'] = 'Delete';
+$string['action_publish'] = 'Publish';
+$string['action_archive'] = 'Archive';
+$string['action_submit_review'] = 'Submit for review';
+$string['action_approve'] = 'Approve';
+$string['action_reject'] = 'Reject';
 
 // Events.
 $string['eventcasecreated'] = 'Practical case created';
 $string['eventcaseupdated'] = 'Practical case updated';
 $string['eventcasedeleted'] = 'Practical case deleted';
 $string['eventcasepublished'] = 'Practical case published';
+$string['eventpracticeattemptcompleted'] = 'Practice attempt completed';
+$string['eventratelimitexceeded'] = 'API rate limit exceeded';
 
 // Search.
 $string['search:case'] = 'Practical cases';
@@ -177,242 +265,231 @@ $string['settings:enablesearch'] = 'Enable search indexing';
 $string['settings:enablesearch_desc'] = 'Index practical cases in Moodle global search';
 $string['settings:defaultdifficulty'] = 'Default difficulty';
 $string['settings:defaultdifficulty_desc'] = 'Default difficulty level for new cases';
-$string['settings:importexport'] = 'Import/Export';
+$string['settings:workflow'] = 'Workflow settings';
+$string['settings:enableworkflow'] = 'Enable approval workflow';
+$string['settings:enableworkflow_desc'] = 'Require cases to be reviewed and approved before publishing';
+$string['settings:importexport'] = 'Import/Export settings';
 $string['settings:maximportsize'] = 'Maximum import file size';
-$string['settings:maximportsize_desc'] = 'Maximum file size in bytes for importing cases';
+$string['settings:maximportsize_desc'] = 'Maximum size in bytes for import files';
 $string['settings:defaultexportformat'] = 'Default export format';
 $string['settings:defaultexportformat_desc'] = 'Default format when exporting cases';
 $string['settings:questiontypes'] = 'Question types';
-$string['settings:questiontypes_desc'] = 'Configure which question types are available';
+$string['settings:questiontypes_desc'] = 'Configure which question types are available for cases';
 $string['settings:allowedqtypes'] = 'Allowed question types';
-$string['settings:allowedqtypes_desc'] = 'Select which question types can be used in cases';
+$string['settings:allowedqtypes_desc'] = 'Select which question types can be used in practical cases';
 $string['settings:display'] = 'Display settings';
 $string['settings:casesperpage'] = 'Cases per page';
-$string['settings:casesperpage_desc'] = 'Number of cases to display per page in the list view';
+$string['settings:casesperpage_desc'] = 'Number of cases to display per page in the listing';
 $string['settings:showquestioncount'] = 'Show question count';
-$string['settings:showquestioncount_desc'] = 'Display the number of questions for each case in the list';
+$string['settings:showquestioncount_desc'] = 'Show the number of questions in the case listing';
 $string['settings:showdifficulty'] = 'Show difficulty';
-$string['settings:showdifficulty_desc'] = 'Display the difficulty level in the case list';
+$string['settings:showdifficulty_desc'] = 'Show the difficulty level in the case listing';
 $string['settings:notifications'] = 'Notifications';
 $string['settings:notifyonpublish'] = 'Notify on publish';
-$string['settings:notifyonpublish_desc'] = 'Send notification to administrators when a case is published';
+$string['settings:notifyonpublish_desc'] = 'Send notifications when a case is published';
+$string['settings:practicemode'] = 'Practice mode';
+$string['settings:passthreshold'] = 'Pass threshold (%)';
+$string['settings:passthreshold_desc'] = 'Percentage required to pass a practice attempt';
+$string['settings:auditlogretention'] = 'Audit log retention (days)';
+$string['settings:auditlogretention_desc'] = 'Number of days to keep audit log entries (old entries are cleaned up automatically)';
+$string['settings:security'] = 'Security settings';
+$string['settings:enableratelimiting'] = 'Enable rate limiting';
+$string['settings:enableratelimiting_desc'] = 'Limit the number of API requests per user to prevent abuse (site admins are exempt)';
+$string['settings:ratelimitread'] = 'Read operations limit';
+$string['settings:ratelimitread_desc'] = 'Maximum read API requests per minute per user';
+$string['settings:ratelimitwrite'] = 'Write operations limit';
+$string['settings:ratelimitwrite_desc'] = 'Maximum write API requests per minute per user';
 
-// Difficulty levels.
-$string['difficulty1'] = 'Very easy';
-$string['difficulty2'] = 'Easy';
-$string['difficulty3'] = 'Medium';
-$string['difficulty4'] = 'Hard';
-$string['difficulty5'] = 'Very hard';
+// Errors.
+$string['error:categorynotfound'] = 'Category not found';
+$string['error:casenotfound'] = 'Case not found';
+$string['error:questionnotfound'] = 'Question not found';
+$string['error:nopermission'] = 'You do not have permission to perform this action';
+$string['error:invaliddata'] = 'Invalid data provided';
+$string['error:nocases'] = 'No cases selected';
+$string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';
 
-// Question types.
-$string['qtype_multichoice'] = 'Multiple choice';
-$string['qtype_truefalse'] = 'True/False';
-$string['qtype_shortanswer'] = 'Short answer';
-$string['qtype_matching'] = 'Matching';
-
-// Statuses.
-$string['status_draft'] = 'Draft';
-$string['status_published'] = 'Published';
-$string['status_archived'] = 'Archived';
+// Privacy.
+$string['privacy:metadata:local_cp_cases'] = 'Stores practical cases created by users';
+$string['privacy:metadata:local_cp_cases:createdby'] = 'The ID of the user who created the case';
+$string['privacy:metadata:local_cp_cases:timecreated'] = 'The time when the case was created';
+$string['privacy:metadata:local_cp_cases:timemodified'] = 'The time when the case was last modified';
+$string['privacy:metadata:local_cp_audit_log'] = 'Audit log of all actions performed';
+$string['privacy:metadata:local_cp_audit_log:userid'] = 'The ID of the user who performed the action';
+$string['privacy:metadata:local_cp_audit_log:action'] = 'The action performed by the user';
+$string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'The IP address of the user';
+$string['privacy:metadata:local_cp_audit_log:timecreated'] = 'When the action was performed';
+$string['privacy:metadata:local_cp_reviews'] = 'Case reviews for workflow';
+$string['privacy:metadata:local_cp_reviews:reviewerid'] = 'The ID of the reviewer';
+$string['privacy:metadata:local_cp_reviews:comments'] = 'Review comments from the reviewer';
+$string['privacy:metadata:local_cp_reviews:status'] = 'The status of the review';
+$string['privacy:metadata:local_cp_reviews:timecreated'] = 'When the review was created';
+$string['privacy:metadata:local_cp_practice_attempts'] = 'Stores practice attempts made by users';
+$string['privacy:metadata:local_cp_practice_attempts:userid'] = 'The ID of the user who made the attempt';
+$string['privacy:metadata:local_cp_practice_attempts:score'] = 'The score obtained in the attempt';
+$string['privacy:metadata:local_cp_practice_attempts:maxscore'] = 'The maximum possible score';
+$string['privacy:metadata:local_cp_practice_attempts:percentage'] = 'The percentage score';
+$string['privacy:metadata:local_cp_practice_attempts:timestarted'] = 'When the attempt was started';
+$string['privacy:metadata:local_cp_practice_attempts:timefinished'] = 'When the attempt was finished';
+$string['privacy:metadata:local_cp_practice_responses'] = 'Stores individual question responses in practice attempts';
+$string['privacy:metadata:local_cp_practice_responses:response'] = 'The user response to the question';
+$string['privacy:metadata:local_cp_practice_responses:score'] = 'The score for this response';
+$string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Whether the response was correct';
 
 // Default category.
 $string['defaultcategory'] = 'Imported cases';
 
-// Pagination.
-$string['page'] = 'Page';
-$string['of'] = 'of';
-$string['showingcases'] = 'Showing {$a->start} to {$a->end} of {$a->total} cases';
-$string['nocasesfound'] = 'No cases found matching your criteria';
+// Practice mode.
+$string['practice'] = 'Practice';
+$string['practicecase'] = 'Practice this case';
+$string['results'] = 'Results';
+$string['yourscoreis'] = 'Your score: {$a->score} / {$a->max} ({$a->percentage}%)';
+$string['retry'] = 'Try again';
+$string['shufflequestions'] = 'Shuffle questions';
+$string['correctansweris'] = 'Correct answer';
 
-// Search and filter.
-$string['searchcases'] = 'Search cases';
-$string['filterbycat'] = 'Filter by category';
-$string['filterbystatus'] = 'Filter by status';
-$string['filterbydifficulty'] = 'Filter by difficulty';
-$string['allcategories'] = 'All categories';
-$string['allstatuses'] = 'All statuses';
-$string['alldifficulties'] = 'All difficulties';
-$string['clearsearch'] = 'Clear search';
-$string['advancedfilters'] = 'Advanced filters';
+// Statistics.
+$string['statistics'] = 'Statistics';
+$string['totalviews'] = 'Total views';
+$string['quizinsertions'] = 'Quiz insertions';
+$string['practiceattempts'] = 'Practice attempts';
+$string['averagescore'] = 'Average score';
+$string['questionperformance'] = 'Question performance';
+$string['attempts'] = 'Attempts';
+$string['correctrate'] = 'Correct rate';
+$string['avgpoints'] = 'Average points';
+$string['usageinquizzes'] = 'Usage in quizzes';
+$string['timesinserted'] = 'Times inserted';
+$string['lastused'] = 'Last used';
+$string['recentpracticeattempts'] = 'Recent practice attempts';
+$string['timetaken'] = 'Time taken';
+$string['scoredistribution'] = 'Score distribution';
+$string['nostatisticsyet'] = 'No statistics available yet';
+$string['notusedyet'] = 'This case has not been used in any quiz yet';
+$string['nopracticeattempts'] = 'No practice attempts recorded yet';
+$string['range020'] = '0-20%';
+$string['range2140'] = '21-40%';
+$string['range4160'] = '41-60%';
+$string['range6180'] = '61-80%';
+$string['range81100'] = '81-100%';
 
-// Bulk operations.
-$string['bulkoperations'] = 'Bulk operations';
-$string['selectall'] = 'Select all';
-$string['deselectall'] = 'Deselect all';
-$string['withselected'] = 'With selected...';
-$string['bulkdelete'] = 'Delete selected';
-$string['bulkmove'] = 'Move to category';
-$string['bulkpublish'] = 'Publish selected';
-$string['bulkarchive'] = 'Archive selected';
-$string['bulkexport'] = 'Export selected';
-$string['confirmdeleteselected'] = 'Are you sure you want to delete the selected cases? This action cannot be undone.';
-$string['casesdeleted'] = '{$a} cases deleted successfully';
-$string['casesmoved'] = '{$a} cases moved successfully';
-$string['casespublished'] = '{$a} cases published successfully';
-$string['casesarchived'] = '{$a} cases archived successfully';
-<?php
-// Additional strings for bulk operations, workflow, audit - English.
+// Attempts.
+$string['attempt'] = 'Attempt';
+$string['myattempts'] = 'My attempts';
+$string['viewmyattempts'] = 'View my attempts';
+$string['reviewattempt'] = 'Review attempt';
+$string['noattemptsyet'] = 'You have not made any attempts yet';
+$string['startpractice'] = 'Start practicing';
+$string['totalattempts'] = 'Total attempts';
+$string['bestscore'] = 'Best score';
+$string['passrate'] = 'Pass rate';
+$string['yourrecentattempts'] = 'Your recent attempts';
+$string['youranswer'] = 'Your answer';
+$string['yourmark'] = 'Your mark';
+$string['tryagain'] = 'Try again';
+$string['practicenow'] = 'Practice now';
+$string['started'] = 'Started';
+$string['completed'] = 'Completed';
+$string['correct'] = 'Correct';
+$string['incorrect'] = 'Incorrect';
+$string['review'] = 'Review';
 
-// Workflow statuses.
-$string['status_pending_review'] = 'Pending review';
-$string['status_in_review'] = 'In review';
-$string['status_approved'] = 'Approved';
+// Help texts.
+$string['cases_help'] = 'Hold Ctrl/Cmd to select multiple cases. If you select specific cases, only those will be exported. If no cases are selected, all cases from the chosen category will be exported.';
 
-// Review statuses.
-$string['review_pending'] = 'Pending';
-$string['review_approved'] = 'Approved';
-$string['review_rejected'] = 'Rejected';
-$string['review_revision'] = 'Revision requested';
+// Scheduled tasks.
+$string['task:cleanupabandoned'] = 'Cleanup abandoned practice attempts';
+$string['task:cleanupauditlogs'] = 'Cleanup old audit log entries';
 
-// Workflow actions.
-$string['submitforreview'] = 'Submit for review';
-$string['assignreviewer'] = 'Assign reviewer';
-$string['approve'] = 'Approve';
-$string['reject'] = 'Reject';
-$string['requestrevision'] = 'Request revision';
-$string['publish'] = 'Publish';
-$string['archive'] = 'Archive';
-$string['unarchive'] = 'Unarchive';
+// Achievements / Gamification.
+$string['achievements'] = 'Achievements';
+$string['gamificationdisabled'] = 'Gamification is currently disabled';
+$string['uniquecases'] = 'Unique cases completed';
+$string['perfectscores'] = 'Perfect scores';
+$string['achievementsprogress'] = 'Achievements: {$a->earned} of {$a->total} earned';
+$string['earned'] = 'Earned!';
+$string['externalintegration'] = 'Integrated with {$a} for additional rewards';
+$string['eventachievementearned'] = 'Achievement earned';
+$string['settings:enablegamification'] = 'Enable gamification';
+$string['settings:enablegamification_desc'] = 'Enable achievements and gamification features';
 
-// Workflow messages.
-$string['casesubmittedreview'] = 'Case submitted for review';
-$string['caseapproved'] = 'Case approved';
-$string['caserejected'] = 'Case rejected';
-$string['casepublished'] = 'Case published';
-$string['casearchived'] = 'Case archived';
-$string['invalidtransition'] = 'Invalid status transition';
-$string['noquestionsforsubmit'] = 'Case must have at least one question before submitting for review';
-$string['invalidstatusforreviewer'] = 'Case is not in a reviewable status';
-$string['notassignedreviewer'] = 'You are not assigned as reviewer for this case';
-$string['invaliddecision'] = 'Invalid review decision';
+// Achievement types.
+$string['achievement:first_attempt'] = 'First Steps';
+$string['achievement:first_attempt_desc'] = 'Complete your first practice attempt';
+$string['achievement:five_cases'] = 'Getting Started';
+$string['achievement:five_cases_desc'] = 'Practice 5 different cases';
+$string['achievement:ten_cases'] = 'Dedicated Learner';
+$string['achievement:ten_cases_desc'] = 'Practice 10 different cases';
+$string['achievement:twentyfive_cases'] = 'Case Master';
+$string['achievement:twentyfive_cases_desc'] = 'Practice 25 different cases';
+$string['achievement:perfect_score'] = 'Perfectionist';
+$string['achievement:perfect_score_desc'] = 'Get a perfect score (100%)';
+$string['achievement:five_perfect'] = 'Excellence';
+$string['achievement:five_perfect_desc'] = 'Get 5 perfect scores';
+$string['achievement:streak_10'] = 'On Fire!';
+$string['achievement:streak_10_desc'] = 'Pass 10 cases in a row';
+$string['achievement:week_streak'] = 'Consistent';
+$string['achievement:week_streak_desc'] = 'Practice every day for a week';
+$string['achievement:category_complete'] = 'Category Expert';
+$string['achievement:category_complete_desc'] = 'Complete all cases in a category';
+$string['achievement:high_achiever'] = 'High Achiever';
+$string['achievement:high_achiever_desc'] = 'Maintain 90%+ average after 10 attempts';
 
-// Bulk operations.
-$string['bulkoperations'] = 'Bulk operations';
-$string['selectall'] = 'Select all';
-$string['deselectall'] = 'Deselect all';
-$string['withselected'] = 'With selected...';
-$string['bulkdelete'] = 'Delete selected';
-$string['bulkmove'] = 'Move to category';
-$string['bulkpublish'] = 'Publish selected';
-$string['bulkarchive'] = 'Archive selected';
-$string['bulkexport'] = 'Export selected';
-$string['bulkexportpdf'] = 'Export as PDF';
-$string['bulkexportcsv'] = 'Export as CSV';
-$string['confirmdeleteselected'] = 'Are you sure you want to delete {$a} selected cases? This action cannot be undone.';
-$string['confirmpublishselected'] = 'Are you sure you want to publish {$a} selected cases?';
-$string['confirmarchiveselected'] = 'Are you sure you want to archive {$a} selected cases?';
-$string['casesdeleted'] = '{$a} cases deleted successfully';
-$string['casesmoved'] = '{$a} cases moved successfully';
-$string['casespublished'] = '{$a} cases published successfully';
-$string['casesarchived'] = '{$a} cases archived successfully';
-$string['selectedcases'] = '{$a} selected';
-$string['nocasesselected'] = 'No cases selected';
-$string['moveto'] = 'Move to...';
-$string['selecttargetcategory'] = 'Select target category';
+// Message providers.
+$string['messageprovider:casepublished'] = 'Practical case published';
+$string['messageprovider:reviewassigned'] = 'Review assigned';
+$string['messageprovider:reviewcompleted'] = 'Review completed';
+$string['messageprovider:achievementearned'] = 'Achievement earned';
 
-// Audit log.
-$string['auditlog'] = 'Audit log';
-$string['auditlogs'] = 'Audit logs';
-$string['viewauditlog'] = 'View audit log';
-$string['noauditlogs'] = 'No audit logs found';
-$string['audit:action_create'] = 'Created';
-$string['audit:action_update'] = 'Updated';
-$string['audit:action_delete'] = 'Deleted';
-$string['audit:action_publish'] = 'Published';
-$string['audit:action_archive'] = 'Archived';
-$string['audit:action_submit_review'] = 'Submitted for review';
-$string['audit:action_approve'] = 'Approved';
-$string['audit:action_reject'] = 'Rejected';
-$string['audit:action_bulk_delete'] = 'Bulk deleted';
-$string['audit:action_bulk_move'] = 'Bulk moved';
-$string['audit:action_bulk_publish'] = 'Bulk published';
-$string['audit:action_bulk_archive'] = 'Bulk archived';
-$string['audit:action_import'] = 'Imported';
-$string['audit:action_export'] = 'Exported';
-$string['auditobjecttype'] = 'Object type';
-$string['auditaction'] = 'Action';
-$string['audituser'] = 'User';
-$string['audittime'] = 'Time';
-$string['auditchanges'] = 'Changes';
-$string['auditipaddress'] = 'IP address';
-$string['filterbyaction'] = 'Filter by action';
-$string['filterbyuser'] = 'Filter by user';
-$string['filterbydaterange'] = 'Filter by date range';
-$string['exportauditlog'] = 'Export audit log';
+// Notification strings.
+$string['notification:casepublished_subject'] = 'New practical case published: {$a}';
+$string['notification:casepublished_body'] = 'A new practical case "{$a->casename}" has been published by {$a->author}.
 
-// Advanced filters.
-$string['advancedfilters'] = 'Advanced filters';
-$string['searchcases'] = 'Search cases';
-$string['filterbycat'] = 'Filter by category';
-$string['filterbystatus'] = 'Filter by status';
-$string['filterbydifficulty'] = 'Filter by difficulty';
-$string['filterbytags'] = 'Filter by tags';
-$string['filterbycreator'] = 'Filter by creator';
-$string['filterbydatefrom'] = 'Created from';
-$string['filterbydateto'] = 'Created to';
-$string['filterbyquestioncount'] = 'Question count';
-$string['allcategories'] = 'All categories';
-$string['allstatuses'] = 'All statuses';
-$string['alldifficulties'] = 'All difficulties';
-$string['alltags'] = 'All tags';
-$string['allcreators'] = 'All creators';
-$string['clearsearch'] = 'Clear search';
-$string['clearfilters'] = 'Clear all filters';
-$string['applyfilters'] = 'Apply filters';
-$string['activefilters'] = 'Active filters';
-$string['noresults'] = 'No cases found matching your criteria';
-$string['showing'] = 'Showing {$a->start} to {$a->end} of {$a->total}';
+View the case: {$a->url}';
+$string['notification:casepublished_body_html'] = '<p>A new practical case "<strong>{$a->casename}</strong>" has been published by {$a->author}.</p><p><a href="{$a->url}">View the case</a></p>';
+$string['notification:casepublished_small'] = 'New case: {$a}';
 
-// Sorting.
-$string['sortby'] = 'Sort by';
-$string['sortbyname'] = 'Name';
-$string['sortbycreated'] = 'Date created';
-$string['sortbymodified'] = 'Date modified';
-$string['sortbydifficulty'] = 'Difficulty';
-$string['sortbyquestions'] = 'Question count';
-$string['sortasc'] = 'Ascending';
-$string['sortdesc'] = 'Descending';
+$string['notification:reviewassigned_subject'] = 'Review assigned: {$a}';
+$string['notification:reviewassigned_body'] = 'You have been assigned to review the case "{$a->casename}" by {$a->author}.
 
-// Export formats.
-$string['exportformat'] = 'Export format';
-$string['exportpdf'] = 'Export as PDF';
-$string['exportcsv'] = 'Export as CSV';
-$string['exportxml'] = 'Export as XML';
-$string['exportjson'] = 'Export as JSON';
-$string['exportoptions'] = 'Export options';
-$string['includeanswers'] = 'Include answers';
-$string['includecorrect'] = 'Mark correct answers';
-$string['includefeedback'] = 'Include feedback';
-$string['pagebreakpercase'] = 'Page break between cases';
-$string['flatformat'] = 'Flat format (one row per question)';
+View the case: {$a->url}';
+$string['notification:reviewassigned_body_html'] = '<p>You have been assigned to review the case "<strong>{$a->casename}</strong>" by {$a->author}.</p><p><a href="{$a->url}">View the case</a></p>';
+$string['notification:reviewassigned_small'] = 'Review assigned: {$a}';
 
-// Reviews.
-$string['reviews'] = 'Reviews';
-$string['reviewhistory'] = 'Review history';
-$string['pendingreviews'] = 'Pending reviews';
-$string['myreviews'] = 'My reviews';
-$string['reviewcase'] = 'Review case';
-$string['reviewcomments'] = 'Review comments';
-$string['submitreview'] = 'Submit review';
-$string['nopendingreviews'] = 'No pending reviews';
-$string['reviewedon'] = 'Reviewed on {$a}';
-$string['reviewedby'] = 'Reviewed by {$a}';
-$string['awaitingreview'] = 'Awaiting review';
+$string['notification:reviewcompleted_subject'] = 'Review completed: {$a->casename} - {$a->status}';
+$string['notification:reviewcompleted_body'] = 'Your case "{$a->casename}" has been reviewed by {$a->reviewer}.
 
-// Settings additions.
-$string['settings:workflow'] = 'Workflow settings';
-$string['settings:enableworkflow'] = 'Enable approval workflow';
-$string['settings:enableworkflow_desc'] = 'Require cases to be reviewed and approved before publishing';
-$string['settings:auditretention'] = 'Audit log retention (days)';
-$string['settings:auditretention_desc'] = 'Number of days to keep audit log entries. Set to 0 to keep forever.';
+Status: {$a->status}
 
-// Capabilities.
-$string['casospracticos:review'] = 'Review practical cases';
-$string['casospracticos:viewauditlog'] = 'View audit log';
-$string['casospracticos:bulkoperations'] = 'Perform bulk operations';
+Comments: {$a->comments}
 
-// Errors.
-$string['error:bulkdeletefailed'] = 'Failed to delete some cases';
-$string['error:bulkmovefailed'] = 'Failed to move some cases';
-$string['error:categorynotfound'] = 'Category not found';
-$string['error:invalidformat'] = 'Invalid export format';
+View the case: {$a->url}';
+$string['notification:reviewcompleted_body_html'] = '<p>Your case "<strong>{$a->casename}</strong>" has been reviewed by {$a->reviewer}.</p><p><strong>Status:</strong> {$a->status}</p><p><strong>Comments:</strong> {$a->comments}</p><p><a href="{$a->url}">View the case</a></p>';
+$string['notification:reviewcompleted_small'] = 'Review: {$a->casename} - {$a->status}';
+
+$string['notification:achievementearned_subject'] = 'Achievement unlocked: {$a}';
+$string['notification:achievementearned_body'] = 'Congratulations! You have earned the achievement "{$a->achievement}".
+
+{$a->description}
+
+View your achievements: {$a->url}';
+$string['notification:achievementearned_body_html'] = '<p>Congratulations! You have earned the achievement "<strong>{$a->achievement}</strong>".</p><p>{$a->description}</p><p><a href="{$a->url}">View your achievements</a></p>';
+$string['notification:achievementearned_small'] = 'Achievement: {$a}';
+
+// Review status strings.
+$string['review_status_pending'] = 'Pending';
+$string['review_status_approved'] = 'Approved';
+$string['review_status_rejected'] = 'Rejected';
+$string['review_status_revision_requested'] = 'Revision requested';
+
+// Accessibility strings.
+$string['caselist'] = 'List of practical cases';
+$string['caseactions'] = 'Case actions';
+$string['questionactions'] = 'Question actions';
+$string['questionnumber'] = 'Question number';
+$string['questionform'] = 'Question form';
+$string['questiontype_help'] = 'Select the type of question to create';
+$string['defaultmark_help'] = 'Points awarded for a fully correct answer';
+$string['generalfeedback_help'] = 'Feedback shown after the question is answered';
+$string['categoryoptions'] = 'Options for category';
+$string['removeanswer'] = 'Remove this answer';

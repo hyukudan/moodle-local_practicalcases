@@ -57,6 +57,51 @@ class provider implements
             'privacy:metadata:local_cp_cases'
         );
 
+        $collection->add_database_table(
+            'local_cp_audit_log',
+            [
+                'userid' => 'privacy:metadata:local_cp_audit_log:userid',
+                'action' => 'privacy:metadata:local_cp_audit_log:action',
+                'ipaddress' => 'privacy:metadata:local_cp_audit_log:ipaddress',
+                'timecreated' => 'privacy:metadata:local_cp_audit_log:timecreated',
+            ],
+            'privacy:metadata:local_cp_audit_log'
+        );
+
+        $collection->add_database_table(
+            'local_cp_reviews',
+            [
+                'reviewerid' => 'privacy:metadata:local_cp_reviews:reviewerid',
+                'comments' => 'privacy:metadata:local_cp_reviews:comments',
+                'status' => 'privacy:metadata:local_cp_reviews:status',
+                'timecreated' => 'privacy:metadata:local_cp_reviews:timecreated',
+            ],
+            'privacy:metadata:local_cp_reviews'
+        );
+
+        $collection->add_database_table(
+            'local_cp_practice_attempts',
+            [
+                'userid' => 'privacy:metadata:local_cp_practice_attempts:userid',
+                'score' => 'privacy:metadata:local_cp_practice_attempts:score',
+                'maxscore' => 'privacy:metadata:local_cp_practice_attempts:maxscore',
+                'percentage' => 'privacy:metadata:local_cp_practice_attempts:percentage',
+                'timestarted' => 'privacy:metadata:local_cp_practice_attempts:timestarted',
+                'timefinished' => 'privacy:metadata:local_cp_practice_attempts:timefinished',
+            ],
+            'privacy:metadata:local_cp_practice_attempts'
+        );
+
+        $collection->add_database_table(
+            'local_cp_practice_responses',
+            [
+                'response' => 'privacy:metadata:local_cp_practice_responses:response',
+                'score' => 'privacy:metadata:local_cp_practice_responses:score',
+                'iscorrect' => 'privacy:metadata:local_cp_practice_responses:iscorrect',
+            ],
+            'privacy:metadata:local_cp_practice_responses'
+        );
+
         return $collection;
     }
 
@@ -72,13 +117,19 @@ class provider implements
         $sql = "SELECT ctx.id
                 FROM {context} ctx
                 WHERE ctx.contextlevel = :contextlevel
-                AND EXISTS (
-                    SELECT 1 FROM {local_cp_cases} c WHERE c.createdby = :userid
+                AND (
+                    EXISTS (SELECT 1 FROM {local_cp_cases} c WHERE c.createdby = :userid1)
+                    OR EXISTS (SELECT 1 FROM {local_cp_audit_log} a WHERE a.userid = :userid2)
+                    OR EXISTS (SELECT 1 FROM {local_cp_reviews} r WHERE r.reviewerid = :userid3)
+                    OR EXISTS (SELECT 1 FROM {local_cp_practice_attempts} p WHERE p.userid = :userid4)
                 )";
 
         $params = [
             'contextlevel' => CONTEXT_SYSTEM,
-            'userid' => $userid,
+            'userid1' => $userid,
+            'userid2' => $userid,
+            'userid3' => $userid,
+            'userid4' => $userid,
         ];
 
         $contextlist->add_from_sql($sql, $params);
@@ -98,8 +149,21 @@ class provider implements
             return;
         }
 
-        $sql = "SELECT DISTINCT createdby FROM {local_cp_cases}";
+        // Users who created cases.
+        $sql = "SELECT DISTINCT createdby FROM {local_cp_cases} WHERE createdby > 0";
         $userlist->add_from_sql('createdby', $sql, []);
+
+        // Users in audit log.
+        $sql = "SELECT DISTINCT userid FROM {local_cp_audit_log} WHERE userid > 0";
+        $userlist->add_from_sql('userid', $sql, []);
+
+        // Users who reviewed cases.
+        $sql = "SELECT DISTINCT reviewerid FROM {local_cp_reviews} WHERE reviewerid > 0";
+        $userlist->add_from_sql('reviewerid', $sql, []);
+
+        // Users with practice attempts.
+        $sql = "SELECT DISTINCT userid FROM {local_cp_practice_attempts} WHERE userid > 0";
+        $userlist->add_from_sql('userid', $sql, []);
     }
 
     /**
@@ -117,20 +181,100 @@ class provider implements
                 continue;
             }
 
+            $subcontext = [get_string('pluginname', 'local_casospracticos')];
+
             // Export cases created by user.
             $cases = $DB->get_records('local_cp_cases', ['createdby' => $userid]);
-
-            foreach ($cases as $case) {
-                $data = (object) [
-                    'name' => $case->name,
-                    'status' => $case->status,
-                    'timecreated' => transform::datetime($case->timecreated),
-                    'timemodified' => transform::datetime($case->timemodified),
-                ];
-
+            if (!empty($cases)) {
+                $casedata = [];
+                foreach ($cases as $case) {
+                    $casedata[] = (object) [
+                        'id' => $case->id,
+                        'name' => $case->name,
+                        'status' => $case->status,
+                        'timecreated' => transform::datetime($case->timecreated),
+                        'timemodified' => transform::datetime($case->timemodified),
+                    ];
+                }
                 writer::with_context($context)->export_data(
-                    [get_string('pluginname', 'local_casospracticos'), $case->id],
-                    $data
+                    array_merge($subcontext, [get_string('cases', 'local_casospracticos')]),
+                    (object) ['cases' => $casedata]
+                );
+            }
+
+            // Export audit log entries for user.
+            $auditlogs = $DB->get_records('local_cp_audit_log', ['userid' => $userid], 'timecreated DESC');
+            if (!empty($auditlogs)) {
+                $logdata = [];
+                foreach ($auditlogs as $log) {
+                    $logdata[] = (object) [
+                        'objecttype' => $log->objecttype,
+                        'objectid' => $log->objectid,
+                        'action' => $log->action,
+                        'timecreated' => transform::datetime($log->timecreated),
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('auditlog', 'local_casospracticos')]),
+                    (object) ['audit_entries' => $logdata]
+                );
+            }
+
+            // Export reviews by user.
+            $reviews = $DB->get_records('local_cp_reviews', ['reviewerid' => $userid]);
+            if (!empty($reviews)) {
+                $reviewdata = [];
+                foreach ($reviews as $review) {
+                    $case = $DB->get_record('local_cp_cases', ['id' => $review->caseid]);
+                    $reviewdata[] = (object) [
+                        'casename' => $case ? $case->name : 'Deleted case',
+                        'status' => $review->status,
+                        'comments' => $review->comments,
+                        'timecreated' => transform::datetime($review->timecreated),
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('reviews', 'local_casospracticos')]),
+                    (object) ['reviews' => $reviewdata]
+                );
+            }
+
+            // Export practice attempts.
+            $attempts = $DB->get_records('local_cp_practice_attempts', ['userid' => $userid], 'timecreated DESC');
+            if (!empty($attempts)) {
+                $attemptdata = [];
+                foreach ($attempts as $attempt) {
+                    $case = $DB->get_record('local_cp_cases', ['id' => $attempt->caseid]);
+                    $attemptentry = (object) [
+                        'casename' => $case ? $case->name : 'Deleted case',
+                        'score' => $attempt->score,
+                        'maxscore' => $attempt->maxscore,
+                        'percentage' => $attempt->percentage,
+                        'status' => $attempt->status,
+                        'timestarted' => transform::datetime($attempt->timestarted),
+                        'timefinished' => $attempt->timefinished ? transform::datetime($attempt->timefinished) : null,
+                    ];
+
+                    // Include responses.
+                    $responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $attempt->id]);
+                    if (!empty($responses)) {
+                        $attemptentry->responses = [];
+                        foreach ($responses as $response) {
+                            $question = $DB->get_record('local_cp_questions', ['id' => $response->questionid]);
+                            $attemptentry->responses[] = (object) [
+                                'question' => $question ? strip_tags($question->questiontext) : 'Deleted question',
+                                'response' => $response->response,
+                                'score' => $response->score,
+                                'iscorrect' => transform::yesno($response->iscorrect),
+                            ];
+                        }
+                    }
+
+                    $attemptdata[] = $attemptentry;
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('practiceattempts', 'local_casospracticos')]),
+                    (object) ['attempts' => $attemptdata]
                 );
             }
         }
@@ -170,6 +314,20 @@ class provider implements
 
             // Anonymize cases created by user (don't delete educational content).
             $DB->set_field('local_cp_cases', 'createdby', 0, ['createdby' => $userid]);
+
+            // Anonymize audit log entries.
+            $DB->set_field('local_cp_audit_log', 'userid', 0, ['userid' => $userid]);
+
+            // Anonymize reviews.
+            $DB->set_field('local_cp_reviews', 'reviewerid', 0, ['reviewerid' => $userid]);
+
+            // Delete practice attempts and responses (personal data).
+            $attempts = $DB->get_fieldset_select('local_cp_practice_attempts', 'id', 'userid = ?', [$userid]);
+            if (!empty($attempts)) {
+                list($insql, $params) = $DB->get_in_or_equal($attempts);
+                $DB->delete_records_select('local_cp_practice_responses', "attemptid $insql", $params);
+            }
+            $DB->delete_records('local_cp_practice_attempts', ['userid' => $userid]);
         }
     }
 
@@ -187,12 +345,33 @@ class provider implements
             return;
         }
 
-        list($insql, $inparams) = $DB->get_in_or_equal($userlist->get_userids(), SQL_PARAMS_NAMED);
+        $userids = $userlist->get_userids();
+        list($insql, $inparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
         // Anonymize cases created by these users.
         $DB->execute(
             "UPDATE {local_cp_cases} SET createdby = 0 WHERE createdby {$insql}",
             $inparams
         );
+
+        // Anonymize audit log entries.
+        $DB->execute(
+            "UPDATE {local_cp_audit_log} SET userid = 0 WHERE userid {$insql}",
+            $inparams
+        );
+
+        // Anonymize reviews.
+        $DB->execute(
+            "UPDATE {local_cp_reviews} SET reviewerid = 0 WHERE reviewerid {$insql}",
+            $inparams
+        );
+
+        // Delete practice attempts and responses.
+        $attempts = $DB->get_fieldset_select('local_cp_practice_attempts', 'id', "userid {$insql}", $inparams);
+        if (!empty($attempts)) {
+            list($attinsql, $attparams) = $DB->get_in_or_equal($attempts);
+            $DB->delete_records_select('local_cp_practice_responses', "attemptid {$attinsql}", $attparams);
+        }
+        $DB->delete_records_select('local_cp_practice_attempts', "userid {$insql}", $inparams);
     }
 }

@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other metadata.
+ * Scheduled tasks for local_casospracticos.
  *
  * @package    local_casospracticos
  * @copyright  2026 Sergio C.
@@ -24,8 +24,23 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011113;  // v1.0.3: Ownership verification, rate limiting, security hardening.
-$plugin->requires  = 2024042200;  // Moodle 4.4+
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.3';
+$tasks = [
+    [
+        'classname' => 'local_casospracticos\task\cleanup_abandoned_attempts',
+        'blocking' => 0,
+        'minute' => '30',
+        'hour' => '3',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
+    [
+        'classname' => 'local_casospracticos\task\cleanup_audit_logs',
+        'blocking' => 0,
+        'minute' => '0',
+        'hour' => '2',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
+];

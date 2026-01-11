@@ -136,6 +136,58 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'local/casospracticos:insertquiz',
     ],
+
+    // Bulk operations.
+    'local_casospracticos_bulk_delete' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'bulk_delete',
+        'description' => 'Bulk delete practical cases',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:delete',
+    ],
+    'local_casospracticos_bulk_publish' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'bulk_publish',
+        'description' => 'Bulk publish practical cases',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:edit',
+    ],
+    'local_casospracticos_bulk_archive' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'bulk_archive',
+        'description' => 'Bulk archive practical cases',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:edit',
+    ],
+    'local_casospracticos_bulk_move' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'bulk_move',
+        'description' => 'Bulk move practical cases to a category',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:edit',
+    ],
+
+    // Workflow.
+    'local_casospracticos_submit_for_review' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'submit_for_review',
+        'description' => 'Submit a case for review',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:edit',
+    ],
+    'local_casospracticos_get_pending_reviews' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'get_pending_reviews',
+        'description' => 'Get pending reviews for current user',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:review',
+    ],
 ];
 
 // Define the service.

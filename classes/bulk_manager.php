@@ -37,36 +37,55 @@ class bulk_manager {
         $deleted = [];
         $failed = [];
 
+        // Validate which cases exist.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params, '', 'id');
+        $existingids = array_keys($existingcases);
+
+        // Mark non-existent cases as failed.
         foreach ($caseids as $caseid) {
+            if (!in_array($caseid, $existingids)) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+            }
+        }
+
+        if (!empty($existingids)) {
+            $transaction = $DB->start_delegated_transaction();
             try {
-                $case = $DB->get_record('local_cp_cases', ['id' => $caseid]);
-                if (!$case) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
+                // Get all question IDs for these cases in one query.
+                list($caseinsql, $caseparams) = $DB->get_in_or_equal($existingids, SQL_PARAMS_NAMED);
+                $questionids = $DB->get_fieldset_select('local_cp_questions', 'id', "caseid $caseinsql", $caseparams);
+
+                // Delete answers in batch.
+                if (!empty($questionids)) {
+                    list($qinsql, $qparams) = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+                    $DB->delete_records_select('local_cp_answers', "questionid $qinsql", $qparams);
                 }
 
-                // Delete answers first.
-                $questions = $DB->get_records('local_cp_questions', ['caseid' => $caseid], '', 'id');
-                foreach ($questions as $question) {
-                    $DB->delete_records('local_cp_answers', ['questionid' => $question->id]);
-                }
+                // Delete questions in batch.
+                $DB->delete_records_select('local_cp_questions', "caseid $caseinsql", $caseparams);
 
-                // Delete questions.
-                $DB->delete_records('local_cp_questions', ['caseid' => $caseid]);
+                // Delete reviews in batch.
+                $DB->delete_records_select('local_cp_reviews', "caseid $caseinsql", $caseparams);
 
-                // Delete reviews.
-                $DB->delete_records('local_cp_reviews', ['caseid' => $caseid]);
+                // Delete usage tracking in batch.
+                $DB->delete_records_select('local_cp_usage', "caseid $caseinsql", $caseparams);
 
-                // Delete usage tracking.
-                $DB->delete_records('local_cp_usage', ['caseid' => $caseid]);
+                // Delete practice attempts in batch.
+                $DB->delete_records_select('local_cp_practice_attempts', "caseid $caseinsql", $caseparams);
 
-                // Delete case.
-                $DB->delete_records('local_cp_cases', ['id' => $caseid]);
+                // Delete cases in batch.
+                $DB->delete_records_select('local_cp_cases', "id $caseinsql", $caseparams);
 
-                $deleted[] = $caseid;
+                $deleted = $existingids;
 
+                $transaction->allow_commit();
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                $transaction->rollback($e);
+                // If batch fails, mark all as failed.
+                foreach ($existingids as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
             }
         }
 
@@ -108,22 +127,41 @@ class bulk_manager {
         $moved = [];
         $failed = [];
 
+        // Validate which cases exist and get their current categories.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params, '', 'id, categoryid');
+        $existingids = array_keys($existingcases);
+
+        // Mark non-existent cases as failed.
         foreach ($caseids as $caseid) {
+            if (!isset($existingcases[$caseid])) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+            } else {
+                $moved[] = ['id' => $caseid, 'from' => $existingcases[$caseid]->categoryid, 'to' => $categoryid];
+            }
+        }
+
+        // Batch update all valid cases.
+        if (!empty($existingids)) {
+            $transaction = $DB->start_delegated_transaction();
             try {
-                $case = $DB->get_record('local_cp_cases', ['id' => $caseid]);
-                if (!$case) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
-                }
+                $now = time();
+                list($updateinsql, $updateparams) = $DB->get_in_or_equal($existingids, SQL_PARAMS_NAMED);
+                $updateparams['categoryid'] = $categoryid;
+                $updateparams['timemodified'] = $now;
+                $DB->execute(
+                    "UPDATE {local_cp_cases} SET categoryid = :categoryid, timemodified = :timemodified WHERE id $updateinsql",
+                    $updateparams
+                );
 
-                $oldcategory = $case->categoryid;
-                $DB->set_field('local_cp_cases', 'categoryid', $categoryid, ['id' => $caseid]);
-                $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
-
-                $moved[] = ['id' => $caseid, 'from' => $oldcategory, 'to' => $categoryid];
-
+                $transaction->allow_commit();
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                $transaction->rollback($e);
+                // If batch fails, mark all as failed.
+                $moved = [];
+                foreach ($existingids as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
             }
         }
 
@@ -157,39 +195,71 @@ class bulk_manager {
 
         $published = [];
         $failed = [];
+        $topublish = [];
 
+        // Fetch all cases in one query.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params);
+
+        // Get question counts for all cases in one query.
+        $sql = "SELECT caseid, COUNT(*) as qcount
+                FROM {local_cp_questions}
+                WHERE caseid $insql
+                GROUP BY caseid";
+        $questioncounts = $DB->get_records_sql_menu($sql, $params);
+
+        // Validate each case.
         foreach ($caseids as $caseid) {
+            if (!isset($existingcases[$caseid])) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+                continue;
+            }
+
+            $case = $existingcases[$caseid];
+
+            if ($case->status === 'published') {
+                $failed[] = ['id' => $caseid, 'reason' => 'already_published'];
+                continue;
+            }
+
+            $qcount = $questioncounts[$caseid] ?? 0;
+            if ($qcount === 0) {
+                $failed[] = ['id' => $caseid, 'reason' => 'no_questions'];
+                continue;
+            }
+
+            $topublish[$caseid] = $case;
+        }
+
+        // Batch update all valid cases.
+        if (!empty($topublish)) {
+            $transaction = $DB->start_delegated_transaction();
             try {
-                $case = $DB->get_record('local_cp_cases', ['id' => $caseid]);
-                if (!$case) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
+                $now = time();
+                $ids = array_keys($topublish);
+                list($updateinsql, $updateparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
+                $updateparams['timemodified'] = $now;
+                $DB->execute(
+                    "UPDATE {local_cp_cases} SET status = 'published', timemodified = :timemodified WHERE id $updateinsql",
+                    $updateparams
+                );
+
+                $published = $ids;
+
+                $transaction->allow_commit();
+
+                // Trigger events for all published cases (after commit to ensure data integrity).
+                foreach ($topublish as $case) {
+                    $case->status = 'published';
+                    $event = \local_casospracticos\event\case_published::create_from_case($case);
+                    $event->trigger();
                 }
-
-                if ($case->status === 'published') {
-                    $failed[] = ['id' => $caseid, 'reason' => 'already_published'];
-                    continue;
-                }
-
-                // Check case has at least one question.
-                $questioncount = $DB->count_records('local_cp_questions', ['caseid' => $caseid]);
-                if ($questioncount === 0) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'no_questions'];
-                    continue;
-                }
-
-                $DB->set_field('local_cp_cases', 'status', 'published', ['id' => $caseid]);
-                $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
-
-                $published[] = $caseid;
-
-                // Trigger event.
-                $case->status = 'published';
-                $event = \local_casospracticos\event\case_published::create_from_case($case);
-                $event->trigger();
 
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                $transaction->rollback($e);
+                foreach (array_keys($topublish) as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
             }
         }
 
@@ -220,27 +290,47 @@ class bulk_manager {
 
         $archived = [];
         $failed = [];
+        $toarchive = [];
 
+        // Fetch all cases in one query.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params, '', 'id, status');
+
+        // Validate each case.
         foreach ($caseids as $caseid) {
+            if (!isset($existingcases[$caseid])) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+                continue;
+            }
+
+            if ($existingcases[$caseid]->status === 'archived') {
+                $failed[] = ['id' => $caseid, 'reason' => 'already_archived'];
+                continue;
+            }
+
+            $toarchive[] = $caseid;
+        }
+
+        // Batch update all valid cases.
+        if (!empty($toarchive)) {
+            $transaction = $DB->start_delegated_transaction();
             try {
-                $case = $DB->get_record('local_cp_cases', ['id' => $caseid]);
-                if (!$case) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
-                }
+                $now = time();
+                list($updateinsql, $updateparams) = $DB->get_in_or_equal($toarchive, SQL_PARAMS_NAMED);
+                $updateparams['timemodified'] = $now;
+                $DB->execute(
+                    "UPDATE {local_cp_cases} SET status = 'archived', timemodified = :timemodified WHERE id $updateinsql",
+                    $updateparams
+                );
 
-                if ($case->status === 'archived') {
-                    $failed[] = ['id' => $caseid, 'reason' => 'already_archived'];
-                    continue;
-                }
+                $archived = $toarchive;
 
-                $DB->set_field('local_cp_cases', 'status', 'archived', ['id' => $caseid]);
-                $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
-
-                $archived[] = $caseid;
-
+                $transaction->allow_commit();
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                $transaction->rollback($e);
+                foreach ($toarchive as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
             }
         }
 
@@ -290,20 +380,35 @@ class bulk_manager {
         $changed = [];
         $failed = [];
 
+        // Validate which cases exist.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingids = $DB->get_fieldset_select('local_cp_cases', 'id', "id $insql", $params);
+
+        // Mark non-existent cases as failed.
         foreach ($caseids as $caseid) {
+            if (!in_array($caseid, $existingids)) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+            }
+        }
+
+        // Batch update all valid cases.
+        if (!empty($existingids)) {
             try {
-                if (!$DB->record_exists('local_cp_cases', ['id' => $caseid])) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
-                }
+                $now = time();
+                list($updateinsql, $updateparams) = $DB->get_in_or_equal($existingids, SQL_PARAMS_NAMED);
+                $updateparams['status'] = $status;
+                $updateparams['timemodified'] = $now;
+                $DB->execute(
+                    "UPDATE {local_cp_cases} SET status = :status, timemodified = :timemodified WHERE id $updateinsql",
+                    $updateparams
+                );
 
-                $DB->set_field('local_cp_cases', 'status', $status, ['id' => $caseid]);
-                $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
-
-                $changed[] = $caseid;
+                $changed = $existingids;
 
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                foreach ($existingids as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
             }
         }
 
@@ -332,29 +437,45 @@ class bulk_manager {
         $updated = [];
         $failed = [];
 
+        // Validate which cases exist first.
+        list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
+        $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params);
+
+        // Mark non-existent cases as failed.
         foreach ($caseids as $caseid) {
+            if (!isset($existingcases[$caseid])) {
+                $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
+            }
+        }
+
+        // Process existing cases in a transaction.
+        if (!empty($existingcases)) {
+            $transaction = $DB->start_delegated_transaction();
             try {
-                $case = $DB->get_record('local_cp_cases', ['id' => $caseid]);
-                if (!$case) {
-                    $failed[] = ['id' => $caseid, 'reason' => 'notfound'];
-                    continue;
+                $now = time();
+                foreach ($existingcases as $caseid => $case) {
+                    $existingtags = $case->tags ? json_decode($case->tags, true) : [];
+
+                    if ($replace) {
+                        $newtags = $tags;
+                    } else {
+                        $newtags = array_unique(array_merge($existingtags, $tags));
+                    }
+
+                    $DB->set_field('local_cp_cases', 'tags', json_encode(array_values($newtags)), ['id' => $caseid]);
+                    $DB->set_field('local_cp_cases', 'timemodified', $now, ['id' => $caseid]);
+
+                    $updated[] = $caseid;
                 }
 
-                $existingtags = $case->tags ? json_decode($case->tags, true) : [];
-
-                if ($replace) {
-                    $newtags = $tags;
-                } else {
-                    $newtags = array_unique(array_merge($existingtags, $tags));
-                }
-
-                $DB->set_field('local_cp_cases', 'tags', json_encode(array_values($newtags)), ['id' => $caseid]);
-                $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
-
-                $updated[] = $caseid;
-
+                $transaction->allow_commit();
             } catch (\Exception $e) {
-                $failed[] = ['id' => $caseid, 'reason' => $e->getMessage()];
+                $transaction->rollback($e);
+                // Mark all as failed on error.
+                foreach (array_keys($existingcases) as $id) {
+                    $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+                }
+                $updated = [];
             }
         }
 

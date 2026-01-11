@@ -47,9 +47,9 @@ class case_manager {
      * Get a case by ID.
      *
      * @param int $id Case ID
-     * @return object|false Case object or false if not found
+     * @return \stdClass|false Case object or false if not found
      */
-    public static function get(int $id) {
+    public static function get(int $id): \stdClass|false {
         global $DB;
         return $DB->get_record(self::TABLE, ['id' => $id]);
     }
@@ -58,9 +58,9 @@ class case_manager {
      * Get a case with its questions.
      *
      * @param int $id Case ID
-     * @return object|false Case object with questions array, or false
+     * @return \stdClass|false Case object with questions array, or false
      */
-    public static function get_with_questions(int $id) {
+    public static function get_with_questions(int $id): \stdClass|false {
         $case = self::get($id);
         if (!$case) {
             return false;
@@ -222,17 +222,28 @@ class case_manager {
      *
      * @param int $id Case ID
      * @return bool Success
+     * @throws \dml_exception If a database error occurs
      */
     public static function delete(int $id): bool {
         global $DB;
 
-        // Delete all questions (and their answers).
-        $questions = question_manager::get_by_case($id);
-        foreach ($questions as $question) {
-            question_manager::delete($question->id);
-        }
+        $transaction = $DB->start_delegated_transaction();
 
-        return $DB->delete_records(self::TABLE, ['id' => $id]);
+        try {
+            // Delete all questions (and their answers).
+            $questions = question_manager::get_by_case($id);
+            foreach ($questions as $question) {
+                question_manager::delete($question->id);
+            }
+
+            $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+
+            $transaction->allow_commit();
+            return $result;
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
     }
 
     /**
@@ -241,30 +252,42 @@ class case_manager {
      * @param int $id Case ID to duplicate
      * @param int|null $newcategoryid New category (null to keep same)
      * @return int New case ID
+     * @throws \moodle_exception If the case is not found
+     * @throws \dml_exception If a database error occurs
      */
     public static function duplicate(int $id, int $newcategoryid = null): int {
+        global $DB;
+
         $case = self::get_with_questions($id);
         if (!$case) {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
-        // Create new case.
-        $newcase = clone $case;
-        unset($newcase->id, $newcase->questions);
-        $newcase->name = get_string('copyof', 'moodle', $case->name);
-        $newcase->status = self::STATUS_DRAFT;
-        if ($newcategoryid !== null) {
-            $newcase->categoryid = $newcategoryid;
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            // Create new case.
+            $newcase = clone $case;
+            unset($newcase->id, $newcase->questions);
+            $newcase->name = get_string('copyof', 'moodle', $case->name);
+            $newcase->status = self::STATUS_DRAFT;
+            if ($newcategoryid !== null) {
+                $newcase->categoryid = $newcategoryid;
+            }
+
+            $newid = self::create($newcase);
+
+            // Duplicate questions.
+            foreach ($case->questions as $question) {
+                question_manager::duplicate($question->id, $newid);
+            }
+
+            $transaction->allow_commit();
+            return $newid;
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
         }
-
-        $newid = self::create($newcase);
-
-        // Duplicate questions.
-        foreach ($case->questions as $question) {
-            question_manager::duplicate($question->id, $newid);
-        }
-
-        return $newid;
     }
 
     /**

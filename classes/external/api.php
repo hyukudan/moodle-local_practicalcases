@@ -37,11 +37,107 @@ use local_casospracticos\category_manager;
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
 use local_casospracticos\quiz_integration;
+use local_casospracticos\bulk_manager;
+use local_casospracticos\workflow_manager;
+use local_casospracticos\rate_limiter;
 
 /**
  * External API class.
  */
 class api extends external_api {
+
+    // ==================== HELPER METHODS ====================
+
+    /**
+     * Check rate limit for an operation.
+     *
+     * @param string $operation Operation name
+     * @param string $type Operation type ('read' or 'write')
+     * @throws \moodle_exception If rate limit exceeded
+     */
+    protected static function check_rate_limit(string $operation, string $type = 'read'): void {
+        $limiter = new rate_limiter();
+        $limiter->check($operation, $type);
+    }
+
+    /**
+     * Check if current user can edit a specific case.
+     *
+     * User can edit if:
+     * - They are the case creator (owner)
+     * - They have the 'editall' capability
+     * - They are a site admin
+     *
+     * @param int $caseid Case ID
+     * @param \context $context The context
+     * @return bool True if user can edit
+     */
+    protected static function can_edit_case(int $caseid, \context $context): bool {
+        global $DB, $USER;
+
+        // Site admins can always edit.
+        if (is_siteadmin()) {
+            return true;
+        }
+
+        // Users with editall capability can edit any case.
+        if (has_capability('local/casospracticos:editall', $context)) {
+            return true;
+        }
+
+        // Check if user is the owner.
+        $case = $DB->get_record('local_cp_cases', ['id' => $caseid], 'id, createdby');
+        if (!$case) {
+            return false;
+        }
+
+        return $case->createdby == $USER->id;
+    }
+
+    /**
+     * Check if current user can delete a specific case.
+     *
+     * User can delete if:
+     * - They are the case creator (owner)
+     * - They have the 'deleteall' capability
+     * - They are a site admin
+     *
+     * @param int $caseid Case ID
+     * @param \context $context The context
+     * @return bool True if user can delete
+     */
+    protected static function can_delete_case(int $caseid, \context $context): bool {
+        global $DB, $USER;
+
+        // Site admins can always delete.
+        if (is_siteadmin()) {
+            return true;
+        }
+
+        // Users with deleteall capability can delete any case.
+        if (has_capability('local/casospracticos:deleteall', $context)) {
+            return true;
+        }
+
+        // Check if user is the owner.
+        $case = $DB->get_record('local_cp_cases', ['id' => $caseid], 'id, createdby');
+        if (!$case) {
+            return false;
+        }
+
+        return $case->createdby == $USER->id;
+    }
+
+    /**
+     * Get the case ID for a question.
+     *
+     * @param int $questionid Question ID
+     * @return int|false Case ID or false if not found
+     */
+    protected static function get_case_id_for_question(int $questionid) {
+        global $DB;
+        return $DB->get_field('local_cp_questions', 'caseid', ['id' => $questionid]);
+    }
 
     // ==================== CATEGORIES ====================
 
@@ -59,8 +155,10 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:view', $context);
+        self::check_rate_limit('get_categories', 'read');
 
-        $categories = category_manager::get_flat_tree();
+        // Optimized: Uses single query for case counts instead of N+1.
+        $categories = category_manager::get_flat_tree_with_counts();
         $result = [];
 
         foreach ($categories as $cat) {
@@ -70,7 +168,7 @@ class api extends external_api {
                 'description' => $cat->description ?? '',
                 'parent' => $cat->parent,
                 'depth' => $cat->depth,
-                'casecount' => category_manager::count_cases($cat->id),
+                'casecount' => $cat->casecount,
             ];
         }
 
@@ -112,6 +210,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:view', $context);
+        self::check_rate_limit('get_cases', 'read');
 
         $params = self::validate_parameters(self::get_cases_parameters(), [
             'categoryid' => $categoryid,
@@ -177,6 +276,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:view', $context);
+        self::check_rate_limit('get_case', 'read');
 
         $params = self::validate_parameters(self::get_case_parameters(), ['id' => $id]);
 
@@ -280,6 +380,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:create', $context);
+        self::check_rate_limit('create_case', 'write');
 
         $params = self::validate_parameters(self::create_case_parameters(), [
             'categoryid' => $categoryid,
@@ -327,6 +428,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('update_case', 'write');
 
         $params = self::validate_parameters(self::update_case_parameters(), [
             'id' => $id,
@@ -335,6 +437,11 @@ class api extends external_api {
             'status' => $status,
             'categoryid' => $categoryid,
         ]);
+
+        // Verify ownership or elevated permissions.
+        if (!self::can_edit_case($params['id'], $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         $data = new \stdClass();
         $data->id = $params['id'];
@@ -383,8 +490,14 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:delete', $context);
+        self::check_rate_limit('delete_case', 'write');
 
         $params = self::validate_parameters(self::delete_case_parameters(), ['id' => $id]);
+
+        // Verify ownership or elevated permissions.
+        if (!self::can_delete_case($params['id'], $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         case_manager::delete($params['id']);
 
@@ -418,6 +531,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:view', $context);
+        self::check_rate_limit('get_questions', 'read');
 
         $params = self::validate_parameters(self::get_questions_parameters(), ['caseid' => $caseid]);
 
@@ -499,6 +613,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('create_question', 'write');
 
         $params = self::validate_parameters(self::create_question_parameters(), [
             'caseid' => $caseid,
@@ -507,6 +622,11 @@ class api extends external_api {
             'defaultmark' => $defaultmark,
             'answers' => $answers,
         ]);
+
+        // Verify user can edit the parent case.
+        if (!self::can_edit_case($params['caseid'], $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         $data = (object) [
             'caseid' => $params['caseid'],
@@ -550,12 +670,19 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('update_question', 'write');
 
         $params = self::validate_parameters(self::update_question_parameters(), [
             'id' => $id,
             'questiontext' => $questiontext,
             'defaultmark' => $defaultmark,
         ]);
+
+        // Verify user can edit the parent case.
+        $caseid = self::get_case_id_for_question($params['id']);
+        if (!$caseid || !self::can_edit_case($caseid, $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         $data = new \stdClass();
         $data->id = $params['id'];
@@ -598,8 +725,15 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('delete_question', 'write');
 
         $params = self::validate_parameters(self::delete_question_parameters(), ['id' => $id]);
+
+        // Verify user can edit the parent case.
+        $caseid = self::get_case_id_for_question($params['id']);
+        if (!$caseid || !self::can_edit_case($caseid, $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         question_manager::delete($params['id']);
 
@@ -632,11 +766,18 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('reorder_questions', 'write');
 
         $params = self::validate_parameters(self::reorder_questions_parameters(), [
             'questionid' => $questionid,
             'newposition' => $newposition,
         ]);
+
+        // Verify user can edit the parent case.
+        $caseid = self::get_case_id_for_question($params['questionid']);
+        if (!$caseid || !self::can_edit_case($caseid, $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
 
         question_manager::reorder($params['questionid'], $params['newposition']);
 
@@ -674,6 +815,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:insertquiz', $context);
+        self::check_rate_limit('insert_into_quiz', 'write');
 
         $params = self::validate_parameters(self::insert_into_quiz_parameters(), [
             'caseid' => $caseid,
@@ -723,6 +865,7 @@ class api extends external_api {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:insertquiz', $context);
+        self::check_rate_limit('get_available_quizzes', 'read');
 
         $params = self::validate_parameters(self::get_available_quizzes_parameters(), [
             'courseid' => $courseid,
@@ -749,6 +892,362 @@ class api extends external_api {
             new external_single_structure([
                 'id' => new external_value(PARAM_INT, 'Quiz ID'),
                 'name' => new external_value(PARAM_TEXT, 'Quiz name'),
+            ])
+        );
+    }
+
+    // ==================== BULK OPERATIONS ====================
+
+    /**
+     * Parameters for bulk_delete.
+     */
+    public static function bulk_delete_parameters() {
+        return new external_function_parameters([
+            'caseids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Bulk delete cases.
+     */
+    public static function bulk_delete($caseids) {
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:delete', $context);
+        self::check_rate_limit('bulk_delete', 'write');
+
+        $params = self::validate_parameters(self::bulk_delete_parameters(), [
+            'caseids' => $caseids,
+        ]);
+
+        // Filter to only cases user can delete.
+        $allowedcases = [];
+        $deniedcases = [];
+        foreach ($params['caseids'] as $caseid) {
+            if (self::can_delete_case($caseid, $context)) {
+                $allowedcases[] = $caseid;
+            } else {
+                $deniedcases[] = $caseid;
+            }
+        }
+
+        $result = ['deleted' => [], 'failed' => $deniedcases];
+
+        if (!empty($allowedcases)) {
+            $deleteresult = bulk_manager::delete_cases($allowedcases);
+            $result['deleted'] = $deleteresult['deleted'];
+            $result['failed'] = array_merge($result['failed'], $deleteresult['failed']);
+        }
+
+        return [
+            'success' => empty($result['failed']),
+            'deleted' => $result['deleted'],
+            'failed' => $result['failed'],
+        ];
+    }
+
+    /**
+     * Returns for bulk_delete.
+     */
+    public static function bulk_delete_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+            'deleted' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Deleted case ID')
+            ),
+            'failed' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Failed case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Parameters for bulk_publish.
+     */
+    public static function bulk_publish_parameters() {
+        return new external_function_parameters([
+            'caseids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Bulk publish cases.
+     */
+    public static function bulk_publish($caseids) {
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('bulk_publish', 'write');
+
+        $params = self::validate_parameters(self::bulk_publish_parameters(), [
+            'caseids' => $caseids,
+        ]);
+
+        // Filter to only cases user can edit.
+        $allowedcases = [];
+        $deniedcases = [];
+        foreach ($params['caseids'] as $caseid) {
+            if (self::can_edit_case($caseid, $context)) {
+                $allowedcases[] = $caseid;
+            } else {
+                $deniedcases[] = $caseid;
+            }
+        }
+
+        $result = ['published' => [], 'failed' => $deniedcases];
+
+        if (!empty($allowedcases)) {
+            $publishresult = bulk_manager::publish_cases($allowedcases);
+            $result['published'] = $publishresult['published'];
+            $result['failed'] = array_merge($result['failed'], $publishresult['failed']);
+        }
+
+        return [
+            'success' => empty($result['failed']),
+            'published' => $result['published'],
+            'failed' => $result['failed'],
+        ];
+    }
+
+    /**
+     * Returns for bulk_publish.
+     */
+    public static function bulk_publish_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+            'published' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Published case ID')
+            ),
+            'failed' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Failed case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Parameters for bulk_archive.
+     */
+    public static function bulk_archive_parameters() {
+        return new external_function_parameters([
+            'caseids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Bulk archive cases.
+     */
+    public static function bulk_archive($caseids) {
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('bulk_archive', 'write');
+
+        $params = self::validate_parameters(self::bulk_archive_parameters(), [
+            'caseids' => $caseids,
+        ]);
+
+        // Filter to only cases user can edit.
+        $allowedcases = [];
+        $deniedcases = [];
+        foreach ($params['caseids'] as $caseid) {
+            if (self::can_edit_case($caseid, $context)) {
+                $allowedcases[] = $caseid;
+            } else {
+                $deniedcases[] = $caseid;
+            }
+        }
+
+        $result = ['archived' => [], 'failed' => $deniedcases];
+
+        if (!empty($allowedcases)) {
+            $archiveresult = bulk_manager::archive_cases($allowedcases);
+            $result['archived'] = $archiveresult['archived'];
+            $result['failed'] = array_merge($result['failed'], $archiveresult['failed']);
+        }
+
+        return [
+            'success' => empty($result['failed']),
+            'archived' => $result['archived'],
+            'failed' => $result['failed'],
+        ];
+    }
+
+    /**
+     * Returns for bulk_archive.
+     */
+    public static function bulk_archive_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+            'archived' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Archived case ID')
+            ),
+            'failed' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Failed case ID')
+            ),
+        ]);
+    }
+
+    /**
+     * Parameters for bulk_move.
+     */
+    public static function bulk_move_parameters() {
+        return new external_function_parameters([
+            'caseids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Case ID')
+            ),
+            'categoryid' => new external_value(PARAM_INT, 'Target category ID'),
+        ]);
+    }
+
+    /**
+     * Bulk move cases to category.
+     */
+    public static function bulk_move($caseids, $categoryid) {
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('bulk_move', 'write');
+
+        $params = self::validate_parameters(self::bulk_move_parameters(), [
+            'caseids' => $caseids,
+            'categoryid' => $categoryid,
+        ]);
+
+        // Filter to only cases user can edit.
+        $allowedcases = [];
+        $deniedcases = [];
+        foreach ($params['caseids'] as $caseid) {
+            if (self::can_edit_case($caseid, $context)) {
+                $allowedcases[] = $caseid;
+            } else {
+                $deniedcases[] = $caseid;
+            }
+        }
+
+        $result = ['moved' => [], 'failed' => $deniedcases];
+
+        if (!empty($allowedcases)) {
+            $moveresult = bulk_manager::move_cases($allowedcases, $params['categoryid']);
+            $result['moved'] = $moveresult['moved'];
+            $result['failed'] = array_merge($result['failed'], $moveresult['failed']);
+        }
+
+        return [
+            'success' => empty($result['failed']),
+            'moved' => $result['moved'],
+            'failed' => $result['failed'],
+        ];
+    }
+
+    /**
+     * Returns for bulk_move.
+     */
+    public static function bulk_move_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+            'moved' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Moved case ID')
+            ),
+            'failed' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Failed case ID')
+            ),
+        ]);
+    }
+
+    // ==================== WORKFLOW ====================
+
+    /**
+     * Parameters for submit_for_review.
+     */
+    public static function submit_for_review_parameters() {
+        return new external_function_parameters([
+            'caseid' => new external_value(PARAM_INT, 'Case ID'),
+        ]);
+    }
+
+    /**
+     * Submit case for review.
+     */
+    public static function submit_for_review($caseid) {
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:edit', $context);
+        self::check_rate_limit('submit_for_review', 'write');
+
+        $params = self::validate_parameters(self::submit_for_review_parameters(), [
+            'caseid' => $caseid,
+        ]);
+
+        // Verify user can edit this case (owner or elevated permissions).
+        if (!self::can_edit_case($params['caseid'], $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
+
+        $success = workflow_manager::submit_for_review($params['caseid']);
+
+        return ['success' => $success];
+    }
+
+    /**
+     * Returns for submit_for_review.
+     */
+    public static function submit_for_review_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+        ]);
+    }
+
+    /**
+     * Parameters for get_pending_reviews.
+     */
+    public static function get_pending_reviews_parameters() {
+        return new external_function_parameters([]);
+    }
+
+    /**
+     * Get pending reviews for current user.
+     */
+    public static function get_pending_reviews() {
+        global $USER;
+
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:review', $context);
+        self::check_rate_limit('get_pending_reviews', 'read');
+
+        $reviews = workflow_manager::get_pending_reviews($USER->id);
+
+        $result = [];
+        foreach ($reviews as $review) {
+            $result[] = [
+                'id' => $review->id,
+                'caseid' => $review->caseid,
+                'casename' => $review->casename,
+                'status' => $review->status,
+                'timecreated' => $review->timecreated,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Returns for get_pending_reviews.
+     */
+    public static function get_pending_reviews_returns() {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Review ID'),
+                'caseid' => new external_value(PARAM_INT, 'Case ID'),
+                'casename' => new external_value(PARAM_TEXT, 'Case name'),
+                'status' => new external_value(PARAM_ALPHA, 'Status'),
+                'timecreated' => new external_value(PARAM_INT, 'Time created'),
             ])
         );
     }

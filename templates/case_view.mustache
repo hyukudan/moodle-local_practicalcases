@@ -54,20 +54,20 @@
         "caninsert": true
     }
 }}
-<div class="local-casospracticos-case-view" data-caseid="{{case.id}}">
+<div class="local-casospracticos-case-view" data-caseid="{{case.id}}" role="article" aria-labelledby="case-title-{{case.id}}">
     {{! Case Header }}
     <div class="case-header mb-4 pb-3 border-bottom">
         <div class="d-flex justify-content-between align-items-start">
             <div>
-                <h2 class="mb-2">{{case.name}}</h2>
-                <span class="badge {{case.statusclass}}">{{case.statuslabel}}</span>
+                <h2 class="mb-2" id="case-title-{{case.id}}">{{case.name}}</h2>
+                <span class="badge {{case.statusclass}}" role="status">{{case.statuslabel}}</span>
                 {{#case.difficulty}}
-                <span class="badge bg-info ms-2">
+                <span class="badge bg-info ms-2" aria-label="{{#str}}difficulty, local_casospracticos{{/str}} {{case.difficulty}} {{#str}}outof, core{{/str}} 5">
                     {{#str}}difficulty, local_casospracticos{{/str}}: {{case.difficulty}}/5
                 </span>
                 {{/case.difficulty}}
             </div>
-            <div class="case-actions btn-group">
+            <nav class="case-actions btn-group" role="toolbar" aria-label="{{#str}}caseactions, local_casospracticos{{/str}}">
                 {{#canedit}}
                 <a href="{{editurl}}" class="btn btn-outline-primary">
                     {{#pix}}t/edit, core{{/pix}} {{#str}}editcase, local_casospracticos{{/str}}
@@ -76,14 +76,17 @@
                     {{#pix}}t/add, core{{/pix}} {{#str}}newquestion, local_casospracticos{{/str}}
                 </a>
                 {{/canedit}}
-                {{#caninsert}}
                 {{#case.hasquestions}}
+                <a href="{{practiceurl}}" class="btn btn-info">
+                    {{#pix}}i/preview, core{{/pix}} {{#str}}practice, local_casospracticos{{/str}}
+                </a>
+                {{#caninsert}}
                 <a href="{{insertquizurl}}" class="btn btn-success">
                     {{#pix}}i/import, core{{/pix}} {{#str}}insertintoquiz, local_casospracticos{{/str}}
                 </a>
-                {{/case.hasquestions}}
                 {{/caninsert}}
-            </div>
+                {{/case.hasquestions}}
+            </nav>
         </div>
     </div>
 
@@ -98,14 +101,15 @@
     </div>
 
     {{! Questions Section }}
-    <div class="case-questions">
-        <h4 class="mb-3">
+    <section class="case-questions" aria-labelledby="questions-heading">
+        <h4 class="mb-3" id="questions-heading">
             {{#str}}questions, local_casospracticos{{/str}}
-            <span class="badge bg-secondary">{{case.questioncount}}</span>
+            <span class="badge bg-secondary" aria-hidden="true">{{case.questioncount}}</span>
+            <span class="sr-only">{{case.questioncount}} {{#str}}questions, local_casospracticos{{/str}}</span>
         </h4>
 
         {{^questions}}
-        <div class="alert alert-info">
+        <div class="alert alert-info" role="status">
             {{#str}}noquestions, local_casospracticos{{/str}}
             {{#canedit}}
             <a href="{{newquestionurl}}" class="alert-link">{{#str}}newquestion, local_casospracticos{{/str}}</a>
@@ -114,32 +118,36 @@
         {{/questions}}
 
         {{#questions}}
-        <div class="question-item card mb-3" data-questionid="{{id}}">
+        <article class="question-item card mb-3" data-questionid="{{id}}" aria-labelledby="question-{{id}}-title">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="badge bg-primary me-2">#{{number}}</span>
+                <div id="question-{{id}}-title">
+                    <span class="badge bg-primary me-2" aria-label="{{#str}}questionnumber, local_casospracticos{{/str}} {{number}}">#{{number}}</span>
                     <span class="badge bg-info">{{qtypelabel}}</span>
                     <span class="badge bg-secondary ms-2">{{defaultmark}} {{#str}}points, grades{{/str}}</span>
                 </div>
                 {{#canedit}}
-                <div class="question-actions">
+                <nav class="question-actions" role="toolbar" aria-label="{{#str}}questionactions, local_casospracticos{{/str}}">
                     {{#canmoveup}}
-                    <a href="{{moveupurl}}" class="btn btn-sm btn-link" title="{{#str}}moveup{{/str}}">
+                    <a href="{{moveupurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}moveup{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/up, core{{/pix}}
+                        <span class="sr-only">{{#str}}moveup{{/str}}</span>
                     </a>
                     {{/canmoveup}}
                     {{#canmovedown}}
-                    <a href="{{movedownurl}}" class="btn btn-sm btn-link" title="{{#str}}movedown{{/str}}">
+                    <a href="{{movedownurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}movedown{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/down, core{{/pix}}
+                        <span class="sr-only">{{#str}}movedown{{/str}}</span>
                     </a>
                     {{/canmovedown}}
-                    <a href="{{editurl}}" class="btn btn-sm btn-link" title="{{#str}}edit{{/str}}">
+                    <a href="{{editurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}edit{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/edit, core{{/pix}}
+                        <span class="sr-only">{{#str}}edit{{/str}}</span>
                     </a>
-                    <a href="{{deleteurl}}" class="btn btn-sm btn-link text-danger" title="{{#str}}delete{{/str}}">
+                    <a href="{{deleteurl}}" class="btn btn-sm btn-link text-danger" aria-label="{{#str}}delete{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/delete, core{{/pix}}
+                        <span class="sr-only">{{#str}}delete{{/str}}</span>
                     </a>
-                </div>
+                </nav>
                 {{/canedit}}
             </div>
             <div class="card-body">
@@ -148,31 +156,45 @@
                 </div>
 
                 {{#answers.length}}
-                <ul class="list-group">
+                <ul class="list-group" role="list" aria-label="{{#str}}answers, local_casospracticos{{/str}}">
                     {{#answers}}
-                    <li class="list-group-item {{#iscorrect}}list-group-item-success{{/iscorrect}}">
-                        {{#iscorrect}}
-                        {{#pix}}i/valid, core{{/pix}}
-                        {{/iscorrect}}
-                        {{{answer}}}
-                        {{#showfraction}}
-                        <span class="badge bg-info float-end">{{fraction}}%</span>
-                        {{/showfraction}}
+                    <li class="list-group-item {{#iscorrect}}list-group-item-success{{/iscorrect}}" aria-label="{{#iscorrect}}{{#str}}correctanswer, local_casospracticos{{/str}}{{/iscorrect}}{{^iscorrect}}{{#str}}incorrectanswer, local_casospracticos{{/str}}{{/iscorrect}}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                {{#iscorrect}}
+                                {{#pix}}i/valid, core{{/pix}}
+                                <span class="sr-only">{{#str}}correct{{/str}}</span>
+                                {{/iscorrect}}
+                                {{^iscorrect}}
+                                {{#pix}}i/invalid, core{{/pix}}
+                                <span class="sr-only">{{#str}}incorrect{{/str}}</span>
+                                {{/iscorrect}}
+                                {{{answer}}}
+                            </div>
+                            {{#showfraction}}
+                            <span class="badge bg-info" aria-label="{{fraction}} {{#str}}percentgrade, grades{{/str}}">{{fraction}}%</span>
+                            {{/showfraction}}
+                        </div>
+                        {{#feedback}}
+                        <div class="answer-feedback mt-2 ps-4 text-muted small" role="note">
+                            <em>{{#pix}}i/info, core{{/pix}} {{{feedback}}}</em>
+                        </div>
+                        {{/feedback}}
                     </li>
                     {{/answers}}
                 </ul>
                 {{/answers.length}}
 
                 {{#generalfeedback}}
-                <div class="alert alert-info mt-3 mb-0">
+                <div class="alert alert-info mt-3 mb-0" role="note">
                     <strong>{{#str}}generalfeedback, local_casospracticos{{/str}}:</strong>
                     {{{generalfeedback}}}
                 </div>
                 {{/generalfeedback}}
             </div>
-        </div>
+        </article>
         {{/questions}}
-    </div>
+    </section>
 
     {{! Summary }}
     <div class="case-summary card mt-4">

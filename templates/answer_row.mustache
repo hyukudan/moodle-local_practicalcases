@@ -33,17 +33,21 @@
         "feedback": "Correcto según el artículo X"
     }
 }}
-<div class="answer-row card mb-2">
+<div class="answer-row card mb-2" role="listitem">
     <div class="card-body py-2">
         <input type="hidden" name="answer_id[]" value="{{id}}">
         <div class="row g-2">
             <div class="col-md-6">
+                <label for="answer-text-{{uniqid}}-{{index}}" class="sr-only">{{#str}}answertext, local_casospracticos{{/str}}</label>
                 <input type="text" class="form-control form-control-sm" name="answer_text[]"
+                       id="answer-text-{{uniqid}}-{{index}}"
                        placeholder="{{#str}}answertext, local_casospracticos{{/str}}"
-                       value="{{answer}}">
+                       value="{{answer}}"
+                       aria-label="{{#str}}answertext, local_casospracticos{{/str}}">
             </div>
             <div class="col-md-2">
-                <select class="form-select form-select-sm" name="answer_fraction[]">
+                <label for="answer-fraction-{{uniqid}}-{{index}}" class="sr-only">{{#str}}grade, grades{{/str}}</label>
+                <select class="form-select form-select-sm" name="answer_fraction[]" id="answer-fraction-{{uniqid}}-{{index}}" aria-label="{{#str}}grade, grades{{/str}}">
                     <option value="1.0" {{#fraction_100}}selected{{/fraction_100}}>100%</option>
                     <option value="0.5" {{#fraction_50}}selected{{/fraction_50}}>50%</option>
                     <option value="0.3333333" {{#fraction_33}}selected{{/fraction_33}}>33.33%</option>
@@ -54,13 +58,17 @@
                 </select>
             </div>
             <div class="col-md-3">
+                <label for="answer-feedback-{{uniqid}}-{{index}}" class="sr-only">{{#str}}feedback, local_casospracticos{{/str}}</label>
                 <input type="text" class="form-control form-control-sm" name="answer_feedback[]"
+                       id="answer-feedback-{{uniqid}}-{{index}}"
                        placeholder="{{#str}}feedback, local_casospracticos{{/str}}"
-                       value="{{feedback}}">
+                       value="{{feedback}}"
+                       aria-label="{{#str}}feedback, local_casospracticos{{/str}}">
             </div>
             <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-answer" title="{{#str}}delete{{/str}}">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-answer" aria-label="{{#str}}removeanswer, local_casospracticos{{/str}}">
                     {{#pix}}t/delete, core{{/pix}}
+                    <span class="sr-only">{{#str}}delete{{/str}}</span>
                 </button>
             </div>
         </div>

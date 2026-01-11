@@ -142,7 +142,9 @@ class question_edit_form extends moodleform {
             $mform->setType("answer_editor[{$i}]", PARAM_RAW);
 
             $mform->addElement('select', "fraction[{$i}]", get_string('fraction', 'local_casospracticos'), $fractions);
-            $mform->setType("fraction[{$i}]", PARAM_RAW);
+            // Use PARAM_TEXT as this is a select element with predefined string values.
+            // The validation() method validates that the value is a proper float within range.
+            $mform->setType("fraction[{$i}]", PARAM_TEXT);
             $mform->setDefault("fraction[{$i}]", '0.0');
 
             $mform->addElement('editor', "feedback_editor[{$i}]", get_string('feedback', 'local_casospracticos'), [
@@ -183,13 +185,26 @@ class question_edit_form extends moodleform {
             $errors['answer_editor[0]'] = get_string('required');
         }
 
-        // Check at least one correct answer.
+        // Validate fraction values are within acceptable range.
+        $validfractions = [
+            '1.0', '0.9', '0.8333333', '0.8', '0.75', '0.7', '0.6666667', '0.6',
+            '0.5', '0.4', '0.3333333', '0.3', '0.25', '0.2', '0.1666667', '0.1428571',
+            '0.125', '0.1111111', '0.1', '0.05', '0.0', '-0.1', '-0.2', '-0.25',
+            '-0.3333333', '-0.5', '-1.0',
+        ];
+
+        // Check at least one correct answer and validate fraction values.
         $hascorrect = false;
         foreach ($data['fraction'] as $i => $fraction) {
+            // Validate fraction is from allowed list.
+            if (!in_array($fraction, $validfractions)) {
+                $errors["fraction[{$i}]"] = 'Invalid fraction value';
+                continue;
+            }
+
             $answertext = $data['answer_editor'][$i]['text'] ?? '';
             if (!empty(trim(strip_tags($answertext))) && (float)$fraction > 0) {
                 $hascorrect = true;
-                break;
             }
         }
         if (!$hascorrect && $data['qtype'] !== 'truefalse') {

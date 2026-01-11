@@ -83,6 +83,31 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $question->add_child($answers);
         $answers->add_child($answer);
 
+        // Add practice attempts if including user data.
+        if ($this->get_setting_value('users')) {
+            $practiceattempts = new backup_nested_element('practice_attempts');
+            $attempt = new backup_nested_element('attempt', ['id'], [
+                'userid', 'score', 'maxscore', 'percentage', 'status',
+                'timestarted', 'timefinished', 'timecreated'
+            ]);
+
+            $responses = new backup_nested_element('responses');
+            $response = new backup_nested_element('response', ['id'], [
+                'questionid', 'response', 'score', 'iscorrect', 'timecreated'
+            ]);
+
+            $case->add_child($practiceattempts);
+            $practiceattempts->add_child($attempt);
+            $attempt->add_child($responses);
+            $responses->add_child($response);
+
+            $attempt->set_source_table('local_cp_practice_attempts', ['caseid' => backup::VAR_PARENTID]);
+            $response->set_source_table('local_cp_practice_responses', ['attemptid' => backup::VAR_PARENTID]);
+
+            // Annotate user IDs for practice attempts.
+            $attempt->annotate_ids('user', 'userid');
+        }
+
         // Define sources.
         $category->set_source_table('local_cp_categories', [
             'contextid' => backup::VAR_CONTEXTID

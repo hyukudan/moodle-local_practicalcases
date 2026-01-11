@@ -47,7 +47,7 @@ $capabilities = [
         'riskbitmask' => RISK_SPAM,
     ],
 
-    // Edit existing practical cases.
+    // Edit existing practical cases (own cases only).
     'local/casospracticos:edit' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
@@ -58,8 +58,28 @@ $capabilities = [
         'riskbitmask' => RISK_SPAM,
     ],
 
-    // Delete practical cases.
+    // Edit any practical case regardless of ownership.
+    'local/casospracticos:editall' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+        'riskbitmask' => RISK_SPAM,
+    ],
+
+    // Delete practical cases (own cases only).
     'local/casospracticos:delete' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+        'riskbitmask' => RISK_DATALOSS,
+    ],
+
+    // Delete any practical case regardless of ownership.
+    'local/casospracticos:deleteall' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
@@ -106,5 +126,34 @@ $capabilities = [
             'manager' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
         ],
+    ],
+
+    // Review cases (workflow).
+    'local/casospracticos:review' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
+    // View audit log.
+    'local/casospracticos:viewaudit' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
+    // Bulk operations on cases.
+    'local/casospracticos:bulk' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+        'riskbitmask' => RISK_DATALOSS,
     ],
 ];

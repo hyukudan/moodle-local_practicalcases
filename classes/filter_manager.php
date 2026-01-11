@@ -141,25 +141,28 @@ class filter_manager {
 
         // Build ORDER BY clause.
         $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
-        $validsortrields = ['name', 'timecreated', 'timemodified', 'difficulty', 'status'];
+        $validsortfields = ['name', 'timecreated', 'timemodified', 'difficulty', 'status'];
 
         if ($sort === 'questioncount') {
             // Special handling for question count sort.
             $ordersql = "questioncount $order, c.name ASC";
-        } else if (in_array($sort, $validsortrields)) {
+        } else if (in_array($sort, $validsortfields)) {
             $ordersql = "c.$sort $order";
         } else {
             $ordersql = "c.timemodified DESC";
         }
 
-        // Main query with question count.
+        // Main query with question count (optimized - uses LEFT JOIN instead of correlated subquery).
         $sql = "SELECT c.*,
                        cat.name AS categoryname,
                        u.firstname, u.lastname,
-                       (SELECT COUNT(*) FROM {local_cp_questions} q WHERE q.caseid = c.id) AS questioncount
+                       COALESCE(qc.questioncount, 0) AS questioncount
                   FROM {local_cp_cases} c
                   JOIN {local_cp_categories} cat ON c.categoryid = cat.id
              LEFT JOIN {user} u ON c.createdby = u.id
+             LEFT JOIN (SELECT caseid, COUNT(*) AS questioncount
+                        FROM {local_cp_questions}
+                        GROUP BY caseid) qc ON qc.caseid = c.id
                  WHERE $wheresql
               ORDER BY $ordersql";
 
@@ -208,6 +211,13 @@ class filter_manager {
     public static function get_filter_options(): array {
         global $DB;
 
+        // Try to get from cache first.
+        $cache = \cache::make('local_casospracticos', 'filteroptions');
+        $cached = $cache->get('options');
+        if ($cached !== false) {
+            return $cached;
+        }
+
         // Get categories.
         $categories = $DB->get_records('local_cp_categories', [], 'name ASC', 'id, name, parent');
         $categoryoptions = [];
@@ -234,18 +244,18 @@ class filter_manager {
             ];
         }
 
-        // Get all unique tags.
+        // Get all unique tags (optimized - only fetch non-empty tags).
         $alltags = [];
-        $cases = $DB->get_records('local_cp_cases', [], '', 'id, tags');
-        foreach ($cases as $case) {
-            if ($case->tags) {
-                $tags = json_decode($case->tags, true);
-                if (is_array($tags)) {
-                    $alltags = array_merge($alltags, $tags);
+        $tagsonly = $DB->get_fieldset_select('local_cp_cases', 'tags', "tags IS NOT NULL AND tags != ''");
+        foreach ($tagsonly as $tagsjson) {
+            $tags = json_decode($tagsjson, true);
+            if (is_array($tags)) {
+                foreach ($tags as $tag) {
+                    $alltags[$tag] = true; // Use keys to avoid duplicates.
                 }
             }
         }
-        $alltags = array_unique($alltags);
+        $alltags = array_keys($alltags);
         sort($alltags);
         $tagoptions = array_map(fn($t) => ['value' => $t, 'label' => $t], $alltags);
 
@@ -264,13 +274,18 @@ class filter_manager {
             ];
         }
 
-        return [
+        $result = [
             'categories' => $categoryoptions,
             'statuses' => $statuses,
             'difficulties' => $difficulties,
             'tags' => $tagoptions,
             'creators' => $creatoroptions,
         ];
+
+        // Cache for future requests.
+        $cache->set('options', $result);
+
+        return $result;
     }
 
     /**

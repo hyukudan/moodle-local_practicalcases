@@ -53,6 +53,8 @@
         <INDEX NAME="categoryid_status" UNIQUE="false" FIELDS="categoryid, status"/>
         <INDEX NAME="difficulty" UNIQUE="false" FIELDS="difficulty"/>
         <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+        <INDEX NAME="timemodified" UNIQUE="false" FIELDS="timemodified" COMMENT="For sorting by modification time"/>
+        <INDEX NAME="createdby" UNIQUE="false" FIELDS="createdby" COMMENT="For filtering by creator"/>
         <INDEX NAME="cat_status_time" UNIQUE="false" FIELDS="categoryid, status, timemodified"/>
       </INDEXES>
     </TABLE>
@@ -170,6 +172,75 @@
       <INDEXES>
         <INDEX NAME="caseid_quizid" UNIQUE="true" FIELDS="caseid, quizid"/>
         <INDEX NAME="views" UNIQUE="false" FIELDS="views"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Practice Attempts -->
+    <TABLE NAME="local_cp_practice_attempts" COMMENT="Track practice mode attempts">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case ID"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Score obtained"/>
+        <FIELD NAME="maxscore" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Maximum possible score"/>
+        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="true" DEFAULT="0" DECIMALS="2" COMMENT="Score percentage"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="in_progress" COMMENT="in_progress, finished, abandoned"/>
+        <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timefinished" TYPE="int" LENGTH="10" NOTNULL="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="caseid_userid" UNIQUE="false" FIELDS="caseid, userid"/>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid" COMMENT="For user-specific queries"/>
+        <INDEX NAME="userid_status" UNIQUE="false" FIELDS="userid, status" COMMENT="For user attempts by status"/>
+        <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
+        <INDEX NAME="timefinished" UNIQUE="false" FIELDS="timefinished"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Practice Responses (per question) -->
+    <TABLE NAME="local_cp_practice_responses" COMMENT="Individual question responses in practice mode">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="attemptid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Practice attempt ID"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Question ID"/>
+        <FIELD NAME="response" TYPE="text" NOTNULL="false" COMMENT="User response (JSON for multichoice)"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5"/>
+        <FIELD NAME="iscorrect" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="attemptid" TYPE="foreign" FIELDS="attemptid" REFTABLE="local_cp_practice_attempts" REFFIELDS="id"/>
+        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="local_cp_questions" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="attemptid_questionid" UNIQUE="true" FIELDS="attemptid, questionid"/>
+        <INDEX NAME="questionid_iscorrect" UNIQUE="false" FIELDS="questionid, iscorrect"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- User Achievements -->
+    <TABLE NAME="local_cp_achievements" COMMENT="User achievements for gamification">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
+        <FIELD NAME="achievementtype" TYPE="char" LENGTH="50" NOTNULL="true" COMMENT="Type of achievement"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Related case ID if applicable"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid_type" UNIQUE="true" FIELDS="userid, achievementtype"/>
+        <INDEX NAME="achievementtype" UNIQUE="false" FIELDS="achievementtype"/>
       </INDEXES>
     </TABLE>
   </TABLES>

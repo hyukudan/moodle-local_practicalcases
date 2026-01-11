@@ -168,6 +168,72 @@ if ($hassiteconfig) {
         0
     ));
 
+    // Security / Rate Limiting header.
+    $settings->add(new admin_setting_heading(
+        'local_casospracticos/securityheader',
+        get_string('settings:security', 'local_casospracticos'),
+        ''
+    ));
+
+    // Enable rate limiting.
+    $settings->add(new admin_setting_configcheckbox(
+        'local_casospracticos/enableratelimiting',
+        get_string('settings:enableratelimiting', 'local_casospracticos'),
+        get_string('settings:enableratelimiting_desc', 'local_casospracticos'),
+        1
+    ));
+
+    // Rate limit for read operations (requests per minute).
+    $settings->add(new admin_setting_configtext(
+        'local_casospracticos/ratelimit_read',
+        get_string('settings:ratelimitread', 'local_casospracticos'),
+        get_string('settings:ratelimitread_desc', 'local_casospracticos'),
+        60,
+        PARAM_INT
+    ));
+
+    // Rate limit for write operations (requests per minute).
+    $settings->add(new admin_setting_configtext(
+        'local_casospracticos/ratelimit_write',
+        get_string('settings:ratelimitwrite', 'local_casospracticos'),
+        get_string('settings:ratelimitwrite_desc', 'local_casospracticos'),
+        30,
+        PARAM_INT
+    ));
+
+    // Practice mode header.
+    $settings->add(new admin_setting_heading(
+        'local_casospracticos/practiceheader',
+        get_string('settings:practicemode', 'local_casospracticos'),
+        ''
+    ));
+
+    // Pass threshold percentage.
+    $settings->add(new admin_setting_configtext(
+        'local_casospracticos/passthreshold',
+        get_string('settings:passthreshold', 'local_casospracticos'),
+        get_string('settings:passthreshold_desc', 'local_casospracticos'),
+        70,
+        PARAM_INT
+    ));
+
+    // Days to keep audit logs.
+    $settings->add(new admin_setting_configtext(
+        'local_casospracticos/auditlogretention',
+        get_string('settings:auditlogretention', 'local_casospracticos'),
+        get_string('settings:auditlogretention_desc', 'local_casospracticos'),
+        90,
+        PARAM_INT
+    ));
+
+    // Enable gamification/achievements.
+    $settings->add(new admin_setting_configcheckbox(
+        'local_casospracticos/enablegamification',
+        get_string('settings:enablegamification', 'local_casospracticos'),
+        get_string('settings:enablegamification_desc', 'local_casospracticos'),
+        1
+    ));
+
     // Add link to manage cases.
     $ADMIN->add('localplugins', new admin_externalpage(
         'local_casospracticos_manage',

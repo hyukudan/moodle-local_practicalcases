@@ -246,6 +246,43 @@ class category_manager {
     }
 
     /**
+     * Count cases for all categories in a single query (batch operation).
+     *
+     * @return array Associative array [categoryid => count]
+     */
+    public static function count_cases_all(): array {
+        global $DB;
+
+        $sql = "SELECT categoryid, COUNT(*) AS casecount
+                  FROM {local_cp_cases}
+              GROUP BY categoryid";
+        $counts = $DB->get_records_sql($sql);
+
+        $result = [];
+        foreach ($counts as $row) {
+            $result[$row->categoryid] = (int) $row->casecount;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get flat tree with case counts included (optimized single query).
+     *
+     * @return array Array of categories with depth and casecount
+     */
+    public static function get_flat_tree_with_counts(): array {
+        $categories = self::get_flat_tree();
+        $counts = self::count_cases_all();
+
+        foreach ($categories as $category) {
+            $category->casecount = $counts[$category->id] ?? 0;
+        }
+
+        return $categories;
+    }
+
+    /**
      * Move a category to a new parent.
      *
      * @param int $id Category ID

@@ -40,6 +40,9 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
     /** @var array Mapping of old question IDs to new ones. */
     protected $questionmapping = [];
 
+    /** @var array Mapping of old attempt IDs to new ones. */
+    protected $attemptmapping = [];
+
     /**
      * Define the plugin structure for restore.
      *
@@ -59,6 +62,16 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
 
         $elepath = $this->get_pathfor('/casospracticos_cases/case/questions/question/answers/answer');
         $paths[] = new restore_path_element('casospracticos_answer', $elepath);
+
+        // Add practice attempts paths if user data is being restored.
+        $userinfo = $this->get_setting_value('users');
+        if ($userinfo) {
+            $elepath = $this->get_pathfor('/casospracticos_cases/case/practice_attempts/attempt');
+            $paths[] = new restore_path_element('casospracticos_attempt', $elepath);
+
+            $elepath = $this->get_pathfor('/casospracticos_cases/case/practice_attempts/attempt/responses/response');
+            $paths[] = new restore_path_element('casospracticos_response', $elepath);
+        }
 
         return $paths;
     }
@@ -199,6 +212,77 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
 
         // Set mapping for file restore.
         $this->set_mapping('local_cp_answer', $oldid, $newid, true);
+    }
+
+    /**
+     * Process a practice attempt element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_attempt($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        // Get the parent case ID.
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid && isset($this->casemapping[$data->caseid])) {
+            $caseid = $this->casemapping[$data->caseid];
+        }
+
+        if (!$caseid) {
+            return;
+        }
+
+        // Map user ID.
+        $userid = $this->get_mappingid('user', $data->userid);
+        if (!$userid) {
+            // Skip if user doesn't exist in restored context.
+            return;
+        }
+
+        $data->caseid = $caseid;
+        $data->userid = $userid;
+
+        $newid = $DB->insert_record('local_cp_practice_attempts', $data);
+        $this->attemptmapping[$oldid] = $newid;
+    }
+
+    /**
+     * Process a practice response element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_response($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        // Get the parent attempt ID.
+        $attemptid = $this->get_new_parentid('casospracticos_attempt');
+        if (!$attemptid && isset($this->attemptmapping[$data->attemptid])) {
+            $attemptid = $this->attemptmapping[$data->attemptid];
+        }
+
+        if (!$attemptid) {
+            return;
+        }
+
+        // Map question ID.
+        $questionid = $this->get_mappingid('local_cp_question', $data->questionid);
+        if (!$questionid && isset($this->questionmapping[$data->questionid])) {
+            $questionid = $this->questionmapping[$data->questionid];
+        }
+
+        if (!$questionid) {
+            return;
+        }
+
+        $data->attemptid = $attemptid;
+        $data->questionid = $questionid;
+
+        $DB->insert_record('local_cp_practice_responses', $data);
     }
 
     /**
