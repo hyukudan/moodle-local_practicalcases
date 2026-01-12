@@ -76,8 +76,19 @@ class importer {
             return $this->error('File not found: ' . $filepath);
         }
 
-        $content = file_get_contents($filepath);
+        // Validate file extension.
         $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['xml', 'json', 'csv'])) {
+            return $this->error('Invalid file extension. Only XML, JSON and CSV are allowed.');
+        }
+
+        // Security: Validate MIME type (magic bytes) to prevent file type spoofing.
+        $validation = $this->validate_mime_type($filepath, $extension);
+        if (!$validation['valid']) {
+            return $this->error($validation['error']);
+        }
+
+        $content = file_get_contents($filepath);
 
         return $this->import_content($content, $extension, $targetcategoryid);
     }
@@ -125,6 +136,55 @@ class importer {
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
+    }
+
+    /**
+     * Validate MIME type of imported file to prevent spoofing.
+     *
+     * Security: Validates actual file content (magic bytes), not just extension.
+     *
+     * @param string $filepath Path to file
+     * @param string $extension Expected extension
+     * @return array ['valid' => bool, 'error' => string]
+     */
+    private function validate_mime_type(string $filepath, string $extension): array {
+        // Allowed MIME types per extension.
+        $allowedmimes = [
+            'xml' => ['application/xml', 'text/xml'],
+            'json' => ['application/json', 'text/plain'],
+            'csv' => ['text/csv', 'text/plain', 'application/csv'],
+        ];
+
+        if (!isset($allowedmimes[$extension])) {
+            return ['valid' => false, 'error' => 'Unsupported file type'];
+        }
+
+        // Get real MIME type from file content (magic bytes).
+        if (!function_exists('finfo_open')) {
+            // Fallback: If fileinfo extension not available, skip MIME validation.
+            // This is acceptable as extension validation is still in place.
+            return ['valid' => true, 'error' => ''];
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimetype = finfo_file($finfo, $filepath);
+        finfo_close($finfo);
+
+        if ($mimetype === false) {
+            return ['valid' => false, 'error' => 'Unable to determine file type'];
+        }
+
+        // Check if detected MIME type is allowed for this extension.
+        if (!in_array($mimetype, $allowedmimes[$extension])) {
+            $expected = implode(', ', $allowedmimes[$extension]);
+            return [
+                'valid' => false,
+                'error' => "Invalid file type. Expected $expected but got $mimetype. " .
+                          "File extension does not match file content."
+            ];
+        }
+
+        return ['valid' => true, 'error' => ''];
     }
 
     /**

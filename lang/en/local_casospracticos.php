@@ -305,6 +305,7 @@ $string['error:categorynotfound'] = 'Category not found';
 $string['error:casenotfound'] = 'Case not found';
 $string['error:questionnotfound'] = 'Question not found';
 $string['error:nopermission'] = 'You do not have permission to perform this action';
+$string['error:nopermissiontoexport'] = 'You do not have permission to export the selected cases. You can only export cases you created or have editall capability.';
 $string['error:invaliddata'] = 'Invalid data provided';
 $string['error:nocases'] = 'No cases selected';
 $string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';

@@ -59,16 +59,27 @@ if (!empty($format) && !empty($ids)) {
     }
 
     // Verify all requested cases exist and user has access.
-    global $DB;
+    global $DB, $USER;
     list($insql, $params) = $DB->get_in_or_equal($caseids, SQL_PARAMS_NAMED);
-    $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params, '', 'id');
+    $existingcases = $DB->get_records_select('local_cp_cases', "id $insql", $params, '', 'id,createdby');
     $existingids = array_keys($existingcases);
 
     // Only export cases that exist - silently skip non-existent ones.
     $caseids = array_intersect($caseids, $existingids);
 
+    // Security: Verify ownership or editall capability for each case.
+    $haseditall = has_capability('local/casospracticos:editall', $context);
+    $allowedids = [];
+    foreach ($caseids as $caseid) {
+        $case = $existingcases[$caseid];
+        if ($case->createdby == $USER->id || $haseditall) {
+            $allowedids[] = $caseid;
+        }
+    }
+    $caseids = $allowedids;
+
     if (empty($caseids)) {
-        throw new moodle_exception('error:nocases', 'local_casospracticos');
+        throw new moodle_exception('error:nopermissiontoexport', 'local_casospracticos');
     }
 
     $filename = 'practical_cases_' . date('Ymd_His');
@@ -176,6 +187,22 @@ if ($form->is_cancelled()) {
         // Export all.
         $cases = case_manager::get_all();
         $caseids = array_keys($cases);
+    }
+
+    // Security: Verify ownership or editall capability for each case.
+    global $USER;
+    $haseditall = has_capability('local/casospracticos:editall', $context);
+    $allowedids = [];
+    foreach ($caseids as $caseid) {
+        $case = case_manager::get($caseid);
+        if ($case->createdby == $USER->id || $haseditall) {
+            $allowedids[] = $caseid;
+        }
+    }
+    $caseids = $allowedids;
+
+    if (empty($caseids)) {
+        throw new moodle_exception('error:nopermissiontoexport', 'local_casospracticos');
     }
 
     $filename = 'practical_cases_' . date('Ymd_His');

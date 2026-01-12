@@ -295,6 +295,7 @@ $string['error:categorynotfound'] = 'Categoría no encontrada';
 $string['error:casenotfound'] = 'Caso no encontrado';
 $string['error:questionnotfound'] = 'Pregunta no encontrada';
 $string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
+$string['error:nopermissiontoexport'] = 'No tiene permiso para exportar los casos seleccionados. Solo puede exportar casos que haya creado o tener la capacidad editall.';
 $string['error:invaliddata'] = 'Datos proporcionados no válidos';
 $string['error:nocases'] = 'No hay casos seleccionados';
 $string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
