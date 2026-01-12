@@ -243,5 +243,58 @@
         <INDEX NAME="achievementtype" UNIQUE="false" FIELDS="achievementtype"/>
       </INDEXES>
     </TABLE>
+
+    <!-- Practice Sessions (v1.1.0) -->
+    <TABLE NAME="local_cp_practice_sessions" COMMENT="Secure token-based practice sessions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case ID"/>
+        <FIELD NAME="token" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="Cryptographic token (64-char hex)"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timeexpiry" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Expiry timestamp"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="token" UNIQUE="true" FIELDS="token" COMMENT="Unique token for security"/>
+        <INDEX NAME="userid_caseid" UNIQUE="false" FIELDS="userid, caseid"/>
+        <INDEX NAME="timeexpiry" UNIQUE="false" FIELDS="timeexpiry" COMMENT="For cleanup task"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- Timed Practice Attempts (v1.1.0) -->
+    <TABLE NAME="local_cp_timed_attempts" COMMENT="Timed practice mode attempts">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
+        <FIELD NAME="caseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Case ID"/>
+        <FIELD NAME="token" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="Secure session token"/>
+        <FIELD NAME="timelimit" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1800" COMMENT="Time limit in seconds (default 30 min)"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Score obtained"/>
+        <FIELD NAME="maxscore" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Maximum possible score"/>
+        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="true" DEFAULT="0" DECIMALS="2" COMMENT="Score percentage"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="in_progress" COMMENT="in_progress, finished, expired, abandoned"/>
+        <FIELD NAME="responses" TYPE="text" NOTNULL="false" COMMENT="JSON of all question responses"/>
+        <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Start timestamp"/>
+        <FIELD NAME="timesubmitted" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Submission timestamp"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="caseid" TYPE="foreign" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="token" UNIQUE="true" FIELDS="token" COMMENT="Unique token for security"/>
+        <INDEX NAME="userid_caseid" UNIQUE="false" FIELDS="userid, caseid"/>
+        <INDEX NAME="userid_status" UNIQUE="false" FIELDS="userid, status" COMMENT="For user attempts by status"/>
+        <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
+        <INDEX NAME="timestarted" UNIQUE="false" FIELDS="timestarted" COMMENT="For expiry cleanup"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>
