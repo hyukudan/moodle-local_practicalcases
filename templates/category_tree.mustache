@@ -34,54 +34,57 @@
         "canmanage": true
     }
 }}
-<div class="local-casospracticos-category-tree">
-    <h4 class="mb-3">{{#str}}categories, local_casospracticos{{/str}}</h4>
+<nav class="local-casospracticos-category-tree" role="navigation" aria-labelledby="categories-nav-heading">
+    <h4 class="mb-3" id="categories-nav-heading">{{#str}}categories, local_casospracticos{{/str}}</h4>
 
     {{^categories}}
-    <p class="text-muted">{{#str}}nocategories, local_casospracticos{{/str}}</p>
+    <p class="text-muted" role="status">{{#str}}nocategories, local_casospracticos{{/str}}</p>
     {{/categories}}
 
-    <ul class="list-group">
+    <ul class="list-group" role="tree">
         {{! All categories option }}
-        <li class="list-group-item d-flex justify-content-between align-items-center {{#isallactive}}active{{/isallactive}}">
+        <li class="list-group-item d-flex justify-content-between align-items-center {{#isallactive}}active{{/isallactive}}" role="treeitem" {{#isallactive}}aria-current="page"{{/isallactive}}>
             <a href="{{allurl}}" class="{{#isallactive}}text-white{{/isallactive}}">
                 {{#str}}all{{/str}}
             </a>
-            <span class="badge {{#isallactive}}bg-light text-dark{{/isallactive}}{{^isallactive}}bg-secondary{{/isallactive}}">
+            <span class="badge {{#isallactive}}bg-light text-dark{{/isallactive}}{{^isallactive}}bg-secondary{{/isallactive}}" aria-label="{{totalcases}} {{#str}}cases, local_casospracticos{{/str}}">
                 {{totalcases}}
             </span>
         </li>
 
         {{#categories}}
         <li class="list-group-item d-flex justify-content-between align-items-center {{#isactive}}active{{/isactive}}"
-            data-categoryid="{{id}}">
+            data-categoryid="{{id}}" role="treeitem" aria-level="{{depthlevel}}" {{#isactive}}aria-current="page"{{/isactive}}>
             <div class="category-name">
                 {{#depth}}
-                <span class="indent" style="margin-left: {{indent}}px;"></span>
+                <span class="indent" style="margin-left: {{indent}}px;" aria-hidden="true"></span>
                 {{/depth}}
                 <a href="{{url}}" class="{{#isactive}}text-white{{/isactive}}">
                     {{name}}
                 </a>
             </div>
             <div class="category-actions d-flex align-items-center gap-2">
-                <span class="badge {{#isactive}}bg-light text-dark{{/isactive}}{{^isactive}}bg-secondary{{/isactive}}">
+                <span class="badge {{#isactive}}bg-light text-dark{{/isactive}}{{^isactive}}bg-secondary{{/isactive}}" aria-label="{{casecount}} {{#str}}cases, local_casospracticos{{/str}}">
                     {{casecount}}
                 </span>
                 {{#canmanage}}
                 <div class="dropdown">
                     <button class="btn btn-sm btn-link p-0 {{#isactive}}text-white{{/isactive}}"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                            aria-label="{{#str}}categoryoptions, local_casospracticos{{/str}} {{name}}"
+                            aria-haspopup="true">
                         {{#pix}}i/settings, core{{/pix}}
+                        <span class="sr-only">{{#str}}options{{/str}}</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <a class="dropdown-item" href="{{editurl}}">
+                    <ul class="dropdown-menu dropdown-menu-end" role="menu">
+                        <li role="none">
+                            <a class="dropdown-item" href="{{editurl}}" role="menuitem">
                                 {{#pix}}t/edit, core{{/pix}} {{#str}}edit{{/str}}
                             </a>
                         </li>
                         {{#candelete}}
-                        <li>
-                            <a class="dropdown-item text-danger" href="{{deleteurl}}">
+                        <li role="none">
+                            <a class="dropdown-item text-danger" href="{{deleteurl}}" role="menuitem">
                                 {{#pix}}t/delete, core{{/pix}} {{#str}}delete{{/str}}
                             </a>
                         </li>
@@ -101,4 +104,4 @@
         </a>
     </div>
     {{/canmanage}}
-</div>
+</nav>

@@ -67,4 +67,21 @@ $definitions = [
         'simplekeys' => true,
         'simpledata' => true,
     ],
+
+    // Cache for filter options (tags, creators, etc.).
+    'filteroptions' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => false,
+        'ttl' => 3600, // 1 hour.
+        'invalidationevents' => ['local_casospracticos_case_changed'],
+    ],
+
+    // Cache for API rate limiting.
+    'ratelimit' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'ttl' => 120, // 2 minutes (slightly longer than window to allow cleanup).
+    ],
 ];

@@ -141,13 +141,39 @@ if (has_capability('local/casospracticos:edit', $context)) {
         'get'
     );
 }
-if (has_capability('local/casospracticos:insertquiz', $context) && !empty($case->questions)) {
+if (!empty($case->questions)) {
+    // Practice button - available to all viewers.
     $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/insert_quiz.php', ['caseid' => $id]),
-        get_string('insertintoquiz', 'local_casospracticos'),
+        new moodle_url('/local/casospracticos/practice.php', ['id' => $id]),
+        get_string('practice', 'local_casospracticos'),
         'get',
-        ['class' => 'btn-success']
+        ['class' => 'btn-info']
     );
+
+    // Timed practice button - available to all viewers.
+    $buttons[] = $OUTPUT->single_button(
+        new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $id]),
+        get_string('timedpractice', 'local_casospracticos'),
+        'get',
+        ['class' => 'btn-warning']
+    );
+
+    // My attempts button - available to all viewers.
+    $buttons[] = $OUTPUT->single_button(
+        new moodle_url('/local/casospracticos/my_attempts.php', ['caseid' => $id]),
+        get_string('viewmyattempts', 'local_casospracticos'),
+        'get',
+        ['class' => 'btn-outline-info']
+    );
+
+    if (has_capability('local/casospracticos:insertquiz', $context)) {
+        $buttons[] = $OUTPUT->single_button(
+            new moodle_url('/local/casospracticos/insert_quiz.php', ['caseid' => $id]),
+            get_string('insertintoquiz', 'local_casospracticos'),
+            'get',
+            ['class' => 'btn-success']
+        );
+    }
 }
 if (has_capability('local/casospracticos:export', $context)) {
     $buttons[] = $OUTPUT->single_button(
@@ -156,6 +182,20 @@ if (has_capability('local/casospracticos:export', $context)) {
         'get'
     );
 }
+// Stats button (for managers/teachers).
+if (has_capability('local/casospracticos:viewaudit', $context)) {
+    $buttons[] = $OUTPUT->single_button(
+        new moodle_url('/local/casospracticos/case_stats.php', ['id' => $id]),
+        get_string('statistics', 'local_casospracticos'),
+        'get',
+        ['class' => 'btn-info']
+    );
+}
+// Print button.
+$buttons[] = html_writer::tag('button', get_string('print', 'local_casospracticos'), [
+    'class' => 'btn btn-secondary',
+    'onclick' => 'window.print(); return false;',
+]);
 if (!empty($buttons)) {
     echo html_writer::div(implode(' ', $buttons), 'mt-3');
 }
@@ -248,14 +288,27 @@ if (empty($case->questions)) {
                 if ($answer->fraction > 0) {
                     $class .= ' list-group-item-success';
                     $icon = $OUTPUT->pix_icon('i/valid', get_string('correctanswer', 'local_casospracticos'));
+                } else {
+                    $icon = $OUTPUT->pix_icon('i/invalid', get_string('incorrectanswer', 'local_casospracticos'));
                 }
 
                 $answertext = format_text($answer->answer, $answer->answerformat);
                 if ($answer->fraction > 0 && $answer->fraction < 1) {
-                    $answertext .= ' (' . round($answer->fraction * 100) . '%)';
+                    $answertext .= ' <span class="badge bg-info">' . round($answer->fraction * 100) . '%</span>';
                 }
 
-                echo html_writer::tag('li', $icon . $answertext, ['class' => $class]);
+                $content = html_writer::div($icon . ' ' . $answertext);
+
+                // Show answer feedback if available.
+                if (!empty($answer->feedback)) {
+                    $content .= html_writer::div(
+                        $OUTPUT->pix_icon('i/info', '') . ' ' .
+                        html_writer::tag('em', format_text($answer->feedback, $answer->feedbackformat)),
+                        'answer-feedback small text-muted mt-1 ps-4'
+                    );
+                }
+
+                echo html_writer::tag('li', $content, ['class' => $class]);
             }
             echo html_writer::end_tag('ul');
         }

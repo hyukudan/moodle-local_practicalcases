@@ -36,6 +36,9 @@ $string['casospracticos:managecategories'] = 'Gestionar categorías';
 $string['casospracticos:export'] = 'Exportar casos prácticos';
 $string['casospracticos:import'] = 'Importar casos prácticos';
 $string['casospracticos:insertquiz'] = 'Insertar casos en cuestionarios';
+$string['casospracticos:review'] = 'Revisar casos prácticos';
+$string['casospracticos:viewaudit'] = 'Ver registro de auditoría';
+$string['casospracticos:bulk'] = 'Realizar operaciones en lote';
 
 // Categories.
 $string['categories'] = 'Categorías';
@@ -76,6 +79,9 @@ $string['tags'] = 'Etiquetas';
 // Status.
 $string['status'] = 'Estado';
 $string['status_draft'] = 'Borrador';
+$string['status_pending_review'] = 'Pendiente de revisión';
+$string['status_in_review'] = 'En revisión';
+$string['status_approved'] = 'Aprobado';
 $string['status_published'] = 'Publicado';
 $string['status_archived'] = 'Archivado';
 
@@ -101,6 +107,7 @@ $string['multipleanswers'] = 'Respuestas múltiples';
 $string['qtype_multichoice'] = 'Opción múltiple';
 $string['qtype_truefalse'] = 'Verdadero/Falso';
 $string['qtype_shortanswer'] = 'Respuesta corta';
+$string['qtype_matching'] = 'Emparejamiento';
 
 // Answers.
 $string['answers'] = 'Respuestas';
@@ -123,6 +130,7 @@ $string['importfile'] = 'Archivo a importar';
 $string['exportsuccessful'] = 'Exportación completada correctamente';
 $string['importsuccessful'] = 'Importación completada correctamente. {$a->cases} casos y {$a->questions} preguntas importadas.';
 $string['importerror'] = 'Error durante la importación: {$a}';
+$string['exporthelp'] = 'Seleccione los casos a exportar o una categoría completa. Si no selecciona ningún caso específico y la categoría está en "Todos", se exportarán todos los casos.';
 
 // Quiz integration.
 $string['insertintoquiz'] = 'Insertar en cuestionario';
@@ -140,31 +148,108 @@ $string['backtocases'] = 'Volver a casos';
 $string['backtocategories'] = 'Volver a categorías';
 $string['actions'] = 'Acciones';
 $string['preview'] = 'Vista previa';
+$string['print'] = 'Imprimir';
 $string['numquestions'] = '{$a} preguntas';
 $string['created'] = 'Creado';
 $string['modified'] = 'Modificado';
 $string['createdby'] = 'Creado por';
+$string['filter'] = 'Filtrar';
+$string['clear'] = 'Limpiar';
+$string['selected'] = 'Seleccionados';
+$string['move'] = 'Mover';
+$string['publish'] = 'Publicar';
+$string['archive'] = 'Archivar';
 
-// Errors.
-$string['error:categorynotfound'] = 'Categoría no encontrada';
-$string['error:casenotfound'] = 'Caso no encontrado';
-$string['error:questionnotfound'] = 'Pregunta no encontrada';
-$string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
-$string['error:invaliddata'] = 'Datos proporcionados no válidos';
+// Difficulty levels.
+$string['difficulty1'] = 'Muy fácil';
+$string['difficulty2'] = 'Fácil';
+$string['difficulty3'] = 'Medio';
+$string['difficulty4'] = 'Difícil';
+$string['difficulty5'] = 'Muy difícil';
 
-// Privacy.
-$string['privacy:metadata:local_cp_cases'] = 'Almacena los casos prácticos creados por los usuarios';
-$string['privacy:metadata:local_cp_cases:createdby'] = 'El ID del usuario que creó el caso';
-$string['privacy:metadata:local_cp_cases:timecreated'] = 'La fecha de creación del caso';
-$string['privacy:metadata:local_cp_cases:timemodified'] = 'La fecha de última modificación del caso';
-<?php
-// Additional strings for events, settings, search - Spanish.
+// Pagination and display.
+$string['showingcases'] = 'Mostrando {$a->from} a {$a->to} de {$a->total} casos';
+$string['showingitems'] = 'Mostrando {$a->from} a {$a->to} de {$a->total} elementos';
+$string['searchcases'] = 'Buscar casos...';
+
+// Bulk operations.
+$string['bulkoperations'] = 'Operaciones en lote';
+$string['selectall'] = 'Seleccionar todo';
+$string['deselectall'] = 'Deseleccionar todo';
+$string['withselected'] = 'Con los seleccionados...';
+$string['bulkdelete'] = 'Eliminar seleccionados';
+$string['bulkmove'] = 'Mover a categoría';
+$string['bulkpublish'] = 'Publicar seleccionados';
+$string['bulkarchive'] = 'Archivar seleccionados';
+$string['bulkexport'] = 'Exportar seleccionados';
+$string['confirmdeleteselected'] = '¿Está seguro de que desea eliminar {$a} casos seleccionados? Esta acción no se puede deshacer.';
+$string['confirmpublishselected'] = '¿Está seguro de que desea publicar {$a} casos seleccionados?';
+$string['confirmarchiveselected'] = '¿Está seguro de que desea archivar {$a} casos seleccionados?';
+$string['casesdeleted'] = '{$a} casos eliminados correctamente';
+$string['casesmoved'] = '{$a} casos movidos correctamente';
+$string['casespublished'] = '{$a} casos publicados correctamente';
+$string['casesarchived'] = '{$a} casos archivados correctamente';
+$string['nocasesselected'] = 'No hay casos seleccionados';
+$string['selecttargetcategory'] = 'Seleccionar categoría de destino';
+
+// Workflow.
+$string['submitforreview'] = 'Enviar a revisión';
+$string['assignreviewer'] = 'Asignar revisor';
+$string['approve'] = 'Aprobar';
+$string['reject'] = 'Rechazar';
+$string['requestrevision'] = 'Solicitar revisión';
+$string['unarchive'] = 'Desarchivar';
+$string['casesubmittedreview'] = 'Caso enviado a revisión';
+$string['caseapproved'] = 'Caso aprobado';
+$string['caserejected'] = 'Caso rechazado';
+$string['casepublished'] = 'Caso publicado';
+$string['casearchived'] = 'Caso archivado';
+$string['invalidtransition'] = 'Transición de estado inválida';
+$string['noquestionsforsubmit'] = 'El caso debe tener al menos una pregunta antes de enviarlo a revisión';
+
+// Review dashboard.
+$string['reviewdashboard'] = 'Panel de revisiones';
+$string['pendingreview'] = 'Pendientes de revisión';
+$string['myreviews'] = 'Mis revisiones';
+$string['mypendingreview'] = 'Mis revisiones pendientes';
+$string['approvedcases'] = 'Casos aprobados';
+$string['allreviews'] = 'Todas las revisiones';
+$string['reviews'] = 'Revisiones';
+$string['reviewer'] = 'Revisor';
+$string['caseswaitingassignment'] = 'Casos esperando asignación';
+$string['assigntome'] = 'Asignarme';
+$string['reviewsubmitted'] = 'Revisión enviada correctamente';
+$string['reviewerassigned'] = 'Revisor asignado correctamente';
+$string['noitemsfound'] = 'No se encontraron elementos';
+$string['reviewstatus_pending'] = 'Pendiente';
+$string['reviewstatus_approved'] = 'Aprobado';
+$string['reviewstatus_rejected'] = 'Rechazado';
+$string['reviewstatus_revision'] = 'Revisión solicitada';
+
+// Audit log.
+$string['auditlog'] = 'Registro de auditoría';
+$string['noauditlogs'] = 'No se encontraron registros de auditoría';
+$string['objecttype'] = 'Tipo de objeto';
+$string['objectid'] = 'ID del objeto';
+$string['action'] = 'Acción';
+$string['changes'] = 'Cambios';
+$string['ipaddress'] = 'Dirección IP';
+$string['unknownuser'] = 'Usuario desconocido';
+$string['action_create'] = 'Crear';
+$string['action_update'] = 'Actualizar';
+$string['action_delete'] = 'Eliminar';
+$string['action_publish'] = 'Publicar';
+$string['action_archive'] = 'Archivar';
+$string['action_submit_review'] = 'Enviar a revisión';
+$string['action_approve'] = 'Aprobar';
+$string['action_reject'] = 'Rechazar';
 
 // Events.
 $string['eventcasecreated'] = 'Caso práctico creado';
 $string['eventcaseupdated'] = 'Caso práctico actualizado';
 $string['eventcasedeleted'] = 'Caso práctico eliminado';
 $string['eventcasepublished'] = 'Caso práctico publicado';
+$string['eventpracticeattemptcompleted'] = 'Intento de práctica completado';
 
 // Search.
 $string['search:case'] = 'Casos prácticos';
@@ -177,242 +262,220 @@ $string['settings:enablesearch'] = 'Habilitar indexación de búsqueda';
 $string['settings:enablesearch_desc'] = 'Indexar casos prácticos en la búsqueda global de Moodle';
 $string['settings:defaultdifficulty'] = 'Dificultad por defecto';
 $string['settings:defaultdifficulty_desc'] = 'Nivel de dificultad predeterminado para nuevos casos';
-$string['settings:importexport'] = 'Importar/Exportar';
+$string['settings:workflow'] = 'Configuración del flujo de trabajo';
+$string['settings:enableworkflow'] = 'Habilitar flujo de aprobación';
+$string['settings:enableworkflow_desc'] = 'Requerir que los casos sean revisados y aprobados antes de publicar';
+$string['settings:importexport'] = 'Configuración de importación/exportación';
 $string['settings:maximportsize'] = 'Tamaño máximo de archivo de importación';
-$string['settings:maximportsize_desc'] = 'Tamaño máximo en bytes para importar casos';
+$string['settings:maximportsize_desc'] = 'Tamaño máximo en bytes para archivos de importación';
 $string['settings:defaultexportformat'] = 'Formato de exportación por defecto';
 $string['settings:defaultexportformat_desc'] = 'Formato predeterminado al exportar casos';
-$string['settings:questiontypes'] = 'Tipos de pregunta';
-$string['settings:questiontypes_desc'] = 'Configurar qué tipos de pregunta están disponibles';
-$string['settings:allowedqtypes'] = 'Tipos de pregunta permitidos';
-$string['settings:allowedqtypes_desc'] = 'Seleccione qué tipos de pregunta se pueden usar en los casos';
+$string['settings:questiontypes'] = 'Tipos de preguntas';
+$string['settings:questiontypes_desc'] = 'Configurar qué tipos de preguntas están disponibles para los casos';
+$string['settings:allowedqtypes'] = 'Tipos de preguntas permitidos';
+$string['settings:allowedqtypes_desc'] = 'Seleccionar qué tipos de preguntas se pueden usar en casos prácticos';
 $string['settings:display'] = 'Configuración de visualización';
 $string['settings:casesperpage'] = 'Casos por página';
-$string['settings:casesperpage_desc'] = 'Número de casos a mostrar por página en la lista';
+$string['settings:casesperpage_desc'] = 'Número de casos a mostrar por página en el listado';
 $string['settings:showquestioncount'] = 'Mostrar número de preguntas';
-$string['settings:showquestioncount_desc'] = 'Mostrar el número de preguntas de cada caso en la lista';
+$string['settings:showquestioncount_desc'] = 'Mostrar el número de preguntas en el listado de casos';
 $string['settings:showdifficulty'] = 'Mostrar dificultad';
-$string['settings:showdifficulty_desc'] = 'Mostrar el nivel de dificultad en la lista de casos';
+$string['settings:showdifficulty_desc'] = 'Mostrar el nivel de dificultad en el listado de casos';
 $string['settings:notifications'] = 'Notificaciones';
 $string['settings:notifyonpublish'] = 'Notificar al publicar';
-$string['settings:notifyonpublish_desc'] = 'Enviar notificación a los administradores cuando se publica un caso';
+$string['settings:notifyonpublish_desc'] = 'Enviar notificaciones cuando se publica un caso';
+$string['settings:practicemode'] = 'Modo práctica';
+$string['settings:passthreshold'] = 'Umbral de aprobación (%)';
+$string['settings:passthreshold_desc'] = 'Porcentaje requerido para aprobar un intento de práctica';
+$string['settings:auditlogretention'] = 'Retención del registro de auditoría (días)';
+$string['settings:auditlogretention_desc'] = 'Número de días para conservar las entradas del registro de auditoría (las entradas antiguas se limpian automáticamente)';
 
-// Difficulty levels.
-$string['difficulty1'] = 'Muy fácil';
-$string['difficulty2'] = 'Fácil';
-$string['difficulty3'] = 'Medio';
-$string['difficulty4'] = 'Difícil';
-$string['difficulty5'] = 'Muy difícil';
+// Errors.
+$string['error:categorynotfound'] = 'Categoría no encontrada';
+$string['error:casenotfound'] = 'Caso no encontrado';
+$string['error:questionnotfound'] = 'Pregunta no encontrada';
+$string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
+$string['error:nopermissiontoexport'] = 'No tiene permiso para exportar los casos seleccionados. Solo puede exportar casos que haya creado o tener la capacidad editall.';
+$string['error:invaliddata'] = 'Datos proporcionados no válidos';
+$string['error:nocases'] = 'No hay casos seleccionados';
+$string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
+$string['error:sessionexpired'] = 'Tu sesión de práctica ha expirado. Por favor inicia un nuevo intento.';
+$string['error:invalidsession'] = 'Sesión de práctica inválida';
 
-// Question types.
-$string['qtype_multichoice'] = 'Opción múltiple';
-$string['qtype_truefalse'] = 'Verdadero/Falso';
-$string['qtype_shortanswer'] = 'Respuesta corta';
-$string['qtype_matching'] = 'Emparejamiento';
-
-// Statuses.
-$string['status_draft'] = 'Borrador';
-$string['status_published'] = 'Publicado';
-$string['status_archived'] = 'Archivado';
+// Privacy.
+$string['privacy:metadata:local_cp_cases'] = 'Almacena los casos prácticos creados por los usuarios';
+$string['privacy:metadata:local_cp_cases:createdby'] = 'El ID del usuario que creó el caso';
+$string['privacy:metadata:local_cp_cases:timecreated'] = 'La fecha de creación del caso';
+$string['privacy:metadata:local_cp_cases:timemodified'] = 'La fecha de última modificación del caso';
+$string['privacy:metadata:local_cp_audit_log'] = 'Registro de auditoría de todas las acciones realizadas';
+$string['privacy:metadata:local_cp_audit_log:userid'] = 'El ID del usuario que realizó la acción';
+$string['privacy:metadata:local_cp_audit_log:action'] = 'La acción realizada por el usuario';
+$string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'La dirección IP del usuario';
+$string['privacy:metadata:local_cp_audit_log:timecreated'] = 'Cuándo se realizó la acción';
+$string['privacy:metadata:local_cp_reviews'] = 'Revisiones de casos para el flujo de trabajo';
+$string['privacy:metadata:local_cp_reviews:reviewerid'] = 'El ID del revisor';
+$string['privacy:metadata:local_cp_reviews:comments'] = 'Comentarios del revisor';
+$string['privacy:metadata:local_cp_reviews:status'] = 'El estado de la revisión';
+$string['privacy:metadata:local_cp_reviews:timecreated'] = 'Cuándo se creó la revisión';
+$string['privacy:metadata:local_cp_practice_attempts'] = 'Almacena los intentos de práctica realizados por los usuarios';
+$string['privacy:metadata:local_cp_practice_attempts:userid'] = 'El ID del usuario que realizó el intento';
+$string['privacy:metadata:local_cp_practice_attempts:score'] = 'La puntuación obtenida en el intento';
+$string['privacy:metadata:local_cp_practice_attempts:maxscore'] = 'La puntuación máxima posible';
+$string['privacy:metadata:local_cp_practice_attempts:percentage'] = 'El porcentaje de puntuación';
+$string['privacy:metadata:local_cp_practice_attempts:timestarted'] = 'Cuándo se inició el intento';
+$string['privacy:metadata:local_cp_practice_attempts:timefinished'] = 'Cuándo se completó el intento';
+$string['privacy:metadata:local_cp_practice_responses'] = 'Almacena las respuestas individuales a preguntas en intentos de práctica';
+$string['privacy:metadata:local_cp_practice_responses:response'] = 'La respuesta del usuario a la pregunta';
+$string['privacy:metadata:local_cp_practice_responses:score'] = 'La puntuación de esta respuesta';
+$string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Si la respuesta fue correcta';
 
 // Default category.
 $string['defaultcategory'] = 'Casos importados';
 
-// Pagination.
-$string['page'] = 'Página';
-$string['of'] = 'de';
-$string['showingcases'] = 'Mostrando {$a->start} a {$a->end} de {$a->total} casos';
-$string['nocasesfound'] = 'No se encontraron casos con los criterios especificados';
+// Practice mode.
+$string['practice'] = 'Práctica';
+$string['practicecase'] = 'Practicar este caso';
+$string['results'] = 'Resultados';
+$string['yourscoreis'] = 'Tu puntuación: {$a->score} / {$a->max} ({$a->percentage}%)';
+$string['retry'] = 'Intentar de nuevo';
+$string['shufflequestions'] = 'Mezclar preguntas';
+$string['correctansweris'] = 'Respuesta correcta';
 
-// Search and filter.
-$string['searchcases'] = 'Buscar casos';
-$string['filterbycat'] = 'Filtrar por categoría';
-$string['filterbystatus'] = 'Filtrar por estado';
-$string['filterbydifficulty'] = 'Filtrar por dificultad';
-$string['allcategories'] = 'Todas las categorías';
-$string['allstatuses'] = 'Todos los estados';
-$string['alldifficulties'] = 'Todas las dificultades';
-$string['clearsearch'] = 'Limpiar búsqueda';
-$string['advancedfilters'] = 'Filtros avanzados';
+// Statistics.
+$string['statistics'] = 'Estadísticas';
+$string['totalviews'] = 'Visualizaciones totales';
+$string['quizinsertions'] = 'Inserciones en cuestionarios';
+$string['practiceattempts'] = 'Intentos de práctica';
+$string['averagescore'] = 'Puntuación media';
+$string['questionperformance'] = 'Rendimiento por pregunta';
+$string['attempts'] = 'Intentos';
+$string['correctrate'] = 'Tasa de acierto';
+$string['avgpoints'] = 'Puntos medios';
+$string['usageinquizzes'] = 'Uso en cuestionarios';
+$string['timesinserted'] = 'Veces insertado';
+$string['lastused'] = 'Último uso';
+$string['recentpracticeattempts'] = 'Intentos de práctica recientes';
+$string['timetaken'] = 'Tiempo empleado';
+$string['scoredistribution'] = 'Distribución de puntuaciones';
+$string['nostatisticsyet'] = 'Aún no hay estadísticas disponibles';
+$string['notusedyet'] = 'Este caso aún no se ha usado en ningún cuestionario';
+$string['nopracticeattempts'] = 'Aún no hay intentos de práctica registrados';
+$string['range020'] = '0-20%';
+$string['range2140'] = '21-40%';
+$string['range4160'] = '41-60%';
+$string['range6180'] = '61-80%';
+$string['range81100'] = '81-100%';
 
-// Bulk operations.
-$string['bulkoperations'] = 'Operaciones en lote';
-$string['selectall'] = 'Seleccionar todo';
-$string['deselectall'] = 'Deseleccionar todo';
-$string['withselected'] = 'Con los seleccionados...';
-$string['bulkdelete'] = 'Eliminar seleccionados';
-$string['bulkmove'] = 'Mover a categoría';
-$string['bulkpublish'] = 'Publicar seleccionados';
-$string['bulkarchive'] = 'Archivar seleccionados';
-$string['bulkexport'] = 'Exportar seleccionados';
-$string['confirmdeleteselected'] = '¿Está seguro de que desea eliminar los casos seleccionados? Esta acción no se puede deshacer.';
-$string['casesdeleted'] = '{$a} casos eliminados correctamente';
-$string['casesmoved'] = '{$a} casos movidos correctamente';
-$string['casespublished'] = '{$a} casos publicados correctamente';
-$string['casesarchived'] = '{$a} casos archivados correctamente';
-<?php
-// Additional strings for bulk operations, workflow, audit - Spanish.
+// Attempts.
+$string['attempt'] = 'Intento';
+$string['myattempts'] = 'Mis intentos';
+$string['viewmyattempts'] = 'Ver mis intentos';
+$string['reviewattempt'] = 'Revisar intento';
+$string['noattemptsyet'] = 'Aún no has realizado ningún intento';
+$string['startpractice'] = 'Comenzar a practicar';
+$string['totalattempts'] = 'Intentos totales';
+$string['bestscore'] = 'Mejor puntuación';
+$string['passrate'] = 'Tasa de aprobados';
+$string['yourrecentattempts'] = 'Tus intentos recientes';
+$string['youranswer'] = 'Tu respuesta';
+$string['yourmark'] = 'Tu puntuación';
+$string['tryagain'] = 'Intentar de nuevo';
+$string['practicenow'] = 'Practicar ahora';
+$string['started'] = 'Iniciado';
+$string['completed'] = 'Completado';
+$string['correct'] = 'Correcto';
+$string['incorrect'] = 'Incorrecto';
+$string['review'] = 'Revisar';
 
-// Workflow statuses.
-$string['status_pending_review'] = 'Pendiente de revisión';
-$string['status_in_review'] = 'En revisión';
-$string['status_approved'] = 'Aprobado';
+// Help texts.
+$string['cases_help'] = 'Mantenga presionado Ctrl/Cmd para seleccionar múltiples casos. Si selecciona casos específicos, solo se exportarán esos. Si no se seleccionan casos, se exportarán todos los casos de la categoría elegida.';
 
-// Review statuses.
-$string['review_pending'] = 'Pendiente';
-$string['review_approved'] = 'Aprobado';
-$string['review_rejected'] = 'Rechazado';
-$string['review_revision'] = 'Revisión solicitada';
+// Scheduled tasks.
+$string['task:cleanupabandoned'] = 'Limpiar intentos de práctica abandonados';
+$string['task:cleanupauditlogs'] = 'Limpiar entradas antiguas del registro de auditoría';
+$string['task:cleanuppracticesessions'] = 'Limpiar sesiones de práctica expiradas';
+$string['task:expiretimedattempts'] = 'Expirar intentos cronometrados antiguos';
 
-// Workflow actions.
-$string['submitforreview'] = 'Enviar a revisión';
-$string['assignreviewer'] = 'Asignar revisor';
-$string['approve'] = 'Aprobar';
-$string['reject'] = 'Rechazar';
-$string['requestrevision'] = 'Solicitar revisión';
-$string['publish'] = 'Publicar';
-$string['archive'] = 'Archivar';
-$string['unarchive'] = 'Desarchivar';
+// Timed practice mode.
+$string['timedpractice'] = 'Práctica Cronometrada';
+$string['starttimedpractice'] = 'Iniciar Práctica Cronometrada';
+$string['timelimit'] = 'Límite de Tiempo';
+$string['timeleft'] = 'Tiempo Restante';
+$string['timespent'] = 'Tiempo Empleado';
+$string['timedpracticewarning'] = 'Advertencia: Modo de Práctica Cronometrada';
+$string['timedpracticewarning_desc'] = 'Una vez que comiences, el temporizador comenzará la cuenta regresiva. No puedes pausar el temporizador. Si se agota el tiempo, tus respuestas se enviarán automáticamente.';
+$string['timestatistics'] = 'Estadísticas de Tiempo';
+$string['timedresults'] = 'Resultados de Práctica Cronometrada';
+$string['selecttimelimit'] = 'Seleccionar límite de tiempo (minutos)';
+$string['backtocaseview'] = 'Volver al Caso';
+$string['started'] = 'Iniciado';
+$string['finished'] = 'Finalizado';
+$string['detailedresults'] = 'Resultados Detallados';
+$string['questionscore'] = 'Puntuación de la Pregunta';
+$string['submitanswers'] = 'Enviar Respuestas';
+$string['error:attemptnotfound'] = 'Intento cronometrado no encontrado';
+$string['eventtimedattemptsubmitted'] = 'Intento cronometrado enviado';
+$string['congratspassed'] = '¡Felicitaciones! ¡Has aprobado!';
+$string['notpassedyet'] = 'No has aprobado aún. El umbral de aprobación es {$a}%. ¡Inténtalo de nuevo!';
+$string['yourscore'] = 'Tu puntuación';
+$string['scoredetail'] = 'Obtuviste {$a->score} de {$a->maxscore} puntos';
+$string['questionx'] = 'Pregunta {$a}';
+$string['correctanswer'] = 'Respuesta correcta';
 
-// Workflow messages.
-$string['casesubmittedreview'] = 'Caso enviado a revisión';
-$string['caseapproved'] = 'Caso aprobado';
-$string['caserejected'] = 'Caso rechazado';
-$string['casepublished'] = 'Caso publicado';
-$string['casearchived'] = 'Caso archivado';
-$string['invalidtransition'] = 'Transición de estado inválida';
-$string['noquestionsforsubmit'] = 'El caso debe tener al menos una pregunta antes de enviarlo a revisión';
-$string['invalidstatusforreviewer'] = 'El caso no está en un estado revisable';
-$string['notassignedreviewer'] = 'No está asignado como revisor de este caso';
-$string['invaliddecision'] = 'Decisión de revisión inválida';
+// Question types.
+$string['qtype_multichoice'] = 'Opción Múltiple';
+$string['qtype_truefalse'] = 'Verdadero/Falso';
+$string['qtype_shortanswer'] = 'Respuesta Corta';
+$string['qtype_essay'] = 'Ensayo';
+$string['qtype_matching'] = 'Emparejamiento';
+$string['essayinfo'] = 'Las preguntas tipo ensayo serán calificadas manualmente por un instructor';
+$string['essaymanualgrading'] = 'Este ensayo será revisado y calificado por un instructor';
+$string['youressay'] = 'Escribe tu ensayo aquí...';
+$string['matchingpairs'] = 'Empareja cada elemento de la izquierda con uno de la derecha';
+$string['choosedots'] = 'Elegir...';
 
-// Bulk operations.
-$string['bulkoperations'] = 'Operaciones en lote';
-$string['selectall'] = 'Seleccionar todo';
-$string['deselectall'] = 'Deseleccionar todo';
-$string['withselected'] = 'Con los seleccionados...';
-$string['bulkdelete'] = 'Eliminar seleccionados';
-$string['bulkmove'] = 'Mover a categoría';
-$string['bulkpublish'] = 'Publicar seleccionados';
-$string['bulkarchive'] = 'Archivar seleccionados';
-$string['bulkexport'] = 'Exportar seleccionados';
-$string['bulkexportpdf'] = 'Exportar como PDF';
-$string['bulkexportcsv'] = 'Exportar como CSV';
-$string['confirmdeleteselected'] = '¿Está seguro de que desea eliminar {$a} casos seleccionados? Esta acción no se puede deshacer.';
-$string['confirmpublishselected'] = '¿Está seguro de que desea publicar {$a} casos seleccionados?';
-$string['confirmarchiveselected'] = '¿Está seguro de que desea archivar {$a} casos seleccionados?';
-$string['casesdeleted'] = '{$a} casos eliminados correctamente';
-$string['casesmoved'] = '{$a} casos movidos correctamente';
-$string['casespublished'] = '{$a} casos publicados correctamente';
-$string['casesarchived'] = '{$a} casos archivados correctamente';
-$string['selectedcases'] = '{$a} seleccionados';
-$string['nocasesselected'] = 'No hay casos seleccionados';
-$string['moveto'] = 'Mover a...';
-$string['selecttargetcategory'] = 'Seleccionar categoría destino';
+// Achievements / Gamification.
+$string['achievements'] = 'Logros';
+$string['gamificationdisabled'] = 'La gamificación está actualmente deshabilitada';
+$string['uniquecases'] = 'Casos únicos completados';
+$string['perfectscores'] = 'Puntuaciones perfectas';
+$string['achievementsprogress'] = 'Logros: {$a->earned} de {$a->total} conseguidos';
+$string['earned'] = '¡Conseguido!';
+$string['externalintegration'] = 'Integrado con {$a} para recompensas adicionales';
+$string['eventachievementearned'] = 'Logro conseguido';
+$string['settings:enablegamification'] = 'Habilitar gamificación';
+$string['settings:enablegamification_desc'] = 'Habilitar logros y características de gamificación';
 
-// Audit log.
-$string['auditlog'] = 'Registro de auditoría';
-$string['auditlogs'] = 'Registros de auditoría';
-$string['viewauditlog'] = 'Ver registro de auditoría';
-$string['noauditlogs'] = 'No se encontraron registros de auditoría';
-$string['audit:action_create'] = 'Creado';
-$string['audit:action_update'] = 'Actualizado';
-$string['audit:action_delete'] = 'Eliminado';
-$string['audit:action_publish'] = 'Publicado';
-$string['audit:action_archive'] = 'Archivado';
-$string['audit:action_submit_review'] = 'Enviado a revisión';
-$string['audit:action_approve'] = 'Aprobado';
-$string['audit:action_reject'] = 'Rechazado';
-$string['audit:action_bulk_delete'] = 'Eliminación masiva';
-$string['audit:action_bulk_move'] = 'Movimiento masivo';
-$string['audit:action_bulk_publish'] = 'Publicación masiva';
-$string['audit:action_bulk_archive'] = 'Archivado masivo';
-$string['audit:action_import'] = 'Importado';
-$string['audit:action_export'] = 'Exportado';
-$string['auditobjecttype'] = 'Tipo de objeto';
-$string['auditaction'] = 'Acción';
-$string['audituser'] = 'Usuario';
-$string['audittime'] = 'Fecha/Hora';
-$string['auditchanges'] = 'Cambios';
-$string['auditipaddress'] = 'Dirección IP';
-$string['filterbyaction'] = 'Filtrar por acción';
-$string['filterbyuser'] = 'Filtrar por usuario';
-$string['filterbydaterange'] = 'Filtrar por rango de fechas';
-$string['exportauditlog'] = 'Exportar registro de auditoría';
+// Achievement types.
+$string['achievement:first_attempt'] = 'Primeros Pasos';
+$string['achievement:first_attempt_desc'] = 'Completa tu primer intento de práctica';
+$string['achievement:five_cases'] = 'Empezando';
+$string['achievement:five_cases_desc'] = 'Practica 5 casos diferentes';
+$string['achievement:ten_cases'] = 'Estudiante Dedicado';
+$string['achievement:ten_cases_desc'] = 'Practica 10 casos diferentes';
+$string['achievement:twentyfive_cases'] = 'Maestro de Casos';
+$string['achievement:twentyfive_cases_desc'] = 'Practica 25 casos diferentes';
+$string['achievement:perfect_score'] = 'Perfeccionista';
+$string['achievement:perfect_score_desc'] = 'Obtén una puntuación perfecta (100%)';
+$string['achievement:five_perfect'] = 'Excelencia';
+$string['achievement:five_perfect_desc'] = 'Obtén 5 puntuaciones perfectas';
+$string['achievement:streak_10'] = '¡En Racha!';
+$string['achievement:streak_10_desc'] = 'Aprueba 10 casos seguidos';
+$string['achievement:week_streak'] = 'Constante';
+$string['achievement:week_streak_desc'] = 'Practica todos los días durante una semana';
+$string['achievement:category_complete'] = 'Experto en Categoría';
+$string['achievement:category_complete_desc'] = 'Completa todos los casos de una categoría';
+$string['achievement:high_achiever'] = 'Alto Rendimiento';
+$string['achievement:high_achiever_desc'] = 'Mantén un promedio superior al 90% después de 10 intentos';
 
-// Advanced filters.
-$string['advancedfilters'] = 'Filtros avanzados';
-$string['searchcases'] = 'Buscar casos';
-$string['filterbycat'] = 'Filtrar por categoría';
-$string['filterbystatus'] = 'Filtrar por estado';
-$string['filterbydifficulty'] = 'Filtrar por dificultad';
-$string['filterbytags'] = 'Filtrar por etiquetas';
-$string['filterbycreator'] = 'Filtrar por creador';
-$string['filterbydatefrom'] = 'Creado desde';
-$string['filterbydateto'] = 'Creado hasta';
-$string['filterbyquestioncount'] = 'Número de preguntas';
-$string['allcategories'] = 'Todas las categorías';
-$string['allstatuses'] = 'Todos los estados';
-$string['alldifficulties'] = 'Todas las dificultades';
-$string['alltags'] = 'Todas las etiquetas';
-$string['allcreators'] = 'Todos los creadores';
-$string['clearsearch'] = 'Limpiar búsqueda';
-$string['clearfilters'] = 'Limpiar todos los filtros';
-$string['applyfilters'] = 'Aplicar filtros';
-$string['activefilters'] = 'Filtros activos';
-$string['noresults'] = 'No se encontraron casos con los criterios especificados';
-$string['showing'] = 'Mostrando {$a->start} a {$a->end} de {$a->total}';
-
-// Sorting.
-$string['sortby'] = 'Ordenar por';
-$string['sortbyname'] = 'Nombre';
-$string['sortbycreated'] = 'Fecha de creación';
-$string['sortbymodified'] = 'Fecha de modificación';
-$string['sortbydifficulty'] = 'Dificultad';
-$string['sortbyquestions'] = 'Número de preguntas';
-$string['sortasc'] = 'Ascendente';
-$string['sortdesc'] = 'Descendente';
-
-// Export formats.
-$string['exportformat'] = 'Formato de exportación';
-$string['exportpdf'] = 'Exportar como PDF';
-$string['exportcsv'] = 'Exportar como CSV';
-$string['exportxml'] = 'Exportar como XML';
-$string['exportjson'] = 'Exportar como JSON';
-$string['exportoptions'] = 'Opciones de exportación';
-$string['includeanswers'] = 'Incluir respuestas';
-$string['includecorrect'] = 'Marcar respuestas correctas';
-$string['includefeedback'] = 'Incluir retroalimentación';
-$string['pagebreakpercase'] = 'Salto de página entre casos';
-$string['flatformat'] = 'Formato plano (una fila por pregunta)';
-
-// Reviews.
-$string['reviews'] = 'Revisiones';
-$string['reviewhistory'] = 'Historial de revisiones';
-$string['pendingreviews'] = 'Revisiones pendientes';
-$string['myreviews'] = 'Mis revisiones';
-$string['reviewcase'] = 'Revisar caso';
-$string['reviewcomments'] = 'Comentarios de revisión';
-$string['submitreview'] = 'Enviar revisión';
-$string['nopendingreviews'] = 'No hay revisiones pendientes';
-$string['reviewedon'] = 'Revisado el {$a}';
-$string['reviewedby'] = 'Revisado por {$a}';
-$string['awaitingreview'] = 'Esperando revisión';
-
-// Settings additions.
-$string['settings:workflow'] = 'Configuración del flujo de trabajo';
-$string['settings:enableworkflow'] = 'Habilitar flujo de aprobación';
-$string['settings:enableworkflow_desc'] = 'Requerir que los casos sean revisados y aprobados antes de publicar';
-$string['settings:auditretention'] = 'Retención del registro de auditoría (días)';
-$string['settings:auditretention_desc'] = 'Número de días para mantener las entradas del registro de auditoría. Establecer en 0 para mantener indefinidamente.';
-
-// Capabilities.
-$string['casospracticos:review'] = 'Revisar casos prácticos';
-$string['casospracticos:viewauditlog'] = 'Ver registro de auditoría';
-$string['casospracticos:bulkoperations'] = 'Realizar operaciones en lote';
-
-// Errors.
-$string['error:bulkdeletefailed'] = 'Error al eliminar algunos casos';
-$string['error:bulkmovefailed'] = 'Error al mover algunos casos';
-$string['error:categorynotfound'] = 'Categoría no encontrada';
-$string['error:invalidformat'] = 'Formato de exportación inválido';
+// Accessibility strings.
+$string['caselist'] = 'Lista de casos prácticos';
+$string['caseactions'] = 'Acciones del caso';
+$string['questionactions'] = 'Acciones de la pregunta';
+$string['questionnumber'] = 'Número de pregunta';
+$string['questionform'] = 'Formulario de pregunta';
+$string['questiontype_help'] = 'Selecciona el tipo de pregunta a crear';
+$string['defaultmark_help'] = 'Puntos otorgados por una respuesta completamente correcta';
+$string['generalfeedback_help'] = 'Retroalimentación mostrada después de responder la pregunta';
+$string['categoryoptions'] = 'Opciones para la categoría';
+$string['removeanswer'] = 'Eliminar esta respuesta';

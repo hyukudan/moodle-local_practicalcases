@@ -8,16 +8,31 @@ A Moodle local plugin for managing practical cases with associated questions. Pe
 
 ## Features
 
+### Core
 - **Case Management**: Create, edit, and organize practical cases with rich HTML statements
 - **Question Bank**: Each case has its own set of questions (multiple choice, true/false, short answer)
 - **Hierarchical Categories**: Organize cases in a tree structure of categories
-- **Quiz Integration**: Insert cases directly into Moodle quizzes with random question selection
 - **Import/Export**: XML and JSON format support for sharing cases
+
+### Learning
+- **Practice Mode**: Self-study mode with immediate feedback and attempt tracking
+- **Quiz Integration**: Insert cases directly into Moodle quizzes with random question selection
+- **Gamification**: Optional achievements system (integrates with block_xp)
+- **Statistics**: Detailed analytics per case and question performance
+
+### Workflow
+- **Review System**: Submit cases for review, approval workflow
+- **Audit Logging**: Track all changes with full audit trail
+- **Bulk Operations**: Mass delete, move, publish, archive operations
+
+### Technical
 - **Search Integration**: Cases are indexed in Moodle's global search
+- **Notifications**: Configurable notifications for publishing and reviews
 - **Caching**: Optimized performance with MUC (Moodle Universal Cache)
-- **Backup/Restore**: Full support for Moodle course backups
+- **Backup/Restore**: Full support for Moodle course backups (including user attempts)
 - **Privacy API**: GDPR compliant with full privacy provider implementation
 - **Events System**: Integration with Moodle's event system for logging and triggers
+- **Web Services**: Complete REST API for external integrations
 
 ## Requirements
 
@@ -176,15 +191,76 @@ php admin/cli/check_coding_style.php --path=local/casospracticos
 
 ## Changelog
 
-### Version 0.1.0 (2026-01-11)
+### Version 1.0.1 (2026-01-11) - Security Hardening
+- **Security**: Added CSRF protection (sesskey) to direct export endpoint
+- **Security**: Added case existence validation before export
+- **Security**: Strengthened authorization checks in review_attempt.php
+- **Security**: Fixed PARAM_RAW usage - now validates fraction values in whitelist
+- **Quality**: Added return type hints to case_manager methods
+
+### Version 1.0.0 (2026-01-11) - Stable Release
+- **Quality**: Database transactions for atomic operations in bulk_manager and case_manager
+- **Accessibility**: Added comprehensive ARIA labels and screen reader support
+- **Accessibility**: Improved keyboard navigation in all templates
+- **Accessibility**: Added proper semantic roles (article, navigation, toolbar, etc.)
+- **Testing**: Added Behat tests for case management and practice mode workflows
+- **Maturity**: Changed to MATURITY_STABLE
+
+### Version 0.9.0 (2026-01-11) - Pre-release Candidate
+- **Security**: Fixed XXE vulnerability in XML import
+- **Security**: Added comprehensive input validation in importer
+- **Performance**: Fixed N+1 query in get_categories API
+- **Performance**: Optimized batch loading for answers in question_manager
+- **Performance**: Added missing database indexes for better query performance
+- **New**: Notifications system for case publishing and reviews
+- **New**: Practice mode with user attempts tracking
+- **New**: Achievements/gamification system (optional integration with block_xp)
+- **New**: Statistics and analytics for cases
+- **Improved**: Backup/restore now includes practice attempts
+- **Improved**: Better error handling with warnings in import
+
+### Version 0.7.0 (2026-01-11)
+- Added achievements manager with 10 achievement types
+- Added practice attempt tracking and statistics
+- Added scheduled task for cleanup of abandoned attempts
+- Optimized filter_manager queries (correlated subquery fix)
+- Added caching for filter options
+- Full GDPR compliance for all user data tables
+
+### Version 0.6.0 (2026-01-11)
+- Added practice mode for self-study
+- Added review workflow (pending review, in review, approved, rejected)
+- Added audit logging for all changes
+- Added usage tracking for analytics
+- Added statistics page per case
+
+### Version 0.5.0 (2026-01-11)
+- Added bulk operations (delete, move, publish, archive)
+- Added advanced filtering (tags, date range, difficulty)
+- Added pagination for large case lists
+- Improved UI with Bootstrap 5 components
+
+### Version 0.4.0 (2026-01-10)
+- Added web services API for external integrations
+- Added events system integration
+- Added search indexing for global search
+- Added backup/restore support
+
+### Version 0.3.0 (2026-01-10)
+- Quiz integration with random question selection
+- Statement as description option
+- Import/Export in XML and JSON formats
+
+### Version 0.2.0 (2026-01-10)
+- Hierarchical categories
+- Question types: Multiple choice, True/False, Short answer
+- Answer feedback support
+- Difficulty levels
+
+### Version 0.1.0 (2026-01-10)
 - Initial release
 - Core case and question management
-- Quiz integration
-- Import/Export functionality
-- Search integration
-- Backup/Restore support
-- Event system
-- Caching layer
+- Basic category organization
 - Privacy API compliance
 
 ## Contributing

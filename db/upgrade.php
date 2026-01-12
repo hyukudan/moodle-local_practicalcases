@@ -145,5 +145,205 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026011102, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026011104) {
+        // Create practice attempts table.
+        $table = new xmldb_table('local_cp_practice_attempts');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('score', XMLDB_TYPE_NUMBER, '12, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('maxscore', XMLDB_TYPE_NUMBER, '12, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'in_progress');
+        $table->add_field('timestarted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timefinished', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('caseid', XMLDB_KEY_FOREIGN, ['caseid'], 'local_cp_cases', ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        $table->add_index('caseid_userid', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'userid']);
+        $table->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+        $table->add_index('timefinished', XMLDB_INDEX_NOTUNIQUE, ['timefinished']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Create practice responses table.
+        $table = new xmldb_table('local_cp_practice_responses');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('attemptid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('response', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('score', XMLDB_TYPE_NUMBER, '12, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('iscorrect', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('attemptid', XMLDB_KEY_FOREIGN, ['attemptid'], 'local_cp_practice_attempts', ['id']);
+        $table->add_key('questionid', XMLDB_KEY_FOREIGN, ['questionid'], 'local_cp_questions', ['id']);
+
+        $table->add_index('attemptid_questionid', XMLDB_INDEX_UNIQUE, ['attemptid', 'questionid']);
+        $table->add_index('questionid_iscorrect', XMLDB_INDEX_NOTUNIQUE, ['questionid', 'iscorrect']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011104, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011106) {
+        // Create achievements table.
+        $table = new xmldb_table('local_cp_achievements');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('achievementtype', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        $table->add_index('userid_type', XMLDB_INDEX_UNIQUE, ['userid', 'achievementtype']);
+        $table->add_index('achievementtype', XMLDB_INDEX_NOTUNIQUE, ['achievementtype']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011106, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011108) {
+        // Add missing performance indexes.
+
+        // Add timemodified index to cases for sorting.
+        $table = new xmldb_table('local_cp_cases');
+        $index = new xmldb_index('timemodified', XMLDB_INDEX_NOTUNIQUE, ['timemodified']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Add createdby index to cases for filtering.
+        $index = new xmldb_index('createdby', XMLDB_INDEX_NOTUNIQUE, ['createdby']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Add userid index to practice_attempts for user queries.
+        $table = new xmldb_table('local_cp_practice_attempts');
+        $index = new xmldb_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Add userid_status index to practice_attempts.
+        $index = new xmldb_index('userid_status', XMLDB_INDEX_NOTUNIQUE, ['userid', 'status']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011108, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011112) {
+        // v1.0.0 - v1.0.2: Code-only changes (no schema changes).
+        // - Added database transactions to managers
+        // - Added accessibility improvements to templates
+        // - Added CSRF protection to export endpoint
+        // - Fixed XSS vulnerabilities in JavaScript
+        // - Added rate limiting support
+
+        // Add status_timemodified composite index for common list queries.
+        $table = new xmldb_table('local_cp_cases');
+        $index = new xmldb_index('status_timemodified', XMLDB_INDEX_NOTUNIQUE, ['status', 'timemodified']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Add caseid_userid_status composite index for practice queries.
+        $table = new xmldb_table('local_cp_practice_attempts');
+        $index = new xmldb_index('caseid_userid_status', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'userid', 'status']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Add userid_action index to audit log for user activity reports.
+        $table = new xmldb_table('local_cp_audit_log');
+        $index = new xmldb_index('userid_action', XMLDB_INDEX_NOTUNIQUE, ['userid', 'action']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011112, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011114) {
+        // v1.1.0: Create practice sessions table for secure token-based session management.
+        $table = new xmldb_table('local_cp_practice_sessions');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('token', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timeexpiry', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+        $table->add_key('caseid', XMLDB_KEY_FOREIGN, ['caseid'], 'local_cp_cases', ['id']);
+
+        $table->add_index('token', XMLDB_INDEX_UNIQUE, ['token']);
+        $table->add_index('userid_caseid', XMLDB_INDEX_NOTUNIQUE, ['userid', 'caseid']);
+        $table->add_index('timeexpiry', XMLDB_INDEX_NOTUNIQUE, ['timeexpiry']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011114, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011215) {
+        // v1.1.0: Create timed attempts table for timed practice mode.
+        $table = new xmldb_table('local_cp_timed_attempts');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('token', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timelimit', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '1800');
+        $table->add_field('score', XMLDB_TYPE_NUMBER, '12, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('maxscore', XMLDB_TYPE_NUMBER, '12, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'in_progress');
+        $table->add_field('responses', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timestarted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timesubmitted', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+        $table->add_key('caseid', XMLDB_KEY_FOREIGN, ['caseid'], 'local_cp_cases', ['id']);
+
+        $table->add_index('token', XMLDB_INDEX_UNIQUE, ['token']);
+        $table->add_index('userid_caseid', XMLDB_INDEX_NOTUNIQUE, ['userid', 'caseid']);
+        $table->add_index('userid_status', XMLDB_INDEX_NOTUNIQUE, ['userid', 'status']);
+        $table->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+        $table->add_index('timestarted', XMLDB_INDEX_NOTUNIQUE, ['timestarted']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011215, 'local', 'casospracticos');
+    }
+
     return true;
 }

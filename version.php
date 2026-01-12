@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011102;  // Added bulk ops, filters, audit, PDF/CSV export, workflow.
+$plugin->version   = 2026011216;  // v1.2.0: Enhanced question types + Performance optimizations.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
-$plugin->maturity  = MATURITY_BETA;
-$plugin->release   = '0.3.0';
+$plugin->maturity  = MATURITY_STABLE;
+$plugin->release   = '1.2.0';

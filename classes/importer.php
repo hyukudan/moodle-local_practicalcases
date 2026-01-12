@@ -31,6 +31,27 @@ defined('MOODLE_INTERNAL') || die();
  */
 class importer {
 
+    /** @var int Maximum content length (10MB default, configurable). */
+    const MAX_CONTENT_LENGTH = 10485760;
+
+    /** @var int Maximum case name length. */
+    const MAX_NAME_LENGTH = 255;
+
+    /** @var int Maximum number of cases per import. */
+    const MAX_CASES_PER_IMPORT = 500;
+
+    /** @var int Maximum number of questions per case. */
+    const MAX_QUESTIONS_PER_CASE = 100;
+
+    /** @var int Maximum number of answers per question. */
+    const MAX_ANSWERS_PER_QUESTION = 20;
+
+    /** @var array Valid status values. */
+    const VALID_STATUSES = ['draft', 'pending_review', 'in_review', 'approved', 'published', 'archived'];
+
+    /** @var array Valid question types. */
+    const VALID_QTYPES = ['multichoice', 'truefalse', 'shortanswer', 'matching'];
+
     /** @var int Number of cases imported */
     private $casesimported = 0;
 
@@ -39,6 +60,9 @@ class importer {
 
     /** @var array Import errors */
     private $errors = [];
+
+    /** @var array Import warnings (non-fatal). */
+    private $warnings = [];
 
     /**
      * Import from file.
@@ -52,8 +76,19 @@ class importer {
             return $this->error('File not found: ' . $filepath);
         }
 
-        $content = file_get_contents($filepath);
+        // Validate file extension.
         $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['xml', 'json', 'csv'])) {
+            return $this->error('Invalid file extension. Only XML, JSON and CSV are allowed.');
+        }
+
+        // Security: Validate MIME type (magic bytes) to prevent file type spoofing.
+        $validation = $this->validate_mime_type($filepath, $extension);
+        if (!$validation['valid']) {
+            return $this->error($validation['error']);
+        }
+
+        $content = file_get_contents($filepath);
 
         return $this->import_content($content, $extension, $targetcategoryid);
     }
@@ -70,6 +105,18 @@ class importer {
         $this->casesimported = 0;
         $this->questionsimported = 0;
         $this->errors = [];
+        $this->warnings = [];
+
+        // Validate content size.
+        $maxsize = get_config('local_casospracticos', 'maximportsize') ?: self::MAX_CONTENT_LENGTH;
+        if (strlen($content) > $maxsize) {
+            return $this->error('Import file exceeds maximum size of ' . display_size($maxsize));
+        }
+
+        // Validate format.
+        if (!in_array($format, ['xml', 'json'])) {
+            return $this->error('Invalid format. Only XML and JSON are supported.');
+        }
 
         try {
             if ($format === 'json') {
@@ -78,25 +125,148 @@ class importer {
                 $this->import_xml($content, $targetcategoryid);
             }
 
-            if (empty($this->errors)) {
-                return [
-                    'success' => true,
-                    'cases' => $this->casesimported,
-                    'questions' => $this->questionsimported,
-                    'errors' => [],
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'cases' => $this->casesimported,
-                    'questions' => $this->questionsimported,
-                    'errors' => $this->errors,
-                ];
-            }
+            return [
+                'success' => empty($this->errors),
+                'cases' => $this->casesimported,
+                'questions' => $this->questionsimported,
+                'errors' => $this->errors,
+                'warnings' => $this->warnings,
+            ];
 
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
+    }
+
+    /**
+     * Validate MIME type of imported file to prevent spoofing.
+     *
+     * Security: Validates actual file content (magic bytes), not just extension.
+     *
+     * @param string $filepath Path to file
+     * @param string $extension Expected extension
+     * @return array ['valid' => bool, 'error' => string]
+     */
+    private function validate_mime_type(string $filepath, string $extension): array {
+        // Allowed MIME types per extension.
+        $allowedmimes = [
+            'xml' => ['application/xml', 'text/xml'],
+            'json' => ['application/json', 'text/plain'],
+            'csv' => ['text/csv', 'text/plain', 'application/csv'],
+        ];
+
+        if (!isset($allowedmimes[$extension])) {
+            return ['valid' => false, 'error' => 'Unsupported file type'];
+        }
+
+        // Get real MIME type from file content (magic bytes).
+        if (!function_exists('finfo_open')) {
+            // Fallback: If fileinfo extension not available, skip MIME validation.
+            // This is acceptable as extension validation is still in place.
+            return ['valid' => true, 'error' => ''];
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimetype = finfo_file($finfo, $filepath);
+        finfo_close($finfo);
+
+        if ($mimetype === false) {
+            return ['valid' => false, 'error' => 'Unable to determine file type'];
+        }
+
+        // Check if detected MIME type is allowed for this extension.
+        if (!in_array($mimetype, $allowedmimes[$extension])) {
+            $expected = implode(', ', $allowedmimes[$extension]);
+            return [
+                'valid' => false,
+                'error' => "Invalid file type. Expected $expected but got $mimetype. " .
+                          "File extension does not match file content."
+            ];
+        }
+
+        return ['valid' => true, 'error' => ''];
+    }
+
+    /**
+     * Validate a case name.
+     *
+     * @param string $name Case name
+     * @return string Sanitized name
+     * @throws \Exception If name is invalid
+     */
+    private function validate_case_name(string $name): string {
+        $name = trim($name);
+        if (empty($name)) {
+            throw new \Exception('Case name cannot be empty');
+        }
+        if (strlen($name) > self::MAX_NAME_LENGTH) {
+            $name = substr($name, 0, self::MAX_NAME_LENGTH);
+            $this->warnings[] = "Case name truncated to " . self::MAX_NAME_LENGTH . " characters";
+        }
+        return clean_param($name, PARAM_TEXT);
+    }
+
+    /**
+     * Validate a status value.
+     *
+     * @param string $status Status to validate
+     * @return string Valid status (defaults to 'draft' if invalid)
+     */
+    private function validate_status(string $status): string {
+        $status = strtolower(trim($status));
+        if (!in_array($status, self::VALID_STATUSES)) {
+            $this->warnings[] = "Invalid status '$status', defaulting to 'draft'";
+            return 'draft';
+        }
+        return $status;
+    }
+
+    /**
+     * Validate a question type.
+     *
+     * @param string $qtype Question type
+     * @return string Valid qtype (defaults to 'multichoice' if invalid)
+     */
+    private function validate_qtype(string $qtype): string {
+        $qtype = strtolower(trim($qtype));
+        if (!in_array($qtype, self::VALID_QTYPES)) {
+            $this->warnings[] = "Invalid question type '$qtype', defaulting to 'multichoice'";
+            return 'multichoice';
+        }
+        return $qtype;
+    }
+
+    /**
+     * Validate difficulty level.
+     *
+     * @param mixed $difficulty Difficulty value
+     * @return int|null Valid difficulty (1-5) or null
+     */
+    private function validate_difficulty($difficulty): ?int {
+        if ($difficulty === null || $difficulty === '') {
+            return null;
+        }
+        $diff = (int) $difficulty;
+        if ($diff < 1 || $diff > 5) {
+            $this->warnings[] = "Invalid difficulty '$difficulty', setting to null";
+            return null;
+        }
+        return $diff;
+    }
+
+    /**
+     * Validate fraction value.
+     *
+     * @param mixed $fraction Fraction value
+     * @return float Valid fraction (0-1)
+     */
+    private function validate_fraction($fraction): float {
+        $frac = (float) $fraction;
+        // Handle percentage format (0-100 instead of 0-1).
+        if ($frac > 1 && $frac <= 100) {
+            $frac = $frac / 100;
+        }
+        return max(0, min(1, $frac));
     }
 
     /**
@@ -106,11 +276,29 @@ class importer {
      * @param int|null $targetcategoryid Target category
      */
     private function import_xml(string $content, ?int $targetcategoryid): void {
+        // Security: Protect against XXE (XML External Entity) attacks.
+        // LIBXML_NONET disables network access during parsing.
+        // We explicitly don't use LIBXML_NOENT as it would expand entities.
         libxml_use_internal_errors(true);
-        $xml = simplexml_load_string($content);
+
+        // For PHP < 8.0, disable entity loader (function is deprecated in 8.0+).
+        $disableentities = false;
+        if (\PHP_VERSION_ID < 80000) {
+            $disableentities = libxml_disable_entity_loader(true);
+        }
+
+        try {
+            $xml = simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NONET);
+        } finally {
+            // Restore previous state for PHP < 8.0.
+            if (\PHP_VERSION_ID < 80000) {
+                libxml_disable_entity_loader($disableentities);
+            }
+        }
 
         if ($xml === false) {
             $errors = libxml_get_errors();
+            libxml_clear_errors();
             $errorMsg = !empty($errors) ? $errors[0]->message : 'Invalid XML';
             throw new \Exception('XML parsing error: ' . $errorMsg);
         }
@@ -176,20 +364,23 @@ class importer {
      */
     private function import_case_from_xml(\SimpleXMLElement $casexml, int $categoryid): void {
         try {
-            // Create case.
+            // Validate and create case.
             $casedata = new \stdClass();
             $casedata->categoryid = $categoryid;
-            $casedata->name = (string) $casexml->name;
+            $casedata->name = $this->validate_case_name((string) $casexml->name);
             $casedata->statement = (string) $casexml->statement;
             $casedata->statementformat = (int) ($casexml->statementformat ?? FORMAT_HTML);
-            $casedata->status = (string) ($casexml->status ?? 'draft');
-            $casedata->difficulty = !empty($casexml->difficulty) ? (int) $casexml->difficulty : null;
+            $casedata->status = $this->validate_status((string) ($casexml->status ?? 'draft'));
+            $casedata->difficulty = $this->validate_difficulty($casexml->difficulty ?? null);
 
-            // Tags.
+            // Tags - sanitize each tag.
             $tags = [];
             if (isset($casexml->tags)) {
                 foreach ($casexml->tags->tag as $tag) {
-                    $tags[] = (string) $tag;
+                    $tagtext = clean_param(trim((string) $tag), PARAM_TEXT);
+                    if (!empty($tagtext)) {
+                        $tags[] = $tagtext;
+                    }
                 }
             }
             $casedata->tags = $tags;
@@ -197,10 +388,16 @@ class importer {
             $caseid = case_manager::create($casedata);
             $this->casesimported++;
 
-            // Import questions.
+            // Import questions with limit check.
             if (isset($casexml->questions)) {
+                $questioncount = 0;
                 foreach ($casexml->questions->question as $questionxml) {
+                    if ($questioncount >= self::MAX_QUESTIONS_PER_CASE) {
+                        $this->warnings[] = "Case '{$casedata->name}': Exceeded max questions limit, some questions skipped";
+                        break;
+                    }
                     $this->import_question_from_xml($questionxml, $caseid);
+                    $questioncount++;
                 }
             }
 
@@ -218,24 +415,36 @@ class importer {
     private function import_question_from_xml(\SimpleXMLElement $questionxml, int $caseid): void {
         $qdata = new \stdClass();
         $qdata->caseid = $caseid;
-        $qdata->qtype = (string) ($questionxml['type'] ?? 'multichoice');
+        $qdata->qtype = $this->validate_qtype((string) ($questionxml['type'] ?? 'multichoice'));
         $qdata->questiontext = (string) $questionxml->text;
         $qdata->questiontextformat = (int) ($questionxml->textformat ?? FORMAT_HTML);
-        $qdata->defaultmark = (float) ($questionxml->defaultmark ?? 1.0);
-        $qdata->single = (int) ($questionxml->single ?? 1);
-        $qdata->shuffleanswers = (int) ($questionxml->shuffleanswers ?? 1);
+        $qdata->defaultmark = max(0, (float) ($questionxml->defaultmark ?? 1.0));
+        $qdata->single = (int) ($questionxml->single ?? 1) ? 1 : 0;
+        $qdata->shuffleanswers = (int) ($questionxml->shuffleanswers ?? 1) ? 1 : 0;
         $qdata->generalfeedback = (string) ($questionxml->generalfeedback ?? '');
 
-        // Answers.
+        // Validate question text is not empty.
+        if (empty(trim(strip_tags($qdata->questiontext)))) {
+            $this->warnings[] = "Skipped question with empty text in case ID $caseid";
+            return;
+        }
+
+        // Answers with limit check.
         $answers = [];
+        $answercount = 0;
         foreach ($questionxml->answer as $answerxml) {
+            if ($answercount >= self::MAX_ANSWERS_PER_QUESTION) {
+                $this->warnings[] = "Question has too many answers, some skipped";
+                break;
+            }
             $answers[] = [
                 'answer' => (string) $answerxml->text,
                 'answerformat' => FORMAT_HTML,
-                'fraction' => (float) ($answerxml['fraction'] ?? 0),
+                'fraction' => $this->validate_fraction($answerxml['fraction'] ?? 0),
                 'feedback' => (string) ($answerxml->feedback ?? ''),
                 'feedbackformat' => FORMAT_HTML,
             ];
+            $answercount++;
         }
         $qdata->answers = $answers;
 
@@ -253,19 +462,34 @@ class importer {
         try {
             $case = new \stdClass();
             $case->categoryid = $categoryid;
-            $case->name = $casedata['name'] ?? 'Sin nombre';
+            $case->name = $this->validate_case_name($casedata['name'] ?? 'Sin nombre');
             $case->statement = $casedata['statement'] ?? '';
             $case->statementformat = $casedata['statementformat'] ?? FORMAT_HTML;
-            $case->status = $casedata['status'] ?? 'draft';
-            $case->difficulty = $casedata['difficulty'] ?? null;
-            $case->tags = $casedata['tags'] ?? [];
+            $case->status = $this->validate_status($casedata['status'] ?? 'draft');
+            $case->difficulty = $this->validate_difficulty($casedata['difficulty'] ?? null);
+
+            // Sanitize tags.
+            $tags = [];
+            foreach ($casedata['tags'] ?? [] as $tag) {
+                $tagtext = clean_param(trim($tag), PARAM_TEXT);
+                if (!empty($tagtext)) {
+                    $tags[] = $tagtext;
+                }
+            }
+            $case->tags = $tags;
 
             $caseid = case_manager::create($case);
             $this->casesimported++;
 
-            // Import questions.
+            // Import questions with limit check.
+            $questioncount = 0;
             foreach ($casedata['questions'] ?? [] as $qdata) {
+                if ($questioncount >= self::MAX_QUESTIONS_PER_CASE) {
+                    $this->warnings[] = "Case '{$case->name}': Exceeded max questions limit, some questions skipped";
+                    break;
+                }
                 $this->import_question_from_array($qdata, $caseid);
+                $questioncount++;
             }
 
         } catch (\Exception $e) {
@@ -282,24 +506,36 @@ class importer {
     private function import_question_from_array(array $qdata, int $caseid): void {
         $question = new \stdClass();
         $question->caseid = $caseid;
-        $question->qtype = $qdata['type'] ?? 'multichoice';
+        $question->qtype = $this->validate_qtype($qdata['type'] ?? 'multichoice');
         $question->questiontext = $qdata['text'] ?? '';
         $question->questiontextformat = $qdata['textformat'] ?? FORMAT_HTML;
-        $question->defaultmark = $qdata['defaultmark'] ?? 1.0;
-        $question->single = $qdata['single'] ?? 1;
-        $question->shuffleanswers = $qdata['shuffleanswers'] ?? 1;
+        $question->defaultmark = max(0, (float) ($qdata['defaultmark'] ?? 1.0));
+        $question->single = (int) ($qdata['single'] ?? 1) ? 1 : 0;
+        $question->shuffleanswers = (int) ($qdata['shuffleanswers'] ?? 1) ? 1 : 0;
         $question->generalfeedback = $qdata['generalfeedback'] ?? '';
 
-        // Answers.
+        // Validate question text is not empty.
+        if (empty(trim(strip_tags($question->questiontext)))) {
+            $this->warnings[] = "Skipped question with empty text in case ID $caseid";
+            return;
+        }
+
+        // Answers with limit check.
         $answers = [];
+        $answercount = 0;
         foreach ($qdata['answers'] ?? [] as $adata) {
+            if ($answercount >= self::MAX_ANSWERS_PER_QUESTION) {
+                $this->warnings[] = "Question has too many answers, some skipped";
+                break;
+            }
             $answers[] = [
                 'answer' => $adata['text'] ?? '',
                 'answerformat' => FORMAT_HTML,
-                'fraction' => $adata['fraction'] ?? 0,
+                'fraction' => $this->validate_fraction($adata['fraction'] ?? 0),
                 'feedback' => $adata['feedback'] ?? '',
                 'feedbackformat' => FORMAT_HTML,
             ];
+            $answercount++;
         }
         $question->answers = $answers;
 
@@ -374,10 +610,26 @@ class importer {
                 return ['valid' => true, 'cases' => $casecount];
 
             } else {
+                // Security: Protect against XXE (XML External Entity) attacks.
                 libxml_use_internal_errors(true);
-                $xml = simplexml_load_string($content);
+
+                // For PHP < 8.0, disable entity loader.
+                $disableentities = false;
+                if (\PHP_VERSION_ID < 80000) {
+                    $disableentities = libxml_disable_entity_loader(true);
+                }
+
+                try {
+                    $xml = simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NONET);
+                } finally {
+                    if (\PHP_VERSION_ID < 80000) {
+                        libxml_disable_entity_loader($disableentities);
+                    }
+                }
+
                 if ($xml === false) {
                     $errors = libxml_get_errors();
+                    libxml_clear_errors();
                     return ['valid' => false, 'error' => 'Invalid XML: ' . ($errors[0]->message ?? 'parse error')];
                 }
 

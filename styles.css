@@ -156,20 +156,146 @@ pre.bg-light {
     }
 }
 
+/* Answer feedback styles */
+.answer-feedback {
+    border-left: 3px solid #6c757d;
+    padding-left: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Practice mode styles */
+.case-practice .card {
+    transition: border-color 0.3s ease;
+}
+
+.case-practice .card.border-success .card-header {
+    background-color: #d4edda;
+}
+
+.case-practice .card.border-danger .card-header {
+    background-color: #f8d7da;
+}
+
+.case-practice .form-check {
+    padding: 0.5rem 0 0.5rem 2rem;
+}
+
+.case-practice .form-check.text-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-radius: 0.25rem;
+}
+
+.case-practice .form-check.text-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 0.25rem;
+}
+
+.case-practice .form-check.text-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-radius: 0.25rem;
+}
+
+/* Bulk actions container loading state */
+.bulk-actions-container.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.bulk-actions-container.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 3px solid #ccc;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Print styles */
 @media print {
+    /* Hide UI elements */
     .question-actions,
     .btn,
-    .col-md-3 {
+    .btn-group,
+    .col-md-3,
+    nav,
+    header,
+    footer,
+    .navbar,
+    .breadcrumb,
+    #page-header,
+    #nav-drawer,
+    .bulk-actions-container,
+    .case-actions,
+    .mt-3:has(.btn) {
         display: none !important;
     }
 
-    .col-md-9 {
-        width: 100%;
+    /* Full width content */
+    .col-md-9,
+    .container-fluid,
+    #page-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
+    /* Better page breaks */
     .question-item {
         break-inside: avoid;
         page-break-inside: avoid;
+        margin-bottom: 1.5rem;
+        border: 1px solid #ccc !important;
+    }
+
+    .case-statement {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    /* Visible answer feedback */
+    .answer-feedback {
+        display: block !important;
+    }
+
+    /* Show correct answers clearly */
+    .list-group-item-success {
+        border: 2px solid #198754 !important;
+        font-weight: bold;
+    }
+
+    /* Better typography for print */
+    body {
+        font-size: 11pt !important;
+        line-height: 1.5 !important;
+    }
+
+    h2, h3, h4 {
+        page-break-after: avoid;
+    }
+
+    /* Case title header for print */
+    .case-header h2::before {
+        content: "Caso Práctico: ";
+        font-weight: normal;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    /* Add page number */
+    @page {
+        margin: 2cm;
+        @bottom-right {
+            content: counter(page);
+        }
     }
 }

@@ -29,6 +29,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      */
     var BulkActions = function() {
         this.selectedIds = [];
+        this.strings = {};
         this.init();
     };
 
@@ -36,8 +37,44 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Initialize bulk actions.
      */
     BulkActions.prototype.init = function() {
-        this.bindEvents();
-        this.updateBulkActionsVisibility();
+        var self = this;
+
+        // Pre-load strings.
+        Str.get_strings([
+            {key: 'confirmdeleteselected', component: 'local_casospracticos'},
+            {key: 'confirmpublishselected', component: 'local_casospracticos'},
+            {key: 'confirmarchiveselected', component: 'local_casospracticos'},
+            {key: 'delete'},
+            {key: 'cancel'},
+            {key: 'publish', component: 'local_casospracticos'},
+            {key: 'archive', component: 'local_casospracticos'},
+            {key: 'move', component: 'local_casospracticos'},
+            {key: 'nocasesselected', component: 'local_casospracticos'},
+            {key: 'casesdeleted', component: 'local_casospracticos'},
+            {key: 'casespublished', component: 'local_casospracticos'},
+            {key: 'casesarchived', component: 'local_casospracticos'},
+            {key: 'casesmoved', component: 'local_casospracticos'},
+            {key: 'selecttargetcategory', component: 'local_casospracticos'}
+        ]).then(function(strings) {
+            self.strings = {
+                confirmDelete: strings[0],
+                confirmPublish: strings[1],
+                confirmArchive: strings[2],
+                delete: strings[3],
+                cancel: strings[4],
+                publish: strings[5],
+                archive: strings[6],
+                move: strings[7],
+                noCasesSelected: strings[8],
+                casesDeleted: strings[9],
+                casesPublished: strings[10],
+                casesArchived: strings[11],
+                casesMoved: strings[12],
+                selectTargetCategory: strings[13]
+            };
+            self.bindEvents();
+            self.updateBulkActionsVisibility();
+        }).catch(Notification.exception);
     };
 
     /**
@@ -71,9 +108,10 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      */
     BulkActions.prototype.updateSelection = function() {
         this.selectedIds = [];
+        var self = this;
         $('.case-select-checkbox:checked').each(function() {
-            this.selectedIds.push(parseInt($(this).val(), 10));
-        }.bind(this));
+            self.selectedIds.push(parseInt($(this).val(), 10));
+        });
 
         this.updateBulkActionsVisibility();
         this.updateSelectedCount();
@@ -98,6 +136,22 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     };
 
     /**
+     * Show loading indicator.
+     */
+    BulkActions.prototype.showLoading = function() {
+        $('[data-bulk-action]').prop('disabled', true);
+        $('.bulk-actions-container').addClass('loading');
+    };
+
+    /**
+     * Hide loading indicator.
+     */
+    BulkActions.prototype.hideLoading = function() {
+        $('[data-bulk-action]').prop('disabled', false);
+        $('.bulk-actions-container').removeClass('loading');
+    };
+
+    /**
      * Execute a bulk action.
      *
      * @param {string} action The action to execute.
@@ -105,7 +159,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     BulkActions.prototype.executeBulkAction = function(action) {
         if (this.selectedIds.length === 0) {
             Notification.addNotification({
-                message: 'No cases selected',
+                message: this.strings.noCasesSelected,
                 type: 'warning'
             });
             return;
@@ -131,6 +185,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 this.exportCSV();
                 break;
             default:
+                // eslint-disable-next-line no-console
                 console.warn('Unknown bulk action:', action);
         }
     };
@@ -141,22 +196,17 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     BulkActions.prototype.confirmDelete = function() {
         var self = this;
 
-        Str.get_strings([
-            {key: 'confirmdeleteselected', component: 'local_casospracticos'},
-            {key: 'delete'},
-            {key: 'cancel'}
-        ]).then(function(strings) {
-            return ModalFactory.create({
-                type: ModalFactory.types.SAVE_CANCEL,
-                title: strings[1],
-                body: strings[0].replace('{$a}', self.selectedIds.length)
-            });
+        ModalFactory.create({
+            type: ModalFactory.types.SAVE_CANCEL,
+            title: this.strings.delete,
+            body: this.strings.confirmDelete.replace('{$a}', this.selectedIds.length)
         }).then(function(modal) {
-            modal.setSaveButtonText(Str.get_string('delete'));
+            modal.setSaveButtonText(self.strings.delete);
             modal.getRoot().on(ModalEvents.save, function() {
                 self.doDelete();
             });
             modal.show();
+            return modal;
         }).catch(Notification.exception);
     };
 
@@ -165,24 +215,30 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      */
     BulkActions.prototype.doDelete = function() {
         var self = this;
+        this.showLoading();
 
         Ajax.call([{
             methodname: 'local_casospracticos_bulk_delete',
             args: {caseids: this.selectedIds}
         }])[0].done(function(response) {
+            self.hideLoading();
             if (response.success) {
                 Notification.addNotification({
-                    message: response.deleted.length + ' cases deleted',
+                    message: self.strings.casesDeleted.replace('{$a}', response.deleted.length),
                     type: 'success'
                 });
                 window.location.reload();
             } else {
                 Notification.addNotification({
-                    message: 'Some cases could not be deleted',
+                    message: response.deleted.length + ' deleted, ' + response.failed.length + ' failed',
                     type: 'warning'
                 });
+                window.location.reload();
             }
-        }).fail(Notification.exception);
+        }).fail(function(error) {
+            self.hideLoading();
+            Notification.exception(error);
+        });
     };
 
     /**
@@ -191,22 +247,17 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     BulkActions.prototype.confirmPublish = function() {
         var self = this;
 
-        Str.get_strings([
-            {key: 'confirmpublishselected', component: 'local_casospracticos'},
-            {key: 'publish', component: 'local_casospracticos'},
-            {key: 'cancel'}
-        ]).then(function(strings) {
-            return ModalFactory.create({
-                type: ModalFactory.types.SAVE_CANCEL,
-                title: strings[1],
-                body: strings[0].replace('{$a}', self.selectedIds.length)
-            });
+        ModalFactory.create({
+            type: ModalFactory.types.SAVE_CANCEL,
+            title: this.strings.publish,
+            body: this.strings.confirmPublish.replace('{$a}', this.selectedIds.length)
         }).then(function(modal) {
-            modal.setSaveButtonText(Str.get_string('publish', 'local_casospracticos'));
+            modal.setSaveButtonText(self.strings.publish);
             modal.getRoot().on(ModalEvents.save, function() {
                 self.doPublish();
             });
             modal.show();
+            return modal;
         }).catch(Notification.exception);
     };
 
@@ -214,28 +265,27 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Execute publish.
      */
     BulkActions.prototype.doPublish = function() {
+        var self = this;
+        this.showLoading();
+
         Ajax.call([{
             methodname: 'local_casospracticos_bulk_publish',
             args: {caseids: this.selectedIds}
         }])[0].done(function(response) {
-            if (response.success) {
-                Notification.addNotification({
-                    message: response.published.length + ' cases published',
-                    type: 'success'
-                });
-                window.location.reload();
-            } else {
-                var msg = response.published.length + ' cases published';
-                if (response.failed.length > 0) {
-                    msg += ', ' + response.failed.length + ' failed';
-                }
-                Notification.addNotification({
-                    message: msg,
-                    type: 'warning'
-                });
-                window.location.reload();
+            self.hideLoading();
+            var msg = self.strings.casesPublished.replace('{$a}', response.published.length);
+            if (response.failed.length > 0) {
+                msg += ' (' + response.failed.length + ' failed)';
             }
-        }).fail(Notification.exception);
+            Notification.addNotification({
+                message: msg,
+                type: response.success ? 'success' : 'warning'
+            });
+            window.location.reload();
+        }).fail(function(error) {
+            self.hideLoading();
+            Notification.exception(error);
+        });
     };
 
     /**
@@ -246,14 +296,15 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
 
         ModalFactory.create({
             type: ModalFactory.types.SAVE_CANCEL,
-            title: 'Archive Cases',
-            body: 'Are you sure you want to archive ' + this.selectedIds.length + ' cases?'
+            title: this.strings.archive,
+            body: this.strings.confirmArchive.replace('{$a}', this.selectedIds.length)
         }).then(function(modal) {
-            modal.setSaveButtonText('Archive');
+            modal.setSaveButtonText(self.strings.archive);
             modal.getRoot().on(ModalEvents.save, function() {
                 self.doArchive();
             });
             modal.show();
+            return modal;
         }).catch(Notification.exception);
     };
 
@@ -261,18 +312,37 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Execute archive.
      */
     BulkActions.prototype.doArchive = function() {
+        var self = this;
+        this.showLoading();
+
         Ajax.call([{
             methodname: 'local_casospracticos_bulk_archive',
             args: {caseids: this.selectedIds}
         }])[0].done(function(response) {
+            self.hideLoading();
             if (response.success) {
                 Notification.addNotification({
-                    message: response.archived.length + ' cases archived',
+                    message: self.strings.casesArchived.replace('{$a}', response.archived.length),
                     type: 'success'
                 });
                 window.location.reload();
             }
-        }).fail(Notification.exception);
+        }).fail(function(error) {
+            self.hideLoading();
+            Notification.exception(error);
+        });
+    };
+
+    /**
+     * Escape HTML entities to prevent XSS.
+     *
+     * @param {string} text Text to escape.
+     * @return {string} Escaped text.
+     */
+    BulkActions.prototype.escapeHtml = function(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     };
 
     /**
@@ -287,26 +357,32 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
             args: {}
         }])[0].done(function(categories) {
             var options = categories.map(function(cat) {
-                return '<option value="' + cat.id + '">' + cat.name + '</option>';
+                var indent = '';
+                for (var i = 0; i < cat.depth; i++) {
+                    indent += '&nbsp;&nbsp;';
+                }
+                // Escape category name to prevent XSS.
+                return '<option value="' + parseInt(cat.id, 10) + '">' + indent + self.escapeHtml(cat.name) + '</option>';
             }).join('');
 
             var body = '<div class="form-group">' +
-                '<label for="target-category">Select target category:</label>' +
+                '<label for="target-category">' + self.strings.selectTargetCategory + ':</label>' +
                 '<select class="form-control" id="target-category">' + options + '</select>' +
                 '</div>';
 
             ModalFactory.create({
                 type: ModalFactory.types.SAVE_CANCEL,
-                title: 'Move Cases',
+                title: self.strings.move,
                 body: body
             }).then(function(modal) {
-                modal.setSaveButtonText('Move');
+                modal.setSaveButtonText(self.strings.move);
                 modal.getRoot().on(ModalEvents.save, function() {
                     var categoryid = modal.getRoot().find('#target-category').val();
                     self.doMove(parseInt(categoryid, 10));
                 });
                 modal.show();
-            });
+                return modal;
+            }).catch(Notification.exception);
         }).fail(Notification.exception);
     };
 
@@ -316,26 +392,40 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {number} categoryid Target category ID.
      */
     BulkActions.prototype.doMove = function(categoryid) {
+        var self = this;
+        this.showLoading();
+
         Ajax.call([{
             methodname: 'local_casospracticos_bulk_move',
             args: {caseids: this.selectedIds, categoryid: categoryid}
         }])[0].done(function(response) {
+            self.hideLoading();
             if (response.success) {
                 Notification.addNotification({
-                    message: response.moved.length + ' cases moved',
+                    message: self.strings.casesMoved.replace('{$a}', response.moved.length),
                     type: 'success'
                 });
                 window.location.reload();
             }
-        }).fail(Notification.exception);
+        }).fail(function(error) {
+            self.hideLoading();
+            Notification.exception(error);
+        });
     };
 
     /**
      * Export selected cases to PDF.
      */
     BulkActions.prototype.exportPDF = function() {
+        // Validate IDs are integers and include sesskey for CSRF protection.
+        var validIds = this.selectedIds.filter(function(id) {
+            return Number.isInteger(id) && id > 0;
+        });
+        if (validIds.length === 0) {
+            return;
+        }
         var url = M.cfg.wwwroot + '/local/casospracticos/export.php?format=pdf&ids=' +
-            this.selectedIds.join(',');
+            validIds.join(',') + '&sesskey=' + M.cfg.sesskey;
         window.location.href = url;
     };
 
@@ -343,8 +433,15 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Export selected cases to CSV.
      */
     BulkActions.prototype.exportCSV = function() {
+        // Validate IDs are integers and include sesskey for CSRF protection.
+        var validIds = this.selectedIds.filter(function(id) {
+            return Number.isInteger(id) && id > 0;
+        });
+        if (validIds.length === 0) {
+            return;
+        }
         var url = M.cfg.wwwroot + '/local/casospracticos/export.php?format=csv&ids=' +
-            this.selectedIds.join(',');
+            validIds.join(',') + '&sesskey=' + M.cfg.sesskey;
         window.location.href = url;
     };
 

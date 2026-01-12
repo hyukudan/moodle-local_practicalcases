@@ -132,6 +132,18 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     };
 
     /**
+     * Escape HTML entities to prevent XSS.
+     *
+     * @param {string} text Text to escape.
+     * @return {string} Escaped text.
+     */
+    CaseEditor.prototype.escapeHtml = function(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+
+    /**
      * Save inline edit.
      *
      * @param {jQuery} element The element.
@@ -140,20 +152,26 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {string} originalText The original text.
      */
     CaseEditor.prototype.saveInlineEdit = function(element, questionId, newText, originalText) {
+        var self = this;
         if (newText.trim() === originalText.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim()) {
             element.html(originalText);
             return;
         }
 
+        // Escape HTML before sending to prevent XSS, then add line breaks.
+        var escapedText = this.escapeHtml(newText);
+        var htmlText = escapedText.replace(/\n/g, '<br>');
+
         Ajax.call([{
             methodname: 'local_casospracticos_update_question',
             args: {
                 id: questionId,
-                questiontext: newText.replace(/\n/g, '<br>')
+                questiontext: htmlText
             }
         }])[0].done(function(response) {
             if (response.success) {
-                element.html(newText.replace(/\n/g, '<br>'));
+                // Use the escaped text for display.
+                element.html(htmlText);
                 Notification.addNotification({
                     message: 'Pregunta actualizada',
                     type: 'success'

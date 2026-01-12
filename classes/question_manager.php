@@ -46,6 +46,12 @@ class question_manager {
     /** @var string Question type: short answer */
     const QTYPE_SHORTANSWER = 'shortanswer';
 
+    /** @var string Question type: essay */
+    const QTYPE_ESSAY = 'essay';
+
+    /** @var string Question type: matching */
+    const QTYPE_MATCHING = 'matching';
+
     /**
      * Get a question by ID.
      *
@@ -93,8 +99,17 @@ class question_manager {
      */
     public static function get_by_case_with_answers(int $caseid): array {
         $questions = self::get_by_case($caseid);
+
+        if (empty($questions)) {
+            return [];
+        }
+
+        // Optimized: Load all answers in a single query instead of N+1.
+        $questionids = array_keys($questions);
+        $answersbyquestion = self::get_answers_for_questions($questionids);
+
         foreach ($questions as $question) {
-            $question->answers = self::get_answers($question->id);
+            $question->answers = $answersbyquestion[$question->id] ?? [];
         }
         return $questions;
     }
@@ -111,23 +126,22 @@ class question_manager {
 
         $questions = $DB->get_records(self::TABLE, ['caseid' => $caseid]);
 
-        if (count($questions) <= $count) {
-            // Return all if not enough questions.
-            foreach ($questions as $question) {
-                $question->answers = self::get_answers($question->id);
-            }
-            return array_values($questions);
+        if (empty($questions)) {
+            return [];
         }
 
-        // Shuffle and pick random.
+        // Shuffle and pick random (or all if not enough).
         $keys = array_keys($questions);
         shuffle($keys);
-        $selected = array_slice($keys, 0, $count);
+        $selectedkeys = count($questions) <= $count ? $keys : array_slice($keys, 0, $count);
+
+        // Optimized: Load all answers in a single query instead of N+1.
+        $answersbyquestion = self::get_answers_for_questions($selectedkeys);
 
         $result = [];
-        foreach ($selected as $key) {
+        foreach ($selectedkeys as $key) {
             $question = $questions[$key];
-            $question->answers = self::get_answers($question->id);
+            $question->answers = $answersbyquestion[$question->id] ?? [];
             $result[] = $question;
         }
 
@@ -311,6 +325,39 @@ class question_manager {
     public static function get_answers(int $questionid): array {
         global $DB;
         return $DB->get_records(self::ANSWERS_TABLE, ['questionid' => $questionid], 'sortorder ASC');
+    }
+
+    /**
+     * Get answers for multiple questions in a single query (batch load).
+     *
+     * @param array $questionids Array of question IDs
+     * @return array Associative array [questionid => [answers...]]
+     */
+    public static function get_answers_for_questions(array $questionids): array {
+        global $DB;
+
+        if (empty($questionids)) {
+            return [];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+        $answers = $DB->get_records_select(
+            self::ANSWERS_TABLE,
+            "questionid $insql",
+            $params,
+            'questionid, sortorder ASC'
+        );
+
+        // Group by question ID.
+        $result = [];
+        foreach ($questionids as $qid) {
+            $result[$qid] = [];
+        }
+        foreach ($answers as $answer) {
+            $result[$answer->questionid][] = $answer;
+        }
+
+        return $result;
     }
 
     /**
