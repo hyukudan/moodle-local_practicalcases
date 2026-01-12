@@ -308,6 +308,8 @@ $string['error:nopermission'] = 'You do not have permission to perform this acti
 $string['error:invaliddata'] = 'Invalid data provided';
 $string['error:nocases'] = 'No cases selected';
 $string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';
+$string['error:sessionexpired'] = 'Your practice session has expired. Please start a new attempt.';
+$string['error:invalidsession'] = 'Invalid practice session';
 
 // Privacy.
 $string['privacy:metadata:local_cp_cases'] = 'Stores practical cases created by users';
@@ -400,6 +402,7 @@ $string['cases_help'] = 'Hold Ctrl/Cmd to select multiple cases. If you select s
 // Scheduled tasks.
 $string['task:cleanupabandoned'] = 'Cleanup abandoned practice attempts';
 $string['task:cleanupauditlogs'] = 'Cleanup old audit log entries';
+$string['task:cleanuppracticesessions'] = 'Cleanup expired practice sessions';
 
 // Achievements / Gamification.
 $string['achievements'] = 'Achievements';

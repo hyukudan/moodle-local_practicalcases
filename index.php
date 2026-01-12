@@ -115,20 +115,30 @@ if ($action && confirm_sesskey()) {
             break;
 
         case 'publish':
-            require_capability('local/casospracticos:edit', $context);
-            case_manager::set_status($id, case_manager::STATUS_PUBLISHED);
-            \core\notification::success(get_string('caseupdated', 'local_casospracticos'));
-            break;
-
         case 'archive':
-            require_capability('local/casospracticos:edit', $context);
-            case_manager::set_status($id, case_manager::STATUS_ARCHIVED);
-            \core\notification::success(get_string('caseupdated', 'local_casospracticos'));
-            break;
-
         case 'draft':
             require_capability('local/casospracticos:edit', $context);
-            case_manager::set_status($id, case_manager::STATUS_DRAFT);
+
+            // Verificar propiedad del caso.
+            $case = case_manager::get($id);
+            if (!$case) {
+                throw new moodle_exception('error:casenotfound', 'local_casospracticos');
+            }
+
+            // Solo el owner o usuarios con editall pueden cambiar el estado.
+            if ($case->createdby != $USER->id && !has_capability('local/casospracticos:editall', $context)) {
+                throw new moodle_exception('error:nopermission', 'local_casospracticos');
+            }
+
+            // Determinar el nuevo estado según la acción.
+            $newstatus = match($action) {
+                'publish' => case_manager::STATUS_PUBLISHED,
+                'archive' => case_manager::STATUS_ARCHIVED,
+                'draft' => case_manager::STATUS_DRAFT,
+                default => throw new coding_exception('Invalid action: ' . $action)
+            };
+
+            case_manager::set_status($id, $newstatus);
             \core\notification::success(get_string('caseupdated', 'local_casospracticos'));
             break;
     }
@@ -211,7 +221,8 @@ echo html_writer::start_div('row');
 echo html_writer::start_div('col-md-3');
 echo html_writer::tag('h4', get_string('categories', 'local_casospracticos'));
 
-$categories = category_manager::get_flat_tree();
+// Optimized: Use single query with counts instead of N+1 queries.
+$categories = category_manager::get_flat_tree_with_counts();
 if (empty($categories)) {
     echo html_writer::tag('p', get_string('nocategories', 'local_casospracticos'), ['class' => 'text-muted']);
 } else {
@@ -227,10 +238,10 @@ if (empty($categories)) {
 
     foreach ($categories as $category) {
         $class = $category->id == $categoryid ? 'list-group-item active' : 'list-group-item';
-        $indent = str_repeat('&nbsp;&nbsp;', $category->depth);
+        $indent = str_repeat('&nbsp;&nbsp;', (int)$category->depth);
         $url = new moodle_url('/local/casospracticos/index.php', ['category' => $category->id]);
 
-        $casecount = category_manager::count_cases($category->id);
+        $casecount = $category->casecount ?? 0;
         $badge = html_writer::tag('span', $casecount, ['class' => 'badge bg-secondary float-end']);
 
         $actions = '';

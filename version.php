@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011113;  // v1.0.3: Ownership verification, rate limiting, security hardening.
+$plugin->version   = 2026011214;  // v1.0.4: Security fixes (ownership, SQL, sessions) and performance.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.3';
+$plugin->release   = '1.0.4';

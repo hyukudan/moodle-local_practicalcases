@@ -297,6 +297,9 @@ $string['error:questionnotfound'] = 'Pregunta no encontrada';
 $string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
 $string['error:invaliddata'] = 'Datos proporcionados no válidos';
 $string['error:nocases'] = 'No hay casos seleccionados';
+$string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
+$string['error:sessionexpired'] = 'Tu sesión de práctica ha expirado. Por favor inicia un nuevo intento.';
+$string['error:invalidsession'] = 'Sesión de práctica inválida';
 
 // Privacy.
 $string['privacy:metadata:local_cp_cases'] = 'Almacena los casos prácticos creados por los usuarios';
@@ -388,6 +391,8 @@ $string['cases_help'] = 'Mantenga presionado Ctrl/Cmd para seleccionar múltiple
 
 // Scheduled tasks.
 $string['task:cleanupabandoned'] = 'Limpiar intentos de práctica abandonados';
+$string['task:cleanupauditlogs'] = 'Limpiar entradas antiguas del registro de auditoría';
+$string['task:cleanuppracticesessions'] = 'Limpiar sesiones de práctica expiradas';
 
 // Achievements / Gamification.
 $string['achievements'] = 'Logros';

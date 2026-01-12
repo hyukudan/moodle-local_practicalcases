@@ -15,41 +15,39 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Scheduled tasks for local_casospracticos.
+ * Scheduled task to clean up expired practice sessions.
  *
  * @package    local_casospracticos
  * @copyright  2026 Sergio C.
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace local_casospracticos\task;
+
+use local_casospracticos\practice_session_manager;
+
 defined('MOODLE_INTERNAL') || die();
 
-$tasks = [
-    [
-        'classname' => 'local_casospracticos\task\cleanup_abandoned_attempts',
-        'blocking' => 0,
-        'minute' => '30',
-        'hour' => '3',
-        'day' => '*',
-        'month' => '*',
-        'dayofweek' => '*',
-    ],
-    [
-        'classname' => 'local_casospracticos\task\cleanup_audit_logs',
-        'blocking' => 0,
-        'minute' => '0',
-        'hour' => '2',
-        'day' => '*',
-        'month' => '*',
-        'dayofweek' => '*',
-    ],
-    [
-        'classname' => 'local_casospracticos\task\cleanup_practice_sessions',
-        'blocking' => 0,
-        'minute' => '*/30',  // Every 30 minutes.
-        'hour' => '*',
-        'day' => '*',
-        'month' => '*',
-        'dayofweek' => '*',
-    ],
-];
+/**
+ * Scheduled task to clean up expired practice sessions.
+ */
+class cleanup_practice_sessions extends \core\task\scheduled_task {
+
+    /**
+     * Get task name.
+     */
+    public function get_name() {
+        return get_string('task:cleanuppracticesessions', 'local_casospracticos');
+    }
+
+    /**
+     * Execute task.
+     */
+    public function execute() {
+        $count = practice_session_manager::cleanup_expired_sessions();
+
+        if ($count > 0) {
+            mtrace("Cleaned up {$count} expired practice sessions.");
+        }
+    }
+}

@@ -337,7 +337,14 @@ class case_manager {
      */
     public static function get_total_marks(int $id): float {
         global $DB;
-        return (float) $DB->get_field('local_cp_questions', 'SUM(defaultmark)', ['caseid' => $id]) ?? 0;
+
+        $sql = "SELECT COALESCE(SUM(defaultmark), 0) as total
+                FROM {local_cp_questions}
+                WHERE caseid = :caseid";
+
+        $result = $DB->get_record_sql($sql, ['caseid' => $id]);
+
+        return (float) $result->total;
     }
 
     /**
