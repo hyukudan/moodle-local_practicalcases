@@ -173,6 +173,37 @@ if ($submit) {
                     break;
                 }
             }
+
+        } else if ($question->qtype === 'essay') {
+            $response = optional_param($paramname, '', PARAM_RAW);
+            $result->response = $response;
+            $result->score = 0; // Essays must be graded manually.
+            $result->correct = false;
+            $result->feedback = get_string('essaymanualgrading', 'local_casospracticos');
+
+        } else if ($question->qtype === 'matching') {
+            $result->matches = [];
+            // Get all submitted pairs.
+            if (!empty($question->subquestions)) {
+                foreach ($question->subquestions as $subq) {
+                    $matchparam = $paramname . '_' . $subq->id;
+                    $selectedmatch = optional_param($matchparam, '', PARAM_TEXT);
+                    $result->matches[$subq->id] = $selectedmatch;
+                }
+                // Score matching.
+                $correctcount = 0;
+                $totalcount = count($question->subquestions);
+                foreach ($question->subquestions as $subq) {
+                    if (isset($result->matches[$subq->id]) &&
+                        strcasecmp(trim($result->matches[$subq->id]), trim($subq->answertext)) === 0) {
+                        $correctcount++;
+                    }
+                }
+                if ($totalcount > 0) {
+                    $result->score = ($correctcount / $totalcount) * $question->defaultmark;
+                    $result->correct = ($correctcount == $totalcount);
+                }
+            }
         }
 
         $score += $result->score ?? 0;

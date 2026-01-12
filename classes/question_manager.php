@@ -46,6 +46,12 @@ class question_manager {
     /** @var string Question type: short answer */
     const QTYPE_SHORTANSWER = 'shortanswer';
 
+    /** @var string Question type: essay */
+    const QTYPE_ESSAY = 'essay';
+
+    /** @var string Question type: matching */
+    const QTYPE_MATCHING = 'matching';
+
     /**
      * Get a question by ID.
      *

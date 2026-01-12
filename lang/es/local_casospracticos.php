@@ -421,6 +421,18 @@ $string['scoredetail'] = 'Obtuviste {$a->score} de {$a->maxscore} puntos';
 $string['questionx'] = 'Pregunta {$a}';
 $string['correctanswer'] = 'Respuesta correcta';
 
+// Question types.
+$string['qtype_multichoice'] = 'Opción Múltiple';
+$string['qtype_truefalse'] = 'Verdadero/Falso';
+$string['qtype_shortanswer'] = 'Respuesta Corta';
+$string['qtype_essay'] = 'Ensayo';
+$string['qtype_matching'] = 'Emparejamiento';
+$string['essayinfo'] = 'Las preguntas tipo ensayo serán calificadas manualmente por un instructor';
+$string['essaymanualgrading'] = 'Este ensayo será revisado y calificado por un instructor';
+$string['youressay'] = 'Escribe tu ensayo aquí...';
+$string['matchingpairs'] = 'Empareja cada elemento de la izquierda con uno de la derecha';
+$string['choosedots'] = 'Elegir...';
+
 // Achievements / Gamification.
 $string['achievements'] = 'Logros';
 $string['gamificationdisabled'] = 'La gamificación está actualmente deshabilitada';
