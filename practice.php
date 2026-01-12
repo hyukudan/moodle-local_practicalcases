@@ -149,7 +149,7 @@ if ($submit) {
             $result->selectedids = $selected >= 0 ? [$selected] : [];
 
             foreach ($question->answers as $answer) {
-                if ($answer->id == $selected) {
+                if ((int) $answer->id === (int) $selected) {
                     $result->score = $answer->fraction * $question->defaultmark;
                     $result->correct = ($answer->fraction >= 0.99);
                     if (!empty($answer->feedback)) {

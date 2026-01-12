@@ -218,6 +218,10 @@ if (empty($case->questions)) {
 } else {
     $qtypes = local_casospracticos_get_supported_qtypes();
 
+    // Performance: Pre-load all answers in a single query to avoid N+1.
+    $questionids = array_column($case->questions, 'id');
+    $allanswers = question_manager::get_answers_for_questions($questionids);
+
     foreach ($case->questions as $index => $question) {
         echo html_writer::start_div('question-item card mb-3');
         echo html_writer::start_div('card-header d-flex justify-content-between align-items-center');
@@ -278,8 +282,8 @@ if (empty($case->questions)) {
         // Question text.
         echo html_writer::div(format_text($question->questiontext, $question->questiontextformat), 'question-text mb-3');
 
-        // Answers.
-        $answers = question_manager::get_answers($question->id);
+        // Answers (using pre-loaded data to avoid N+1 queries).
+        $answers = $allanswers[$question->id] ?? [];
         if (!empty($answers)) {
             echo html_writer::start_tag('ul', ['class' => 'list-group']);
             foreach ($answers as $answer) {

@@ -91,7 +91,7 @@ class api extends external_api {
             return false;
         }
 
-        return $case->createdby == $USER->id;
+        return (int) $case->createdby === (int) $USER->id;
     }
 
     /**
@@ -125,7 +125,7 @@ class api extends external_api {
             return false;
         }
 
-        return $case->createdby == $USER->id;
+        return (int) $case->createdby === (int) $USER->id;
     }
 
     /**
@@ -283,6 +283,15 @@ class api extends external_api {
         $case = case_manager::get_with_questions($params['id']);
         if (!$case) {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+
+        // Security: Draft cases can only be viewed by their creator or users with editall.
+        global $USER;
+        $context = \context_system::instance();
+        if ($case->status === 'draft' && (int) $case->createdby !== (int) $USER->id) {
+            if (!has_capability('local/casospracticos:editall', $context)) {
+                throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+            }
         }
 
         $questions = [];

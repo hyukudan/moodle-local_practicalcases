@@ -453,19 +453,34 @@ class bulk_manager {
             $transaction = $DB->start_delegated_transaction();
             try {
                 $now = time();
-                foreach ($existingcases as $caseid => $case) {
-                    $existingtags = $case->tags ? json_decode($case->tags, true) : [];
+                $caseidstoprocess = array_keys($existingcases);
 
-                    if ($replace) {
-                        $newtags = $tags;
-                    } else {
+                if ($replace) {
+                    // Performance: When replacing, all cases get same tags - batch update.
+                    $encodedtags = json_encode(array_values($tags));
+                    list($upinsql, $upparams) = $DB->get_in_or_equal($caseidstoprocess, SQL_PARAMS_NAMED);
+                    $upparams['tags'] = $encodedtags;
+                    $upparams['now'] = $now;
+                    $DB->execute(
+                        "UPDATE {local_cp_cases} SET tags = :tags, timemodified = :now WHERE id " . $upinsql,
+                        $upparams
+                    );
+                    $updated = $caseidstoprocess;
+                } else {
+                    // Merge requires per-case processing, but batch timemodified update.
+                    foreach ($existingcases as $caseid => $case) {
+                        $existingtags = $case->tags ? json_decode($case->tags, true) : [];
                         $newtags = array_unique(array_merge($existingtags, $tags));
+                        $DB->set_field('local_cp_cases', 'tags', json_encode(array_values($newtags)), ['id' => $caseid]);
+                        $updated[] = $caseid;
                     }
-
-                    $DB->set_field('local_cp_cases', 'tags', json_encode(array_values($newtags)), ['id' => $caseid]);
-                    $DB->set_field('local_cp_cases', 'timemodified', $now, ['id' => $caseid]);
-
-                    $updated[] = $caseid;
+                    // Batch update timemodified for all processed cases.
+                    list($upinsql, $upparams) = $DB->get_in_or_equal($updated, SQL_PARAMS_NAMED);
+                    $upparams['now'] = $now;
+                    $DB->execute(
+                        "UPDATE {local_cp_cases} SET timemodified = :now WHERE id " . $upinsql,
+                        $upparams
+                    );
                 }
 
                 $transaction->allow_commit();

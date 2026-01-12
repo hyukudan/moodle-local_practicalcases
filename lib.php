@@ -109,6 +109,12 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
 
     $fs = get_file_storage();
     $relativepath = implode('/', $args);
+
+    // Security: Prevent path traversal attacks.
+    if (strpos($relativepath, '..') !== false) {
+        return false;
+    }
+
     $fullpath = "/{$context->id}/local_casospracticos/{$filearea}/{$relativepath}";
     $file = $fs->get_file_by_hash(sha1($fullpath));
 

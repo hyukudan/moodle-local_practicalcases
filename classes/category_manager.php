@@ -69,8 +69,25 @@ class category_manager {
      * @return array Nested array of categories
      */
     public static function get_tree(): array {
-        $categories = self::get_all();
-        return self::build_tree($categories, 0);
+        // Performance: Use cache to avoid rebuilding tree on every request.
+        $cache = \cache::make('local_casospracticos', 'categorytree');
+        $tree = $cache->get('tree');
+
+        if ($tree === false) {
+            $categories = self::get_all();
+            $tree = self::build_tree($categories, 0);
+            $cache->set('tree', $tree);
+        }
+
+        return $tree;
+    }
+
+    /**
+     * Invalidate the category tree cache.
+     */
+    public static function invalidate_cache(): void {
+        $cache = \cache::make('local_casospracticos', 'categorytree');
+        $cache->delete('tree');
     }
 
     /**
@@ -162,7 +179,9 @@ class category_manager {
         $record->timecreated = time();
         $record->timemodified = time();
 
-        return $DB->insert_record(self::TABLE, $record);
+        $id = $DB->insert_record(self::TABLE, $record);
+        self::invalidate_cache();
+        return $id;
     }
 
     /**
@@ -185,7 +204,9 @@ class category_manager {
         }
         $record->timemodified = time();
 
-        return $DB->update_record(self::TABLE, $record);
+        $result = $DB->update_record(self::TABLE, $record);
+        self::invalidate_cache();
+        return $result;
     }
 
     /**
@@ -208,7 +229,9 @@ class category_manager {
             throw new \moodle_exception('categoryhascases', 'local_casospracticos');
         }
 
-        return $DB->delete_records(self::TABLE, ['id' => $id]);
+        $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+        self::invalidate_cache();
+        return $result;
     }
 
     /**

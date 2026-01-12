@@ -350,28 +350,28 @@ class provider implements
 
         // Anonymize cases created by these users.
         $DB->execute(
-            "UPDATE {local_cp_cases} SET createdby = 0 WHERE createdby {$insql}",
+            "UPDATE {local_cp_cases} SET createdby = 0 WHERE createdby " . $insql,
             $inparams
         );
 
         // Anonymize audit log entries.
         $DB->execute(
-            "UPDATE {local_cp_audit_log} SET userid = 0 WHERE userid {$insql}",
+            "UPDATE {local_cp_audit_log} SET userid = 0 WHERE userid " . $insql,
             $inparams
         );
 
         // Anonymize reviews.
         $DB->execute(
-            "UPDATE {local_cp_reviews} SET reviewerid = 0 WHERE reviewerid {$insql}",
+            "UPDATE {local_cp_reviews} SET reviewerid = 0 WHERE reviewerid " . $insql,
             $inparams
         );
 
         // Delete practice attempts and responses.
-        $attempts = $DB->get_fieldset_select('local_cp_practice_attempts', 'id', "userid {$insql}", $inparams);
+        $attempts = $DB->get_fieldset_select('local_cp_practice_attempts', 'id', "userid " . $insql, $inparams);
         if (!empty($attempts)) {
             list($attinsql, $attparams) = $DB->get_in_or_equal($attempts);
-            $DB->delete_records_select('local_cp_practice_responses', "attemptid {$attinsql}", $attparams);
+            $DB->delete_records_select('local_cp_practice_responses', "attemptid " . $attinsql, $attparams);
         }
-        $DB->delete_records_select('local_cp_practice_attempts', "userid {$insql}", $inparams);
+        $DB->delete_records_select('local_cp_practice_attempts', "userid " . $insql, $inparams);
     }
 }

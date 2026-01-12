@@ -86,6 +86,8 @@ if ($action && confirm_sesskey()) {
 
         case 'publish':
             if ($caseid) {
+                // Security: Publishing requires editall capability.
+                require_capability('local/casospracticos:editall', $context);
                 workflow_manager::publish($caseid);
                 \core\notification::success(get_string('casepublished', 'local_casospracticos'));
             }

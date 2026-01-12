@@ -330,7 +330,7 @@ class filter_manager {
             $filters['status'] = strpos($status, ',') !== false ? explode(',', $status) : $status;
         }
 
-        $difficulty = optional_param('difficulty', '', PARAM_RAW);
+        $difficulty = optional_param('difficulty', '', PARAM_TEXT);
         if ($difficulty !== '') {
             $filters['difficulty'] = strpos($difficulty, ',') !== false ?
                 array_map('intval', explode(',', $difficulty)) : (int)$difficulty;
@@ -372,6 +372,12 @@ class filter_manager {
     public static function parse_sort_from_request(): array {
         $sort = optional_param('sort', 'timemodified', PARAM_ALPHANUMEXT);
         $order = optional_param('order', 'DESC', PARAM_ALPHA);
+
+        // Security: Whitelist validation for sort field to prevent SQL injection.
+        $allowedsorts = ['name', 'timecreated', 'timemodified', 'difficulty', 'status', 'questioncount'];
+        if (!in_array($sort, $allowedsorts)) {
+            $sort = 'timemodified';
+        }
 
         return [
             'sort' => $sort,
