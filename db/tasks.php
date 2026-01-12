@@ -52,4 +52,13 @@ $tasks = [
         'month' => '*',
         'dayofweek' => '*',
     ],
+    [
+        'classname' => 'local_casospracticos\task\expire_timed_attempts',
+        'blocking' => 0,
+        'minute' => '*/15',  // Every 15 minutes.
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
 ];

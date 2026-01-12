@@ -150,6 +150,14 @@ if (!empty($case->questions)) {
         ['class' => 'btn-info']
     );
 
+    // Timed practice button - available to all viewers.
+    $buttons[] = $OUTPUT->single_button(
+        new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $id]),
+        get_string('timedpractice', 'local_casospracticos'),
+        'get',
+        ['class' => 'btn-warning']
+    );
+
     // My attempts button - available to all viewers.
     $buttons[] = $OUTPUT->single_button(
         new moodle_url('/local/casospracticos/my_attempts.php', ['caseid' => $id]),

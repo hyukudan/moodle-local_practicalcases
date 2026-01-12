@@ -15,17 +15,39 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other metadata.
+ * Scheduled task to expire old timed practice attempts.
  *
  * @package    local_casospracticos
  * @copyright  2026 Sergio C.
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace local_casospracticos\task;
+
+use local_casospracticos\timed_attempt_manager;
+
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011215;  // v1.1.0: Secure sessions + Timed practice mode.
-$plugin->requires  = 2024042200;  // Moodle 4.4+
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.1.0';
+/**
+ * Scheduled task to expire old timed practice attempts.
+ */
+class expire_timed_attempts extends \core\task\scheduled_task {
+
+    /**
+     * Get task name.
+     */
+    public function get_name() {
+        return get_string('task:expiretimedattempts', 'local_casospracticos');
+    }
+
+    /**
+     * Execute task.
+     */
+    public function execute() {
+        $count = timed_attempt_manager::expire_old_attempts();
+
+        if ($count > 0) {
+            mtrace("Expired {$count} timed practice attempts.");
+        }
+    }
+}

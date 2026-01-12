@@ -393,6 +393,33 @@ $string['cases_help'] = 'Mantenga presionado Ctrl/Cmd para seleccionar múltiple
 $string['task:cleanupabandoned'] = 'Limpiar intentos de práctica abandonados';
 $string['task:cleanupauditlogs'] = 'Limpiar entradas antiguas del registro de auditoría';
 $string['task:cleanuppracticesessions'] = 'Limpiar sesiones de práctica expiradas';
+$string['task:expiretimedattempts'] = 'Expirar intentos cronometrados antiguos';
+
+// Timed practice mode.
+$string['timedpractice'] = 'Práctica Cronometrada';
+$string['starttimedpractice'] = 'Iniciar Práctica Cronometrada';
+$string['timelimit'] = 'Límite de Tiempo';
+$string['timeleft'] = 'Tiempo Restante';
+$string['timespent'] = 'Tiempo Empleado';
+$string['timedpracticewarning'] = 'Advertencia: Modo de Práctica Cronometrada';
+$string['timedpracticewarning_desc'] = 'Una vez que comiences, el temporizador comenzará la cuenta regresiva. No puedes pausar el temporizador. Si se agota el tiempo, tus respuestas se enviarán automáticamente.';
+$string['timestatistics'] = 'Estadísticas de Tiempo';
+$string['timedresults'] = 'Resultados de Práctica Cronometrada';
+$string['selecttimelimit'] = 'Seleccionar límite de tiempo (minutos)';
+$string['backtocaseview'] = 'Volver al Caso';
+$string['started'] = 'Iniciado';
+$string['finished'] = 'Finalizado';
+$string['detailedresults'] = 'Resultados Detallados';
+$string['questionscore'] = 'Puntuación de la Pregunta';
+$string['submitanswers'] = 'Enviar Respuestas';
+$string['error:attemptnotfound'] = 'Intento cronometrado no encontrado';
+$string['eventtimedattemptsubmitted'] = 'Intento cronometrado enviado';
+$string['congratspassed'] = '¡Felicitaciones! ¡Has aprobado!';
+$string['notpassedyet'] = 'No has aprobado aún. El umbral de aprobación es {$a}%. ¡Inténtalo de nuevo!';
+$string['yourscore'] = 'Tu puntuación';
+$string['scoredetail'] = 'Obtuviste {$a->score} de {$a->maxscore} puntos';
+$string['questionx'] = 'Pregunta {$a}';
+$string['correctanswer'] = 'Respuesta correcta';
 
 // Achievements / Gamification.
 $string['achievements'] = 'Logros';

@@ -27,10 +27,12 @@ require_once(__DIR__ . '/../../config.php');
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
 use local_casospracticos\stats_manager;
+use local_casospracticos\practice_session_manager;
 
 $caseid = required_param('id', PARAM_INT);
 $submit = optional_param('submit', 0, PARAM_BOOL);
 $shuffle = optional_param('shuffle', 0, PARAM_BOOL);
+$sessiontoken = optional_param('token', '', PARAM_ALPHANUM);
 
 $context = context_system::instance();
 require_login();
@@ -61,17 +63,47 @@ $PAGE->navbar->add(get_string('practice', 'local_casospracticos'));
 // Get questions with answers.
 $questions = question_manager::get_with_answers($caseid);
 
-// Shuffle questions if requested.
-if ($shuffle && !$submit) {
+// Handle session-based question order (secure implementation).
+if ($shuffle && !$submit && empty($sessiontoken)) {
+    // New session: shuffle and create secure token.
     shuffle($questions);
-    // Store shuffled order in session.
-    $SESSION->casopractico_order[$caseid] = array_column($questions, 'id');
-} else if ($submit && isset($SESSION->casopractico_order[$caseid])) {
-    // Restore order from session.
-    $order = $SESSION->casopractico_order[$caseid];
-    usort($questions, function($a, $b) use ($order) {
-        return array_search($a->id, $order) - array_search($b->id, $order);
-    });
+    $questionids = array_column($questions, 'id');
+    $sessiontoken = practice_session_manager::create_session($caseid, $USER->id, $questionids);
+
+    // Redirect to include token in URL.
+    redirect(new moodle_url('/local/casospracticos/practice.php', [
+        'id' => $caseid,
+        'token' => $sessiontoken
+    ]));
+
+} else if (!empty($sessiontoken)) {
+    // Restore order from secure session.
+    $session = practice_session_manager::get_session($sessiontoken);
+
+    if (!$session) {
+        // Session expired or invalid.
+        \core\notification::error(get_string('error:sessionexpired', 'local_casospracticos'));
+        redirect(new moodle_url('/local/casospracticos/practice.php', ['id' => $caseid]));
+    }
+
+    // Verify session belongs to current user.
+    if (!practice_session_manager::verify_session_ownership($sessiontoken, $USER->id)) {
+        throw new moodle_exception('error:invalidsession', 'local_casospracticos');
+    }
+
+    $questionorder = json_decode($session->questionorder, true);
+
+    // Reorder questions according to session.
+    $orderedquestions = [];
+    foreach ($questionorder as $qid) {
+        foreach ($questions as $q) {
+            if ($q->id == $qid) {
+                $orderedquestions[] = $q;
+                break;
+            }
+        }
+    }
+    $questions = $orderedquestions;
 }
 
 // Process submitted answers.
@@ -157,6 +189,11 @@ if ($submit) {
         ];
     }
     stats_manager::record_practice_attempt($caseid, $USER->id, $score, $maxscore, $responsedata);
+
+    // Clean up session after attempt is completed.
+    if (!empty($sessiontoken)) {
+        practice_session_manager::delete_session($sessiontoken);
+    }
 }
 
 echo $OUTPUT->header();
@@ -189,6 +226,9 @@ if ($submit) {
 
 // Start form.
 $formurl = new moodle_url('/local/casospracticos/practice.php', ['id' => $caseid, 'submit' => 1]);
+if (!empty($sessiontoken)) {
+    $formurl->param('token', $sessiontoken);
+}
 echo html_writer::start_tag('form', ['method' => 'post', 'action' => $formurl]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
 

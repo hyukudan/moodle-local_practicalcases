@@ -403,6 +403,33 @@ $string['cases_help'] = 'Hold Ctrl/Cmd to select multiple cases. If you select s
 $string['task:cleanupabandoned'] = 'Cleanup abandoned practice attempts';
 $string['task:cleanupauditlogs'] = 'Cleanup old audit log entries';
 $string['task:cleanuppracticesessions'] = 'Cleanup expired practice sessions';
+$string['task:expiretimedattempts'] = 'Expire old timed practice attempts';
+
+// Timed practice mode.
+$string['timedpractice'] = 'Timed Practice';
+$string['starttimedpractice'] = 'Start Timed Practice';
+$string['timelimit'] = 'Time Limit';
+$string['timeleft'] = 'Time Remaining';
+$string['timespent'] = 'Time Spent';
+$string['timedpracticewarning'] = 'Warning: Timed Practice Mode';
+$string['timedpracticewarning_desc'] = 'Once you start, the timer will begin counting down. You cannot pause the timer. If time runs out, your answers will be automatically submitted.';
+$string['timestatistics'] = 'Time Statistics';
+$string['timedresults'] = 'Timed Practice Results';
+$string['selecttimelimit'] = 'Select time limit (minutes)';
+$string['backtocaseview'] = 'Back to Case';
+$string['started'] = 'Started';
+$string['finished'] = 'Finished';
+$string['detailedresults'] = 'Detailed Results';
+$string['questionscore'] = 'Question Score';
+$string['submitanswers'] = 'Submit Answers';
+$string['error:attemptnotfound'] = 'Timed attempt not found';
+$string['eventtimedattemptsubmitted'] = 'Timed attempt submitted';
+$string['congratspassed'] = 'Congratulations! You passed!';
+$string['notpassedyet'] = 'You didn\'t pass yet. The pass threshold is {$a}%. Try again!';
+$string['yourscore'] = 'Your score';
+$string['scoredetail'] = 'You scored {$a->score} out of {$a->maxscore} points';
+$string['questionx'] = 'Question {$a}';
+$string['correctanswer'] = 'Correct answer';
 
 // Achievements / Gamification.
 $string['achievements'] = 'Achievements';
