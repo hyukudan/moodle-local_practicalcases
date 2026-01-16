@@ -66,10 +66,8 @@ class timed_attempt_manager {
         $attempt->caseid = $caseid;
         $attempt->userid = $userid;
         $attempt->timelimit = $timelimit * 60; // Convert to seconds.
-        $attempt->timestart = time();
-        $attempt->timeend = time() + ($timelimit * 60);
+        $attempt->timestarted = time();
         $attempt->status = self::STATUS_INPROGRESS;
-        $attempt->questionorder = json_encode($questionids);
         $attempt->timecreated = time();
 
         return $DB->insert_record(self::TABLE, $attempt);
@@ -98,7 +96,7 @@ class timed_attempt_manager {
             return 0;
         }
 
-        $timeleft = $attempt->timeend - time();
+        $timeleft = ($attempt->timestarted + $attempt->timelimit) - time();
         return max(0, $timeleft);
     }
 
@@ -125,9 +123,8 @@ class timed_attempt_manager {
         $update->score = $score;
         $update->maxscore = $maxscore;
         $update->percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
-        $update->responsedata = json_encode($responsedata);
-        $update->timespent = $timespent;
-        $update->timefinished = time();
+        $update->responses = json_encode($responsedata);
+        $update->timesubmitted = time();
 
         $DB->update_record(self::TABLE, $update);
 
@@ -189,7 +186,7 @@ class timed_attempt_manager {
                 WHERE userid = :userid
                   AND caseid = :caseid
                   AND status = :status
-                ORDER BY percentage DESC, timefinished ASC
+                ORDER BY percentage DESC, timesubmitted ASC
                 LIMIT 1";
 
         return $DB->get_record_sql($sql, [
@@ -225,7 +222,7 @@ class timed_attempt_manager {
 
         $count = $DB->count_records_select(
             self::TABLE,
-            'status = :status AND timeend < :now',
+            'status = :status AND (timestarted + timelimit) < :now',
             ['status' => self::STATUS_INPROGRESS, 'now' => time()]
         );
 
@@ -233,7 +230,7 @@ class timed_attempt_manager {
             self::TABLE,
             'status',
             self::STATUS_EXPIRED,
-            'status = :status AND timeend < :now',
+            'status = :status AND (timestarted + timelimit) < :now',
             ['status' => self::STATUS_INPROGRESS, 'now' => time()]
         );
 
