@@ -107,15 +107,42 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
         return false;
     }
 
-    $fs = get_file_storage();
-    $relativepath = implode('/', $args);
-
-    // Security: Prevent path traversal attacks.
-    if (strpos($relativepath, '..') !== false) {
+    // Validate allowed file areas.
+    $allowedfileareas = ['case_attachments', 'statement'];
+    if (!in_array($filearea, $allowedfileareas)) {
         return false;
     }
 
-    $fullpath = "/{$context->id}/local_casospracticos/{$filearea}/{$relativepath}";
+    $fs = get_file_storage();
+
+    // For case_attachments, the first arg is the case ID (itemid).
+    if ($filearea === 'case_attachments') {
+        $itemid = array_shift($args);
+        $relativepath = implode('/', $args);
+
+        // Validate case exists.
+        $case = \local_casospracticos\case_manager::get((int)$itemid);
+        if (!$case) {
+            return false;
+        }
+
+        // Security: Prevent path traversal attacks.
+        if (strpos($relativepath, '..') !== false) {
+            return false;
+        }
+
+        $fullpath = "/{$context->id}/local_casospracticos/{$filearea}/{$itemid}/{$relativepath}";
+    } else {
+        $relativepath = implode('/', $args);
+
+        // Security: Prevent path traversal attacks.
+        if (strpos($relativepath, '..') !== false) {
+            return false;
+        }
+
+        $fullpath = "/{$context->id}/local_casospracticos/{$filearea}/{$relativepath}";
+    }
+
     $file = $fs->get_file_by_hash(sha1($fullpath));
 
     if (!$file || $file->is_directory()) {
@@ -123,4 +150,71 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
     }
 
     send_stored_file($file, 0, 0, $forcedownload, $options);
+}
+
+/**
+ * Get file options for case attachments filearea.
+ *
+ * @return array File options for the filepicker.
+ */
+function local_casospracticos_get_attachment_options(): array {
+    return [
+        'subdirs' => 0,
+        'maxbytes' => 10485760, // 10MB max per file.
+        'maxfiles' => 10,       // Up to 10 attachments per case.
+        'accepted_types' => [
+            // Documents.
+            '.doc', '.docx', '.odt', '.rtf',
+            // Spreadsheets.
+            '.xls', '.xlsx', '.ods', '.csv',
+            // Presentations.
+            '.ppt', '.pptx', '.odp',
+            // PDFs.
+            '.pdf',
+            // Images.
+            '.jpg', '.jpeg', '.png', '.gif', '.svg',
+            // Archives (for resource bundles).
+            '.zip',
+        ],
+        'context' => context_system::instance(),
+    ];
+}
+
+/**
+ * Get the file type icon class for a given filename.
+ *
+ * @param string $filename The filename.
+ * @return array Array with 'icon' (Font Awesome class) and 'type' (human readable type).
+ */
+function local_casospracticos_get_file_icon(string $filename): array {
+    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+    $types = [
+        // Word documents.
+        'doc' => ['icon' => 'fa-file-word text-primary', 'type' => 'Word'],
+        'docx' => ['icon' => 'fa-file-word text-primary', 'type' => 'Word'],
+        'odt' => ['icon' => 'fa-file-word text-primary', 'type' => 'Document'],
+        'rtf' => ['icon' => 'fa-file-word text-primary', 'type' => 'Document'],
+        // Excel/Spreadsheets.
+        'xls' => ['icon' => 'fa-file-excel text-success', 'type' => 'Excel'],
+        'xlsx' => ['icon' => 'fa-file-excel text-success', 'type' => 'Excel'],
+        'ods' => ['icon' => 'fa-file-excel text-success', 'type' => 'Spreadsheet'],
+        'csv' => ['icon' => 'fa-file-csv text-success', 'type' => 'CSV'],
+        // PowerPoint/Presentations.
+        'ppt' => ['icon' => 'fa-file-powerpoint text-danger', 'type' => 'PowerPoint'],
+        'pptx' => ['icon' => 'fa-file-powerpoint text-danger', 'type' => 'PowerPoint'],
+        'odp' => ['icon' => 'fa-file-powerpoint text-danger', 'type' => 'Presentation'],
+        // PDF.
+        'pdf' => ['icon' => 'fa-file-pdf text-danger', 'type' => 'PDF'],
+        // Images.
+        'jpg' => ['icon' => 'fa-file-image text-info', 'type' => 'Image'],
+        'jpeg' => ['icon' => 'fa-file-image text-info', 'type' => 'Image'],
+        'png' => ['icon' => 'fa-file-image text-info', 'type' => 'Image'],
+        'gif' => ['icon' => 'fa-file-image text-info', 'type' => 'Image'],
+        'svg' => ['icon' => 'fa-file-image text-info', 'type' => 'Image'],
+        // Archives.
+        'zip' => ['icon' => 'fa-file-archive text-warning', 'type' => 'ZIP'],
+    ];
+
+    return $types[$extension] ?? ['icon' => 'fa-file text-secondary', 'type' => 'File'];
 }

@@ -149,10 +149,6 @@ class exporter {
             foreach ($caseids as $id) {
                 $case = case_manager::get_with_questions($id);
                 if ($case) {
-                    // Load answers for each question.
-                    foreach ($case->questions as $question) {
-                        $question->answers = question_manager::get_answers($question->id);
-                    }
                     $cases[] = $case;
                 }
             }
@@ -160,20 +156,41 @@ class exporter {
             $caselist = case_manager::get_by_category($categoryid);
             foreach ($caselist as $case) {
                 $fullcase = case_manager::get_with_questions($case->id);
-                foreach ($fullcase->questions as $question) {
-                    $question->answers = question_manager::get_answers($question->id);
+                if ($fullcase) {
+                    $cases[] = $fullcase;
                 }
-                $cases[] = $fullcase;
             }
         } else {
             // All cases.
             $caselist = case_manager::get_all();
             foreach ($caselist as $case) {
                 $fullcase = case_manager::get_with_questions($case->id);
-                foreach ($fullcase->questions as $question) {
-                    $question->answers = question_manager::get_answers($question->id);
+                if ($fullcase) {
+                    $cases[] = $fullcase;
                 }
-                $cases[] = $fullcase;
+            }
+        }
+
+        // Performance optimization: Batch load all answers in a single query instead of N+1.
+        if (!empty($cases)) {
+            // Collect all question IDs across all cases.
+            $allquestionids = [];
+            foreach ($cases as $case) {
+                foreach ($case->questions as $question) {
+                    $allquestionids[] = $question->id;
+                }
+            }
+
+            // Batch fetch all answers at once.
+            if (!empty($allquestionids)) {
+                $allanswers = question_manager::get_answers_for_questions($allquestionids);
+
+                // Assign answers to their respective questions.
+                foreach ($cases as $case) {
+                    foreach ($case->questions as $question) {
+                        $question->answers = $allanswers[$question->id] ?? [];
+                    }
+                }
             }
         }
 

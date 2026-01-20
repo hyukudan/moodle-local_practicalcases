@@ -218,7 +218,7 @@ class case_manager {
     }
 
     /**
-     * Delete a case and all its questions.
+     * Delete a case and all its questions and attachments.
      *
      * @param int $id Case ID
      * @return bool Success
@@ -235,6 +235,9 @@ class case_manager {
             foreach ($questions as $question) {
                 question_manager::delete($question->id);
             }
+
+            // Delete all attachments.
+            self::delete_attachments($id);
 
             $result = $DB->delete_records(self::TABLE, ['id' => $id]);
 
@@ -421,5 +424,169 @@ class case_manager {
                 ORDER BY c.name ASC";
 
         return $DB->get_records_sql($sql, $params);
+    }
+
+    /**
+     * Get attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return array Array of file objects with download URLs
+     */
+    public static function get_attachments(int $caseid): array {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $files = $fs->get_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            'filename',
+            false
+        );
+
+        $attachments = [];
+        foreach ($files as $file) {
+            $filename = $file->get_filename();
+            $fileinfo = local_casospracticos_get_file_icon($filename);
+
+            $url = \moodle_url::make_pluginfile_url(
+                $context->id,
+                'local_casospracticos',
+                'case_attachments',
+                $caseid,
+                $file->get_filepath(),
+                $filename,
+                true // Force download.
+            );
+
+            $viewurl = \moodle_url::make_pluginfile_url(
+                $context->id,
+                'local_casospracticos',
+                'case_attachments',
+                $caseid,
+                $file->get_filepath(),
+                $filename,
+                false // View inline if possible.
+            );
+
+            $attachments[] = (object)[
+                'id' => $file->get_id(),
+                'filename' => $filename,
+                'filepath' => $file->get_filepath(),
+                'filesize' => $file->get_filesize(),
+                'filesizeformatted' => display_size($file->get_filesize()),
+                'mimetype' => $file->get_mimetype(),
+                'timecreated' => $file->get_timecreated(),
+                'timemodified' => $file->get_timemodified(),
+                'downloadurl' => $url->out(false),
+                'viewurl' => $viewurl->out(false),
+                'icon' => $fileinfo['icon'],
+                'type' => $fileinfo['type'],
+                'isimage' => strpos($file->get_mimetype(), 'image/') === 0,
+                'isembeddable' => self::is_embeddable($file->get_mimetype()),
+            ];
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Check if a file type can be embedded for preview.
+     *
+     * @param string $mimetype The file MIME type.
+     * @return bool True if embeddable.
+     */
+    private static function is_embeddable(string $mimetype): bool {
+        $embeddable = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/svg+xml',
+        ];
+        return in_array($mimetype, $embeddable);
+    }
+
+    /**
+     * Save attachments for a case from file manager draft area.
+     *
+     * @param int $caseid Case ID
+     * @param int $draftitemid Draft item ID from form submission
+     * @return void
+     */
+    public static function save_attachments(int $caseid, int $draftitemid): void {
+        $context = \context_system::instance();
+
+        file_save_draft_area_files(
+            $draftitemid,
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            local_casospracticos_get_attachment_options()
+        );
+    }
+
+    /**
+     * Delete all attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return void
+     */
+    public static function delete_attachments(int $caseid): void {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $fs->delete_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid
+        );
+    }
+
+    /**
+     * Count attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return int Number of attachments
+     */
+    public static function count_attachments(int $caseid): int {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $files = $fs->get_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            'filename',
+            false
+        );
+
+        return count($files);
+    }
+
+    /**
+     * Get draft item ID for editing existing attachments.
+     *
+     * @param int $caseid Case ID
+     * @return int Draft item ID
+     */
+    public static function get_attachments_draft_itemid(int $caseid): int {
+        $context = \context_system::instance();
+        $draftitemid = 0;
+
+        file_prepare_draft_area(
+            $draftitemid,
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            local_casospracticos_get_attachment_options()
+        );
+
+        return $draftitemid;
     }
 }

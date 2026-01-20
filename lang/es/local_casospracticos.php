@@ -76,6 +76,13 @@ $string['difficulty'] = 'Dificultad';
 $string['difficulty_help'] = 'Nivel de dificultad del 1 (fácil) al 5 (difícil)';
 $string['tags'] = 'Etiquetas';
 
+// Attachments.
+$string['attachments'] = 'Archivos adjuntos';
+$string['attachments_help'] = 'Adjunta materiales de apoyo como documentos de Word, hojas de cálculo de Excel, PDFs o imágenes. Los estudiantes pueden descargar estos archivos para trabajar en los ejercicios. Formatos soportados: Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF, imágenes y archivos ZIP.';
+$string['noattachments'] = 'Sin archivos adjuntos';
+$string['downloadattachment'] = 'Descargar archivo adjunto';
+$string['viewattachment'] = 'Ver archivo adjunto';
+
 // Status.
 $string['status'] = 'Estado';
 $string['status_draft'] = 'Borrador';
@@ -415,6 +422,14 @@ $string['questionscore'] = 'Puntuación de la Pregunta';
 $string['submitanswers'] = 'Enviar Respuestas';
 $string['error:attemptnotfound'] = 'Intento cronometrado no encontrado';
 $string['eventtimedattemptsubmitted'] = 'Intento cronometrado enviado';
+
+// Auto-guardado.
+$string['autosave'] = 'Auto-guardado';
+$string['autosaveenabled'] = 'El auto-guardado está activado. Tus respuestas se guardan automáticamente cada 30 segundos.';
+$string['autosavesuccess'] = 'Respuestas guardadas';
+$string['autosavefailed'] = 'Error en el auto-guardado';
+$string['responsesrestored'] = 'Tus respuestas anteriores han sido restauradas.';
+
 $string['congratspassed'] = '¡Felicitaciones! ¡Has aprobado!';
 $string['notpassedyet'] = 'No has aprobado aún. El umbral de aprobación es {$a}%. ¡Inténtalo de nuevo!';
 $string['yourscore'] = 'Tu puntuación';

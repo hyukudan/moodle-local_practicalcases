@@ -38,9 +38,9 @@ class category_manager {
      * Get a category by ID.
      *
      * @param int $id Category ID
-     * @return object|false Category object or false if not found
+     * @return \stdClass|false Category object or false if not found
      */
-    public static function get(int $id) {
+    public static function get(int $id): \stdClass|false {
         global $DB;
         return $DB->get_record(self::TABLE, ['id' => $id]);
     }

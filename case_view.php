@@ -209,6 +209,56 @@ echo html_writer::end_div();
 echo html_writer::div(format_text($case->statement, $case->statementformat), 'card-body');
 echo html_writer::end_div();
 
+// Attachments.
+$attachments = case_manager::get_attachments($id);
+if (!empty($attachments)) {
+    echo html_writer::start_div('case-attachments card mb-4');
+    echo html_writer::start_div('card-header bg-light');
+    echo html_writer::tag('h5', get_string('attachments', 'local_casospracticos') .
+        ' <span class="badge bg-secondary">' . count($attachments) . '</span>', ['class' => 'mb-0']);
+    echo html_writer::end_div();
+    echo html_writer::start_div('card-body');
+    echo html_writer::start_tag('ul', ['class' => 'list-group list-group-flush']);
+
+    foreach ($attachments as $attachment) {
+        echo html_writer::start_tag('li', ['class' => 'list-group-item d-flex justify-content-between align-items-center']);
+
+        // File info with icon.
+        $fileinfo = html_writer::tag('i', '', ['class' => 'fa ' . $attachment->icon . ' me-2', 'aria-hidden' => 'true']);
+        $fileinfo .= html_writer::tag('span', $attachment->filename, ['class' => 'fw-medium']);
+        $fileinfo .= html_writer::tag('span', ' (' . $attachment->filesizeformatted . ')', ['class' => 'text-muted small']);
+        echo html_writer::div($fileinfo);
+
+        // Action buttons.
+        echo html_writer::start_div('btn-group btn-group-sm');
+
+        // Download button.
+        echo html_writer::link(
+            $attachment->downloadurl,
+            html_writer::tag('i', '', ['class' => 'fa fa-download', 'aria-hidden' => 'true']) . ' ' .
+            get_string('download', 'moodle'),
+            ['class' => 'btn btn-outline-primary btn-sm', 'title' => get_string('download', 'moodle')]
+        );
+
+        // View button for embeddable files.
+        if ($attachment->isembeddable) {
+            echo html_writer::link(
+                $attachment->viewurl,
+                html_writer::tag('i', '', ['class' => 'fa fa-eye', 'aria-hidden' => 'true']) . ' ' .
+                get_string('view'),
+                ['class' => 'btn btn-outline-secondary btn-sm', 'target' => '_blank', 'title' => get_string('view')]
+            );
+        }
+
+        echo html_writer::end_div(); // btn-group
+        echo html_writer::end_tag('li');
+    }
+
+    echo html_writer::end_tag('ul');
+    echo html_writer::end_div(); // card-body
+    echo html_writer::end_div(); // card
+}
+
 // Questions.
 echo html_writer::tag('h4', get_string('questions', 'local_casospracticos') .
     ' (' . count($case->questions) . ')');

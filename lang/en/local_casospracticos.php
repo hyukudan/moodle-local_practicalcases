@@ -78,6 +78,13 @@ $string['difficulty'] = 'Difficulty';
 $string['difficulty_help'] = 'Difficulty level from 1 (easy) to 5 (hard)';
 $string['tags'] = 'Tags';
 
+// Attachments.
+$string['attachments'] = 'Attachments';
+$string['attachments_help'] = 'Attach supporting materials such as Word documents, Excel spreadsheets, PDFs, or images. Students can download these files to work on exercises. Supported formats: Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF, images, and ZIP archives.';
+$string['noattachments'] = 'No attachments';
+$string['downloadattachment'] = 'Download attachment';
+$string['viewattachment'] = 'View attachment';
+
 // Status.
 $string['status'] = 'Status';
 $string['status_draft'] = 'Draft';
@@ -425,6 +432,13 @@ $string['questionscore'] = 'Question Score';
 $string['submitanswers'] = 'Submit Answers';
 $string['error:attemptnotfound'] = 'Timed attempt not found';
 $string['eventtimedattemptsubmitted'] = 'Timed attempt submitted';
+
+// Auto-save.
+$string['autosave'] = 'Auto-save';
+$string['autosaveenabled'] = 'Auto-save is enabled. Your answers are saved automatically every 30 seconds.';
+$string['autosavesuccess'] = 'Answers saved';
+$string['autosavefailed'] = 'Auto-save failed';
+$string['responsesrestored'] = 'Your previous answers have been restored.';
 $string['congratspassed'] = 'Congratulations! You passed!';
 $string['notpassedyet'] = 'You didn\'t pass yet. The pass threshold is {$a}%. Try again!';
 $string['yourscore'] = 'Your score';

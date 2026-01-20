@@ -56,9 +56,9 @@ class question_manager {
      * Get a question by ID.
      *
      * @param int $id Question ID
-     * @return object|false Question object or false if not found
+     * @return \stdClass|false Question object or false if not found
      */
-    public static function get(int $id) {
+    public static function get(int $id): \stdClass|false {
         global $DB;
         return $DB->get_record(self::TABLE, ['id' => $id]);
     }
@@ -67,9 +67,9 @@ class question_manager {
      * Get a question with its answers.
      *
      * @param int $id Question ID
-     * @return object|false Question object with answers array
+     * @return \stdClass|false Question object with answers array
      */
-    public static function get_with_answers(int $id) {
+    public static function get_with_answers(int $id): \stdClass|false {
         $question = self::get($id);
         if (!$question) {
             return false;

@@ -345,5 +345,31 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026011215, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026011800) {
+        // v1.3.0: File attachments support for Word/Excel exercises.
+        // No schema changes needed - uses Moodle's file API with 'case_attachments' filearea.
+        // This upgrade step documents the feature addition:
+        // - Cases can now have file attachments (Word, Excel, PDF, images, ZIP)
+        // - Files are served via pluginfile.php handler in lib.php
+        // - Attachments are managed in case_edit.php with Moodle's filemanager element
+        // - Displayed in case_view.php with download and view (if embeddable) options
+
+        upgrade_plugin_savepoint(true, 2026011800, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011801) {
+        // v1.3.0: Auto-save for timed practice mode.
+        // Add 'responses' field to timed_attempts table for storing draft responses.
+
+        $table = new xmldb_table('local_cp_timed_attempts');
+        $field = new xmldb_field('responses', XMLDB_TYPE_TEXT, null, null, null, null, null, 'status');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011801, 'local', 'casospracticos');
+    }
+
     return true;
 }

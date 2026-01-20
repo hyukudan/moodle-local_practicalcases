@@ -1260,4 +1260,66 @@ class api extends external_api {
             ])
         );
     }
+
+    // ==================== PRACTICE AUTO-SAVE ====================
+
+    /**
+     * Parameters for save_practice_responses.
+     */
+    public static function save_practice_responses_parameters() {
+        return new external_function_parameters([
+            'attemptid' => new external_value(PARAM_INT, 'Timed attempt ID'),
+            'responses' => new external_value(PARAM_RAW, 'JSON-encoded responses'),
+        ]);
+    }
+
+    /**
+     * Save practice responses for auto-save functionality.
+     */
+    public static function save_practice_responses($attemptid, $responses) {
+        global $USER;
+
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/casospracticos:view', $context);
+        self::check_rate_limit('save_practice_responses', 'write');
+
+        $params = self::validate_parameters(self::save_practice_responses_parameters(), [
+            'attemptid' => $attemptid,
+            'responses' => $responses,
+        ]);
+
+        // Decode responses JSON.
+        $responsesdata = json_decode($params['responses'], true);
+        if (!is_array($responsesdata)) {
+            throw new \moodle_exception('error:invaliddata', 'local_casospracticos');
+        }
+
+        // Save responses (manager verifies ownership and attempt status).
+        $success = \local_casospracticos\timed_attempt_manager::save_responses(
+            $params['attemptid'],
+            $USER->id,
+            $responsesdata
+        );
+
+        // Get time left for client sync.
+        $timeleft = \local_casospracticos\timed_attempt_manager::get_time_left($params['attemptid']);
+
+        return [
+            'success' => $success,
+            'timeleft' => $timeleft,
+            'servertime' => time(),
+        ];
+    }
+
+    /**
+     * Returns for save_practice_responses.
+     */
+    public static function save_practice_responses_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success'),
+            'timeleft' => new external_value(PARAM_INT, 'Time left in seconds'),
+            'servertime' => new external_value(PARAM_INT, 'Server timestamp for sync'),
+        ]);
+    }
 }

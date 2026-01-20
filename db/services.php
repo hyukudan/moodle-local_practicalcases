@@ -188,6 +188,16 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'local/casospracticos:review',
     ],
+
+    // Practice auto-save.
+    'local_casospracticos_save_practice_responses' => [
+        'classname' => 'local_casospracticos\external\api',
+        'methodname' => 'save_practice_responses',
+        'description' => 'Auto-save practice responses during timed practice',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/casospracticos:view',
+    ],
 ];
 
 // Define the service.

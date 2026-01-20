@@ -213,6 +213,15 @@ $PAGE->requires->js_call_amd('local_casospracticos/timer', 'init', [
     'autosubmit' => true
 ]);
 
+// Include auto-save JavaScript.
+$PAGE->requires->js_call_amd('local_casospracticos/practice_autosave', 'init', [
+    'attemptId' => $attemptid,
+    'formSelector' => '#timed-practice-form'
+]);
+
+// Load saved responses to restore form state.
+$savedresponses = timed_attempt_manager::get_saved_responses($attemptid);
+
 echo $OUTPUT->header();
 
 // Timer display.
@@ -232,6 +241,20 @@ if (!$submit) {
     echo html_writer::tag('strong', get_string('timedpracticewarning', 'local_casospracticos'));
     echo html_writer::tag('p', get_string('timedpracticewarning_desc', 'local_casospracticos'));
     echo html_writer::end_div();
+
+    // Auto-save notification.
+    echo html_writer::start_div('alert alert-info d-flex align-items-center');
+    echo html_writer::tag('i', '', ['class' => 'fa fa-save me-2', 'aria-hidden' => 'true']);
+    echo html_writer::tag('span', get_string('autosaveenabled', 'local_casospracticos'));
+    echo html_writer::end_div();
+
+    // Show notification if responses were restored.
+    if (!empty($savedresponses)) {
+        echo html_writer::start_div('alert alert-success d-flex align-items-center');
+        echo html_writer::tag('i', '', ['class' => 'fa fa-check-circle me-2', 'aria-hidden' => 'true']);
+        echo html_writer::tag('span', get_string('responsesrestored', 'local_casospracticos'));
+        echo html_writer::end_div();
+    }
 }
 
 // Start form.
@@ -256,6 +279,9 @@ foreach ($questions as $question) {
         'question-text mb-3'
     );
 
+    // Get saved response for this question if available.
+    $savedvalue = $savedresponses[$question->id] ?? null;
+
     if ($question->qtype === 'multichoice') {
         $paramname = 'q' . $question->id;
 
@@ -264,6 +290,10 @@ foreach ($questions as $question) {
             foreach ($question->answers as $answer) {
                 $id = 'answer_' . $answer->id;
                 $attrs = ['type' => 'radio', 'name' => $paramname, 'value' => $answer->id, 'id' => $id];
+                // Restore saved selection.
+                if ($savedvalue !== null && (string)$savedvalue === (string)$answer->id) {
+                    $attrs['checked'] = 'checked';
+                }
                 echo html_writer::start_div('form-check');
                 echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
                 echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),
@@ -272,9 +302,14 @@ foreach ($questions as $question) {
             }
         } else {
             // Multiple choice checkboxes.
+            $savedarray = is_array($savedvalue) ? $savedvalue : [];
             foreach ($question->answers as $answer) {
                 $id = 'answer_' . $answer->id;
                 $attrs = ['type' => 'checkbox', 'name' => $paramname . '[]', 'value' => $answer->id, 'id' => $id];
+                // Restore saved selections.
+                if (in_array((string)$answer->id, $savedarray)) {
+                    $attrs['checked'] = 'checked';
+                }
                 echo html_writer::start_div('form-check');
                 echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
                 echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),
@@ -289,7 +324,8 @@ foreach ($questions as $question) {
             'type' => 'text',
             'name' => $paramname,
             'class' => 'form-control',
-            'placeholder' => get_string('youranswer', 'local_casospracticos')
+            'placeholder' => get_string('youranswer', 'local_casospracticos'),
+            'value' => $savedvalue ?? ''  // Restore saved text.
         ]);
 
     } else if ($question->qtype === 'truefalse') {
@@ -297,6 +333,10 @@ foreach ($questions as $question) {
         foreach ($question->answers as $answer) {
             $id = 'answer_' . $answer->id;
             $attrs = ['type' => 'radio', 'name' => $paramname, 'value' => $answer->id, 'id' => $id];
+            // Restore saved selection.
+            if ($savedvalue !== null && (string)$savedvalue === (string)$answer->id) {
+                $attrs['checked'] = 'checked';
+            }
             echo html_writer::start_div('form-check');
             echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
             echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),

@@ -65,6 +65,7 @@ class timed_attempt_manager {
         $attempt = new \stdClass();
         $attempt->caseid = $caseid;
         $attempt->userid = $userid;
+        $attempt->token = self::generate_token();
         $attempt->timelimit = $timelimit * 60; // Convert to seconds.
         $attempt->timestarted = time();
         $attempt->status = self::STATUS_INPROGRESS;
@@ -96,7 +97,8 @@ class timed_attempt_manager {
             return 0;
         }
 
-        $timeleft = ($attempt->timestarted + $attempt->timelimit) - time();
+        $timeend = $attempt->timestarted + $attempt->timelimit;
+        $timeleft = $timeend - time();
         return max(0, $timeleft);
     }
 
@@ -220,20 +222,84 @@ class timed_attempt_manager {
     public static function expire_old_attempts(): int {
         global $DB;
 
-        $count = $DB->count_records_select(
-            self::TABLE,
-            'status = :status AND (timestarted + timelimit) < :now',
-            ['status' => self::STATUS_INPROGRESS, 'now' => time()]
-        );
+        // Calculate expired attempts: timestarted + timelimit < now
+        $sql = 'status = :status AND (timestarted + timelimit) < :now';
+        $params = ['status' => self::STATUS_INPROGRESS, 'now' => time()];
+
+        $count = $DB->count_records_select(self::TABLE, $sql, $params);
 
         $DB->set_field_select(
             self::TABLE,
             'status',
             self::STATUS_EXPIRED,
-            'status = :status AND (timestarted + timelimit) < :now',
-            ['status' => self::STATUS_INPROGRESS, 'now' => time()]
+            $sql,
+            $params
         );
 
         return $count;
+    }
+
+    /**
+     * Save partial responses for auto-save functionality.
+     *
+     * @param int $attemptid Attempt ID
+     * @param int $userid User ID (for verification)
+     * @param array $responses Array of question responses
+     * @return bool Success
+     */
+    public static function save_responses(int $attemptid, int $userid, array $responses): bool {
+        global $DB;
+
+        $attempt = self::get_attempt($attemptid);
+        if (!$attempt) {
+            return false;
+        }
+
+        // Verify attempt belongs to user.
+        if ((int)$attempt->userid !== $userid) {
+            return false;
+        }
+
+        // Only save if attempt is still in progress.
+        if ($attempt->status !== self::STATUS_INPROGRESS) {
+            return false;
+        }
+
+        // Check if time has expired.
+        if (self::get_time_left($attemptid) <= 0) {
+            return false;
+        }
+
+        // Save the responses.
+        $update = new \stdClass();
+        $update->id = $attemptid;
+        $update->responses = json_encode($responses);
+
+        return $DB->update_record(self::TABLE, $update);
+    }
+
+    /**
+     * Get saved responses for an attempt.
+     *
+     * @param int $attemptid Attempt ID
+     * @return array Saved responses or empty array
+     */
+    public static function get_saved_responses(int $attemptid): array {
+        $attempt = self::get_attempt($attemptid);
+        if (!$attempt || empty($attempt->responses)) {
+            return [];
+        }
+
+        $responses = json_decode($attempt->responses, true);
+        return is_array($responses) ? $responses : [];
+    }
+
+    /**
+     * Generate a unique secure token for an attempt.
+     *
+     * @return string 64-character hex token
+     */
+    private static function generate_token(): string {
+        return bin2hex(random_bytes(32));
     }
 }

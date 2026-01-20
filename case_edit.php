@@ -84,6 +84,16 @@ class case_edit_form extends moodleform {
         $mform->addElement('text', 'tags', get_string('tags', 'local_casospracticos'), ['size' => 80]);
         $mform->setType('tags', PARAM_TEXT);
 
+        // Attachments (Word, Excel, PDF, etc.).
+        $mform->addElement(
+            'filemanager',
+            'attachments',
+            get_string('attachments', 'local_casospracticos'),
+            null,
+            local_casospracticos_get_attachment_options()
+        );
+        $mform->addHelpButton('attachments', 'attachments', 'local_casospracticos');
+
         $this->add_action_buttons();
     }
 
@@ -163,6 +173,8 @@ if ($case) {
         'format' => $case->statementformat,
     ];
     $formdata->tags = implode(', ', case_manager::decode_tags($case->tags));
+    // Load existing attachments into draft area.
+    $formdata->attachments = case_manager::get_attachments_draft_itemid($case->id);
     $form->set_data($formdata);
 } else if ($categoryid) {
     $form->set_data(['categoryid' => $categoryid]);
@@ -184,10 +196,18 @@ if ($form->is_cancelled()) {
     if ($data->id) {
         $record->id = $data->id;
         case_manager::update($record);
+        // Save attachments.
+        if (!empty($data->attachments)) {
+            case_manager::save_attachments($data->id, $data->attachments);
+        }
         \core\notification::success(get_string('caseupdated', 'local_casospracticos'));
         $redirectcategory = $record->categoryid;
     } else {
         $newid = case_manager::create($record);
+        // Save attachments for new case.
+        if (!empty($data->attachments)) {
+            case_manager::save_attachments($newid, $data->attachments);
+        }
         \core\notification::success(get_string('casecreated', 'local_casospracticos'));
         // Redirect to the case view to add questions.
         redirect(new moodle_url('/local/casospracticos/case_view.php', ['id' => $newid]));
