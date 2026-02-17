@@ -62,29 +62,41 @@ class observer {
             return;
         }
 
-        // Get all categories in this context.
-        $categories = $DB->get_records('local_cp_categories', ['contextid' => $context->id]);
+        // Batch delete: answers -> questions -> cases -> categories using subqueries.
+        // Delete answers for all questions in cases belonging to categories in this context.
+        $DB->execute(
+            "DELETE FROM {local_cp_answers}
+             WHERE questionid IN (
+                SELECT q.id FROM {local_cp_questions} q
+                JOIN {local_cp_cases} c ON c.id = q.caseid
+                JOIN {local_cp_categories} cat ON cat.id = c.categoryid
+                WHERE cat.contextid = ?
+             )",
+            [$context->id]
+        );
 
-        foreach ($categories as $category) {
-            // Get all cases in this category.
-            $cases = $DB->get_records('local_cp_cases', ['categoryid' => $category->id]);
+        // Delete questions.
+        $DB->execute(
+            "DELETE FROM {local_cp_questions}
+             WHERE caseid IN (
+                SELECT c.id FROM {local_cp_cases} c
+                JOIN {local_cp_categories} cat ON cat.id = c.categoryid
+                WHERE cat.contextid = ?
+             )",
+            [$context->id]
+        );
 
-            foreach ($cases as $case) {
-                // Delete all answers for questions in this case.
-                $questions = $DB->get_records('local_cp_questions', ['caseid' => $case->id]);
-                foreach ($questions as $question) {
-                    $DB->delete_records('local_cp_answers', ['questionid' => $question->id]);
-                }
+        // Delete cases.
+        $DB->execute(
+            "DELETE FROM {local_cp_cases}
+             WHERE categoryid IN (
+                SELECT cat.id FROM {local_cp_categories} cat
+                WHERE cat.contextid = ?
+             )",
+            [$context->id]
+        );
 
-                // Delete all questions.
-                $DB->delete_records('local_cp_questions', ['caseid' => $case->id]);
-            }
-
-            // Delete all cases.
-            $DB->delete_records('local_cp_cases', ['categoryid' => $category->id]);
-        }
-
-        // Delete all categories.
+        // Delete categories.
         $DB->delete_records('local_cp_categories', ['contextid' => $context->id]);
 
         // Invalidate caches.
