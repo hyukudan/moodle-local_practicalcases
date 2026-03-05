@@ -86,7 +86,8 @@ class case_manager {
             $params['status'] = $status;
         }
 
-        return $DB->get_records(self::TABLE, $params, $sort);
+        // Safety limit: a category shouldn't have more than 5000 cases.
+        return $DB->get_records(self::TABLE, $params, $sort, '*', 0, 5000);
     }
 
     /**
@@ -153,7 +154,10 @@ class case_manager {
             return self::get_all();
         }
 
-        return $DB->get_records_select(self::TABLE, $where, $params, 'name ASC');
+        // Safety limit: search results capped at 1000.
+        // NOTE: For API consumers, cursor-based pagination (WHERE id > :lastid) would be
+        // more efficient than OFFSET for large result sets. Current UI uses page numbers though.
+        return $DB->get_records_select(self::TABLE, $where, $params, 'name ASC', '*', 0, 1000);
     }
 
     /**
@@ -416,6 +420,7 @@ class case_manager {
             $params['status'] = $status;
         }
 
+        // Safety limit: capped at 5000 results.
         $sql = "SELECT c.*, COUNT(q.id) as questioncount
                 FROM {" . self::TABLE . "} c
                 LEFT JOIN {local_cp_questions} q ON q.caseid = c.id
@@ -423,7 +428,7 @@ class case_manager {
                 GROUP BY c.id
                 ORDER BY c.name ASC";
 
-        return $DB->get_records_sql($sql, $params);
+        return $DB->get_records_sql($sql, $params, 0, 5000);
     }
 
     /**
