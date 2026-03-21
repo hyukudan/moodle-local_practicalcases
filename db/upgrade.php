@@ -371,5 +371,25 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026011801, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026031600) {
+        // SQL audit fixes: add missing indexes on local_cp_practice_attempts for stats queries.
+
+        $table = new xmldb_table('local_cp_practice_attempts');
+
+        // Index for stats queries filtering by caseid+status and sorting by timefinished.
+        $index = new xmldb_index('caseid_status_timefinished', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'status', 'timefinished']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Index for user-specific attempt queries filtered by status.
+        $index = new xmldb_index('caseid_userid_status', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'userid', 'status']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026031600, 'local', 'casospracticos');
+    }
+
     return true;
 }

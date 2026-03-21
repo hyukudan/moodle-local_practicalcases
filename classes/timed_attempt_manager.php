@@ -188,7 +188,7 @@ class timed_attempt_manager {
                 WHERE userid = :userid
                   AND caseid = :caseid
                   AND status = :status
-                ORDER BY percentage DESC, timesubmitted ASC
+                ORDER BY percentage DESC, timefinished ASC
                 LIMIT 1";
 
         return $DB->get_record_sql($sql, [

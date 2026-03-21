@@ -118,14 +118,17 @@ class case_manager {
     }
 
     /**
-     * Search cases.
+     * Search cases with pagination.
      *
      * @param string $search Search term
      * @param int|null $categoryid Category filter
      * @param string|null $status Status filter
-     * @return array Array of matching cases
+     * @param int $page Page number (0-based)
+     * @param int $perpage Items per page
+     * @return array Array with 'cases', 'total', 'page', 'perpage'
      */
-    public static function search(string $search, int $categoryid = null, string $status = null): array {
+    public static function search(string $search, int $categoryid = null, string $status = null,
+                                  int $page = 0, int $perpage = 50): array {
         global $DB;
 
         $params = [];
@@ -151,13 +154,29 @@ class case_manager {
 
         $where = implode(' AND ', $conditions);
         if (empty($where)) {
-            return self::get_all();
+            $where = '1=1';
         }
 
-        // Safety limit: search results capped at 1000.
-        // NOTE: For API consumers, cursor-based pagination (WHERE id > :lastid) would be
-        // more efficient than OFFSET for large result sets. Current UI uses page numbers though.
-        return $DB->get_records_select(self::TABLE, $where, $params, 'name ASC', '*', 0, 1000);
+        // Count total matching records.
+        $total = $DB->count_records_select(self::TABLE, $where, $params);
+
+        // Deferred join: Phase 1 — get only IDs for the current page.
+        $ids = $DB->get_records_select(self::TABLE, $where, $params, 'name ASC', 'id', $page * $perpage, $perpage);
+
+        if (empty($ids)) {
+            return ['cases' => [], 'total' => $total, 'page' => $page, 'perpage' => $perpage];
+        }
+
+        // Phase 2: Full data for just those IDs.
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($ids), SQL_PARAMS_NAMED);
+        $cases = $DB->get_records_select(self::TABLE, "id $insql", $inparams, 'name ASC');
+
+        return [
+            'cases' => array_values($cases),
+            'total' => $total,
+            'page' => $page,
+            'perpage' => $perpage,
+        ];
     }
 
     /**
@@ -420,12 +439,16 @@ class case_manager {
             $params['status'] = $status;
         }
 
-        // Safety limit: capped at 5000 results.
-        $sql = "SELECT c.*, COUNT(q.id) as questioncount
+        // Use a subquery for question counts to avoid GROUP BY compatibility issues with PostgreSQL.
+        // PostgreSQL requires all non-aggregated SELECT columns to appear in GROUP BY.
+        $sql = "SELECT c.*, COALESCE(qc.questioncount, 0) AS questioncount
                 FROM {" . self::TABLE . "} c
-                LEFT JOIN {local_cp_questions} q ON q.caseid = c.id
+                LEFT JOIN (
+                    SELECT caseid, COUNT(*) AS questioncount
+                    FROM {local_cp_questions}
+                    GROUP BY caseid
+                ) qc ON qc.caseid = c.id
                 WHERE {$where}
-                GROUP BY c.id
                 ORDER BY c.name ASC";
 
         return $DB->get_records_sql($sql, $params, 0, 5000);

@@ -200,6 +200,8 @@
         <INDEX NAME="userid_status" UNIQUE="false" FIELDS="userid, status" COMMENT="For user attempts by status"/>
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
         <INDEX NAME="timefinished" UNIQUE="false" FIELDS="timefinished"/>
+        <INDEX NAME="caseid_status_timefinished" UNIQUE="false" FIELDS="caseid, status, timefinished" COMMENT="For stats queries: recent attempts, score distribution"/>
+        <INDEX NAME="caseid_userid_status" UNIQUE="false" FIELDS="caseid, userid, status" COMMENT="For user-specific attempt queries filtered by status"/>
       </INDEXES>
     </TABLE>
 

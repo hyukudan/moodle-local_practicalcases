@@ -26,6 +26,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
+use local_casospracticos\practice_engine;
 use local_casospracticos\stats_manager;
 use local_casospracticos\practice_session_manager;
 
@@ -61,12 +62,13 @@ $PAGE->navbar->add(format_string($case->name),
 $PAGE->navbar->add(get_string('practice', 'local_casospracticos'));
 
 // Get questions with answers.
-$questions = question_manager::get_with_answers($caseid);
+$questions = question_manager::get_by_case_with_answers($caseid);
 
 // Handle session-based question order (secure implementation).
 if ($shuffle && !$submit && empty($sessiontoken)) {
     // New session: shuffle and create secure token.
     shuffle($questions);
+    // array_column works on stdClass objects since PHP 7.0+ (Moodle 4.x requires PHP 8.0+).
     $questionids = array_column($questions, 'id');
     $sessiontoken = practice_session_manager::create_session($caseid, $USER->id, $questionids);
 
@@ -86,8 +88,11 @@ if ($shuffle && !$submit && empty($sessiontoken)) {
         redirect(new moodle_url('/local/casospracticos/practice.php', ['id' => $caseid]));
     }
 
-    // Verify session belongs to current user.
+    // Verify session belongs to current user and correct case.
     if (!practice_session_manager::verify_session_ownership($sessiontoken, $USER->id)) {
+        throw new moodle_exception('error:invalidsession', 'local_casospracticos');
+    }
+    if ((int)$session->caseid !== (int)$caseid) {
         throw new moodle_exception('error:invalidsession', 'local_casospracticos');
     }
 
@@ -112,103 +117,11 @@ $score = 0;
 $maxscore = 0;
 
 if ($submit) {
-    foreach ($questions as $question) {
-        $maxscore += $question->defaultmark;
-        $paramname = 'q' . $question->id;
-
-        $result = new stdClass();
-        $result->questionid = $question->id;
-        $result->correct = false;
-        $result->feedback = '';
-        $result->selectedids = [];
-
-        if ($question->qtype === 'multichoice') {
-            if ($question->single) {
-                $selected = optional_param($paramname, 0, PARAM_INT);
-                $result->selectedids = $selected ? [$selected] : [];
-            } else {
-                $selected = optional_param_array($paramname, [], PARAM_INT);
-                $result->selectedids = $selected;
-            }
-
-            // Calculate score for this question.
-            $questionscore = 0;
-            foreach ($question->answers as $answer) {
-                if (in_array($answer->id, $result->selectedids)) {
-                    $questionscore += $answer->fraction * $question->defaultmark;
-                    if (!empty($answer->feedback)) {
-                        $result->feedback .= format_text($answer->feedback, $answer->feedbackformat) . ' ';
-                    }
-                }
-            }
-            $result->score = max(0, $questionscore);
-            $result->correct = ($result->score >= $question->defaultmark * 0.99);
-
-        } else if ($question->qtype === 'truefalse') {
-            $selected = optional_param($paramname, -1, PARAM_INT);
-            $result->selectedids = $selected >= 0 ? [$selected] : [];
-
-            foreach ($question->answers as $answer) {
-                if ((int) $answer->id === (int) $selected) {
-                    $result->score = $answer->fraction * $question->defaultmark;
-                    $result->correct = ($answer->fraction >= 0.99);
-                    if (!empty($answer->feedback)) {
-                        $result->feedback = format_text($answer->feedback, $answer->feedbackformat);
-                    }
-                }
-            }
-
-        } else if ($question->qtype === 'shortanswer') {
-            $response = optional_param($paramname, '', PARAM_TEXT);
-            $result->response = $response;
-            $result->score = 0;
-
-            foreach ($question->answers as $answer) {
-                if (strcasecmp(trim($response), trim($answer->answer)) === 0) {
-                    $result->score = $answer->fraction * $question->defaultmark;
-                    $result->correct = ($answer->fraction >= 0.99);
-                    if (!empty($answer->feedback)) {
-                        $result->feedback = format_text($answer->feedback, $answer->feedbackformat);
-                    }
-                    break;
-                }
-            }
-
-        } else if ($question->qtype === 'essay') {
-            $response = optional_param($paramname, '', PARAM_RAW);
-            $result->response = $response;
-            $result->score = 0; // Essays must be graded manually.
-            $result->correct = false;
-            $result->feedback = get_string('essaymanualgrading', 'local_casospracticos');
-
-        } else if ($question->qtype === 'matching') {
-            $result->matches = [];
-            // Get all submitted pairs.
-            if (!empty($question->subquestions)) {
-                foreach ($question->subquestions as $subq) {
-                    $matchparam = $paramname . '_' . $subq->id;
-                    $selectedmatch = optional_param($matchparam, '', PARAM_TEXT);
-                    $result->matches[$subq->id] = $selectedmatch;
-                }
-                // Score matching.
-                $correctcount = 0;
-                $totalcount = count($question->subquestions);
-                foreach ($question->subquestions as $subq) {
-                    if (isset($result->matches[$subq->id]) &&
-                        strcasecmp(trim($result->matches[$subq->id]), trim($subq->answertext)) === 0) {
-                        $correctcount++;
-                    }
-                }
-                if ($totalcount > 0) {
-                    $result->score = ($correctcount / $totalcount) * $question->defaultmark;
-                    $result->correct = ($correctcount == $totalcount);
-                }
-            }
-        }
-
-        $score += $result->score ?? 0;
-        $results[$question->id] = $result;
-    }
+    require_sesskey();
+    $submission = practice_engine::score_submission($questions, $_POST);
+    $results = $submission['results'];
+    $score = $submission['score'];
+    $maxscore = $submission['maxscore'];
 
     // Save the attempt.
     $responsedata = [];
@@ -240,7 +153,7 @@ echo html_writer::div(
 
 // Results summary if submitted.
 if ($submit) {
-    $percentage = $maxscore > 0 ? round(($score / $maxscore) * 100) : 0;
+    $percentage = $submission['percentage'];
     $alertclass = $percentage >= 70 ? 'alert-success' : ($percentage >= 50 ? 'alert-warning' : 'alert-danger');
 
     echo html_writer::start_div('alert ' . $alertclass);
@@ -262,6 +175,8 @@ if (!empty($sessiontoken)) {
 }
 echo html_writer::start_tag('form', ['method' => 'post', 'action' => $formurl]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+// Persist shuffle state through form submission so retry URL preserves the preference.
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shuffle', 'value' => $shuffle ? 1 : 0]);
 
 // Questions.
 $qnum = 0;

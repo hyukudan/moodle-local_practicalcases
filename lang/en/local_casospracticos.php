@@ -539,6 +539,21 @@ $string['review_status_approved'] = 'Approved';
 $string['review_status_rejected'] = 'Rejected';
 $string['review_status_revision_requested'] = 'Revision requested';
 
+// PDF Library.
+$string['pdflibrary'] = 'PDF Library';
+$string['pdfstatus'] = 'PDF Status';
+$string['pdfgenerated'] = 'PDF generated';
+$string['pdfmissing'] = 'PDF not generated';
+$string['pdfoutdated'] = 'PDF outdated';
+$string['regenerate'] = 'Regenerate';
+$string['regenerateall'] = 'Regenerate all';
+$string['downloadpdf'] = 'Download PDF';
+$string['lastgenerated'] = 'Last generated';
+$string['pdfsize'] = 'Size';
+$string['regenerating'] = 'Regenerating...';
+$string['regeneratesuccess'] = 'PDF regenerated successfully';
+$string['regenerateerror'] = 'Error regenerating PDF';
+
 // Accessibility strings.
 $string['caselist'] = 'List of practical cases';
 $string['caseactions'] = 'Case actions';

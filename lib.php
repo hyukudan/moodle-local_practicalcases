@@ -218,3 +218,124 @@ function local_casospracticos_get_file_icon(string $filename): array {
 
     return $types[$extension] ?? ['icon' => 'fa-file text-secondary', 'type' => 'File'];
 }
+
+/**
+ * Load normativa article links for a batch of CP question IDs.
+ *
+ * @param array $questionids Array of local_cp_questions IDs
+ * @return array Associative array [questionid => [link objects]]
+ */
+function local_casospracticos_get_normativa_links(array $questionids): array {
+    global $DB;
+
+    if (empty($questionids)) {
+        return [];
+    }
+
+    // Check that the normativa plugin tables exist.
+    $dbman = $DB->get_manager();
+    if (!$dbman->table_exists('local_cp_question_normativa')) {
+        return [];
+    }
+
+    list($insql, $params) = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+
+    $sql = "SELECT qn.id, qn.questionid,
+                   na.id AS articuloid, na.numero_articulo, na.titulo AS articulo_titulo,
+                   nf.titulo_corto AS fuente_titulo, nf.url_boe
+              FROM {local_cp_question_normativa} qn
+              JOIN {local_normativa_articulos} na ON na.id = qn.articulo_id
+              JOIN {local_normativa_fuentes} nf ON nf.id = na.fuente_id
+             WHERE qn.questionid $insql
+          ORDER BY qn.questionid, nf.titulo_corto, na.numero_articulo";
+
+    $links = $DB->get_records_sql($sql, $params);
+
+    $result = [];
+    foreach ($links as $link) {
+        $result[$link->questionid][] = $link;
+    }
+
+    return $result;
+}
+
+/**
+ * Render the normativa panel HTML for a CP question.
+ *
+ * @param int $questionid CP question ID
+ * @param array $links Array of link objects from local_casospracticos_get_normativa_links
+ * @return string HTML
+ */
+function local_casospracticos_render_normativa_panel(int $questionid, array $links): string {
+    global $OUTPUT, $PAGE;
+
+    if (empty($links)) {
+        return '';
+    }
+
+    // Load article modal JS (once per page).
+    static $jsinited = false;
+    if (!$jsinited) {
+        $PAGE->requires->js_call_amd('local_normativa/article_modal', 'init');
+        $jsinited = true;
+    }
+
+    // Group links by fuente.
+    $byfuente = [];
+    foreach ($links as $link) {
+        $key = $link->fuente_titulo;
+        if (!isset($byfuente[$key])) {
+            $byfuente[$key] = [
+                'fuente_titulo' => $link->fuente_titulo,
+                'url_boe' => $link->url_boe ?? '',
+                'articles' => [],
+            ];
+        }
+        $byfuente[$key]['articles'][] = $link;
+    }
+
+    // Build template data.
+    $templatelinks = [];
+    $first = true;
+    foreach ($byfuente as $group) {
+        $articles = $group['articles'];
+        $count = count($articles);
+
+        if ($count <= 3) {
+            foreach ($articles as $link) {
+                $item = (array)$link;
+                $item['questionid'] = $questionid;
+                if ($first) {
+                    $item['first'] = true;
+                    $first = false;
+                }
+                $templatelinks[] = $item;
+            }
+        } else {
+            // Compact range.
+            $nums = array_map(function($a) { return $a->numero_articulo; }, $articles);
+            $ids = array_map(function($a) { return (int)$a->articuloid; }, $articles);
+            $firstlink = reset($articles);
+
+            $item = (array)$firstlink;
+            $item['questionid'] = $questionid;
+            $item['numero_articulo'] = reset($nums) . '-' . end($nums);
+            $item['articulo_titulo'] = $count . ' artículos';
+            $item['is_range'] = true;
+            $item['articuloids_json'] = json_encode($ids);
+            if ($first) {
+                $item['first'] = true;
+                $first = false;
+            }
+            $templatelinks[] = $item;
+        }
+    }
+
+    $data = [
+        'links' => $templatelinks,
+        'questionid' => $questionid,
+    ];
+
+    // Reuse normativa plugin's template.
+    return $OUTPUT->render_from_template('local_normativa/question_normativa_panel', $data);
+}

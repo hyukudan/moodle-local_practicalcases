@@ -249,6 +249,8 @@ class category_manager {
     /**
      * Count cases in a category.
      *
+     * When $recursive is true, uses a single batch query instead of N+1 queries per tree node.
+     *
      * @param int $categoryid Category ID
      * @param bool $recursive Include subcategories
      * @return int Number of cases
@@ -256,16 +258,31 @@ class category_manager {
     public static function count_cases(int $categoryid, bool $recursive = false): int {
         global $DB;
 
-        $count = $DB->count_records('local_cp_cases', ['categoryid' => $categoryid]);
-
-        if ($recursive) {
-            $children = self::get_all($categoryid);
-            foreach ($children as $child) {
-                $count += self::count_cases($child->id, true);
-            }
+        if (!$recursive) {
+            return $DB->count_records('local_cp_cases', ['categoryid' => $categoryid]);
         }
 
-        return $count;
+        // Collect all descendant category IDs in PHP (categories are already cached in get_all).
+        $allids = [$categoryid];
+        self::collect_descendant_ids($categoryid, $allids);
+
+        // Single query for all categories at once.
+        list($insql, $params) = $DB->get_in_or_equal($allids, SQL_PARAMS_NAMED);
+        return $DB->count_records_select('local_cp_cases', "categoryid $insql", $params);
+    }
+
+    /**
+     * Recursively collect all descendant category IDs.
+     *
+     * @param int $parentid Parent category ID
+     * @param array &$ids Accumulated IDs (passed by reference)
+     */
+    private static function collect_descendant_ids(int $parentid, array &$ids): void {
+        $children = self::get_all($parentid);
+        foreach ($children as $child) {
+            $ids[] = $child->id;
+            self::collect_descendant_ids($child->id, $ids);
+        }
     }
 
     /**

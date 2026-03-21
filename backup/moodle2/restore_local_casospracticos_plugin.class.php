@@ -46,30 +46,32 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
     /**
      * Define the plugin structure for restore.
      *
+     * Element names use cp_ prefix to match the backup structure.
+     *
      * @return restore_path_element[]
      */
     protected function define_course_plugin_structure() {
         $paths = [];
 
-        $elepath = $this->get_pathfor('/casospracticos_categories/category');
+        $elepath = $this->get_pathfor('/cp_categories/cp_category');
         $paths[] = new restore_path_element('casospracticos_category', $elepath);
 
-        $elepath = $this->get_pathfor('/casospracticos_cases/case');
+        $elepath = $this->get_pathfor('/cp_cases/cp_case');
         $paths[] = new restore_path_element('casospracticos_case', $elepath);
 
-        $elepath = $this->get_pathfor('/casospracticos_cases/case/questions/question');
+        $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_questions/cp_question');
         $paths[] = new restore_path_element('casospracticos_question', $elepath);
 
-        $elepath = $this->get_pathfor('/casospracticos_cases/case/questions/question/answers/answer');
+        $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_questions/cp_question/cp_answers/cp_answer');
         $paths[] = new restore_path_element('casospracticos_answer', $elepath);
 
         // Add practice attempts paths if user data is being restored.
         $userinfo = $this->get_setting_value('users');
         if ($userinfo) {
-            $elepath = $this->get_pathfor('/casospracticos_cases/case/practice_attempts/attempt');
+            $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_practice_attempts/cp_attempt');
             $paths[] = new restore_path_element('casospracticos_attempt', $elepath);
 
-            $elepath = $this->get_pathfor('/casospracticos_cases/case/practice_attempts/attempt/responses/response');
+            $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_practice_attempts/cp_attempt/cp_responses/cp_response');
             $paths[] = new restore_path_element('casospracticos_response', $elepath);
         }
 

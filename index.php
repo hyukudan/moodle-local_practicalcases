@@ -187,6 +187,11 @@ if (has_capability('local/casospracticos:export', $context)) {
         $exporturl->param('categoryid', $categoryid);
     }
     $buttons[] = $OUTPUT->single_button($exporturl, get_string('export', 'local_casospracticos'), 'get');
+    $buttons[] = html_writer::link(
+        new moodle_url('/local/casospracticos/pdf_library.php'),
+        '<i class="fa fa-file-pdf-o mr-1"></i>' . get_string('pdflibrary', 'local_casospracticos'),
+        ['class' => 'btn btn-outline-danger btn-sm ml-1']
+    );
 }
 if (has_capability('local/casospracticos:import', $context)) {
     $buttons[] = $OUTPUT->single_button(

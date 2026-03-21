@@ -483,6 +483,21 @@ $string['achievement:category_complete_desc'] = 'Completa todos los casos de una
 $string['achievement:high_achiever'] = 'Alto Rendimiento';
 $string['achievement:high_achiever_desc'] = 'Mantén un promedio superior al 90% después de 10 intentos';
 
+// PDF Library.
+$string['pdflibrary'] = 'Biblioteca de PDFs';
+$string['pdfstatus'] = 'Estado del PDF';
+$string['pdfgenerated'] = 'PDF generado';
+$string['pdfmissing'] = 'PDF no generado';
+$string['pdfoutdated'] = 'PDF desactualizado';
+$string['regenerate'] = 'Regenerar';
+$string['regenerateall'] = 'Regenerar todos';
+$string['downloadpdf'] = 'Descargar PDF';
+$string['lastgenerated'] = 'Última generación';
+$string['pdfsize'] = 'Tamaño';
+$string['regenerating'] = 'Regenerando...';
+$string['regeneratesuccess'] = 'PDF regenerado correctamente';
+$string['regenerateerror'] = 'Error al regenerar el PDF';
+
 // Accessibility strings.
 $string['caselist'] = 'Lista de casos prácticos';
 $string['caseactions'] = 'Acciones del caso';

@@ -272,6 +272,9 @@ if (empty($case->questions)) {
     $questionids = array_column($case->questions, 'id');
     $allanswers = question_manager::get_answers_for_questions($questionids);
 
+    // Pre-load normativa links for all questions (single query).
+    $allnormativa = local_casospracticos_get_normativa_links($questionids);
+
     foreach ($case->questions as $index => $question) {
         echo html_writer::start_div('question-item card mb-3');
         echo html_writer::start_div('card-header d-flex justify-content-between align-items-center');
@@ -373,6 +376,12 @@ if (empty($case->questions)) {
             echo html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ');
             echo format_text($question->generalfeedback, $question->generalfeedbackformat);
             echo html_writer::end_div();
+        }
+
+        // Normativa article links (like quiz review).
+        $qnormativa = $allnormativa[$question->id] ?? [];
+        if (!empty($qnormativa)) {
+            echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
         }
 
         echo html_writer::end_div(); // card-body

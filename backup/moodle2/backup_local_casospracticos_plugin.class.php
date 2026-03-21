@@ -34,6 +34,9 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
     /**
      * Define the plugin structure for backup.
      *
+     * Element names prefixed with 'cp_' to avoid collisions with core
+     * backup element names (category, question, answer, etc.).
+     *
      * @return backup_plugin_element
      */
     protected function define_course_plugin_structure() {
@@ -46,28 +49,28 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         // Connect the visible container ASAP.
         $plugin->add_child($pluginwrapper);
 
-        // Define each element separated.
-        $categories = new backup_nested_element('casospracticos_categories');
-        $category = new backup_nested_element('category', ['id'], [
+        // Define each element separated — prefixed with cp_ to avoid name collisions.
+        $categories = new backup_nested_element('cp_categories');
+        $category = new backup_nested_element('cp_category', ['id'], [
             'name', 'description', 'descriptionformat', 'parent',
             'sortorder', 'timecreated', 'timemodified'
         ]);
 
-        $cases = new backup_nested_element('casospracticos_cases');
-        $case = new backup_nested_element('case', ['id'], [
+        $cases = new backup_nested_element('cp_cases');
+        $case = new backup_nested_element('cp_case', ['id'], [
             'categoryid', 'name', 'statement', 'statementformat',
             'status', 'difficulty', 'tags', 'timecreated', 'timemodified', 'createdby'
         ]);
 
-        $questions = new backup_nested_element('questions');
-        $question = new backup_nested_element('question', ['id'], [
+        $questions = new backup_nested_element('cp_questions');
+        $question = new backup_nested_element('cp_question', ['id'], [
             'questiontext', 'questiontextformat', 'qtype', 'defaultmark',
             'sortorder', 'generalfeedback', 'generalfeedbackformat',
             'single', 'shuffleanswers', 'timecreated', 'timemodified'
         ]);
 
-        $answers = new backup_nested_element('answers');
-        $answer = new backup_nested_element('answer', ['id'], [
+        $answers = new backup_nested_element('cp_answers');
+        $answer = new backup_nested_element('cp_answer', ['id'], [
             'answer', 'answerformat', 'fraction', 'feedback',
             'feedbackformat', 'sortorder'
         ]);
@@ -85,14 +88,14 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
 
         // Add practice attempts if including user data.
         if ($this->get_setting_value('users')) {
-            $practiceattempts = new backup_nested_element('practice_attempts');
-            $attempt = new backup_nested_element('attempt', ['id'], [
+            $practiceattempts = new backup_nested_element('cp_practice_attempts');
+            $attempt = new backup_nested_element('cp_attempt', ['id'], [
                 'userid', 'score', 'maxscore', 'percentage', 'status',
                 'timestarted', 'timefinished', 'timecreated'
             ]);
 
-            $responses = new backup_nested_element('responses');
-            $response = new backup_nested_element('response', ['id'], [
+            $responses = new backup_nested_element('cp_responses');
+            $response = new backup_nested_element('cp_response', ['id'], [
                 'questionid', 'response', 'score', 'iscorrect', 'timecreated'
             ]);
 
@@ -126,7 +129,6 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $answer->set_source_table('local_cp_answers', ['questionid' => backup::VAR_PARENTID]);
 
         // Define ID annotations.
-        $category->annotate_ids('user', 'createdby');
         $case->annotate_ids('user', 'createdby');
 
         // Define file annotations.
