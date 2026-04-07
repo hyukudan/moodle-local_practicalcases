@@ -105,7 +105,7 @@
         <h4 class="mb-3" id="questions-heading">
             {{#str}}questions, local_casospracticos{{/str}}
             <span class="badge bg-secondary" aria-hidden="true">{{case.questioncount}}</span>
-            <span class="sr-only">{{case.questioncount}} {{#str}}questions, local_casospracticos{{/str}}</span>
+            <span class="visually-hidden">{{case.questioncount}} {{#str}}questions, local_casospracticos{{/str}}</span>
         </h4>
 
         {{^questions}}
@@ -130,22 +130,22 @@
                     {{#canmoveup}}
                     <a href="{{moveupurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}moveup{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/up, core{{/pix}}
-                        <span class="sr-only">{{#str}}moveup{{/str}}</span>
+                        <span class="visually-hidden">{{#str}}moveup{{/str}}</span>
                     </a>
                     {{/canmoveup}}
                     {{#canmovedown}}
                     <a href="{{movedownurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}movedown{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/down, core{{/pix}}
-                        <span class="sr-only">{{#str}}movedown{{/str}}</span>
+                        <span class="visually-hidden">{{#str}}movedown{{/str}}</span>
                     </a>
                     {{/canmovedown}}
                     <a href="{{editurl}}" class="btn btn-sm btn-link" aria-label="{{#str}}edit{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/edit, core{{/pix}}
-                        <span class="sr-only">{{#str}}edit{{/str}}</span>
+                        <span class="visually-hidden">{{#str}}edit{{/str}}</span>
                     </a>
                     <a href="{{deleteurl}}" class="btn btn-sm btn-link text-danger" aria-label="{{#str}}delete{{/str}} {{#str}}question{{/str}} {{number}}">
                         {{#pix}}t/delete, core{{/pix}}
-                        <span class="sr-only">{{#str}}delete{{/str}}</span>
+                        <span class="visually-hidden">{{#str}}delete{{/str}}</span>
                     </a>
                 </nav>
                 {{/canedit}}
@@ -163,11 +163,11 @@
                             <div>
                                 {{#iscorrect}}
                                 {{#pix}}i/valid, core{{/pix}}
-                                <span class="sr-only">{{#str}}correct{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}correct{{/str}}</span>
                                 {{/iscorrect}}
                                 {{^iscorrect}}
                                 {{#pix}}i/invalid, core{{/pix}}
-                                <span class="sr-only">{{#str}}incorrect{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}incorrect{{/str}}</span>
                                 {{/iscorrect}}
                                 {{{answer}}}
                             </div>
