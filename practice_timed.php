@@ -44,9 +44,8 @@ if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
-// Only published cases can be practiced.
-if ($case->status !== 'published') {
-    require_capability('local/casospracticos:edit', $context);
+if (!case_manager::is_visible_to_user($case, $context)) {
+    throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
 $PAGE->set_context($context);

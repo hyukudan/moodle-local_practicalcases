@@ -44,9 +44,8 @@ if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
-// Only published cases can be practiced.
-if ($case->status !== 'published') {
-    require_capability('local/casospracticos:edit', $context);
+if (!case_manager::is_visible_to_user($case, $context)) {
+    throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
 $PAGE->set_context($context);
@@ -110,6 +109,10 @@ if ($shuffle && !$submit && empty($sessiontoken)) {
     }
     $questions = $orderedquestions;
 }
+
+// Preload linked normativa for the current question set so review feedback
+// can point students to the legal basis without extra queries per question.
+$allnormativa = local_casospracticos_get_normativa_links(array_column($questions, 'id'));
 
 // Process submitted answers.
 $results = [];
@@ -351,6 +354,13 @@ foreach ($questions as $question) {
     // Show specific feedback from result.
     if ($result && !empty($result->feedback)) {
         echo html_writer::div($result->feedback, 'text-info mt-2');
+    }
+
+    if ($result) {
+        $qnormativa = $allnormativa[$question->id] ?? [];
+        if (!empty($qnormativa)) {
+            echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
+        }
     }
 
     echo html_writer::end_div(); // card-body

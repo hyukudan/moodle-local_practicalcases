@@ -57,6 +57,16 @@ $PAGE->navbar->add(get_string('pdflibrary', 'local_casospracticos'));
 if ($action === 'download' && $catid > 0) {
     require_sesskey();
     $category = $DB->get_record('local_cp_categories', ['id' => $catid], '*', MUST_EXIST);
+    $publishedcases = $DB->count_records('local_cp_cases', ['categoryid' => $catid, 'status' => 'published']);
+    if ($publishedcases === 0) {
+        redirect(
+            new moodle_url('/local/casospracticos/pdf_library.php'),
+            get_string('nocases', 'local_casospracticos'),
+            null,
+            \core\output\notification::NOTIFY_WARNING
+        );
+    }
+
     $filename = get_pdf_filename($category->name);
     $filepath = PDF_OUTPUT_DIR . '/' . $filename;
 
@@ -140,11 +150,19 @@ $categories = $DB->get_records_sql("
     SELECT cat.id, cat.name,
            COUNT(DISTINCT c.id) AS casecount,
            COALESCE(SUM(qcounts.qcount), 0) AS questioncount,
-           MAX(GREATEST(COALESCE(c.timecreated, 0), COALESCE(c.timemodified, 0))) AS newest_case_time
+           MAX(GREATEST(
+               COALESCE(c.timecreated, 0),
+               COALESCE(c.timemodified, 0),
+               COALESCE(qcounts.newest_question_time, 0)
+           )) AS newest_content_time
       FROM {local_cp_categories} cat
-      LEFT JOIN {local_cp_cases} c ON c.categoryid = cat.id
+      LEFT JOIN {local_cp_cases} c
+             ON c.categoryid = cat.id
+            AND c.status = 'published'
       LEFT JOIN (
-          SELECT q.caseid, COUNT(*) AS qcount
+          SELECT q.caseid,
+                 COUNT(*) AS qcount,
+                 MAX(GREATEST(COALESCE(q.timecreated, 0), COALESCE(q.timemodified, 0))) AS newest_question_time
             FROM {local_cp_questions} q
         GROUP BY q.caseid
       ) qcounts ON qcounts.caseid = c.id
@@ -179,13 +197,19 @@ foreach ($categories as $cat) {
     $pdfmtime = $pdfexists ? filemtime($filepath) : 0;
 
     // Determine status.
-    $newestcasetime = (int) $cat->newest_case_time;
-    if (!$pdfexists) {
+    $newestcontenttime = (int) $cat->newest_content_time;
+    $haspublishedcases = (int) $cat->casecount > 0;
+    if (!$haspublishedcases) {
+        $statushtml = html_writer::tag('span',
+            '<i class="fa fa-ban mr-1"></i>' . get_string('nocases', 'local_casospracticos'),
+            ['class' => 'badge bg-secondary text-white']
+        );
+    } else if (!$pdfexists) {
         $statushtml = html_writer::tag('span',
             '<i class="fa fa-times-circle mr-1"></i>' . get_string('pdfmissing', 'local_casospracticos'),
             ['class' => 'badge bg-danger text-white']
         );
-    } else if ($newestcasetime > $pdfmtime) {
+    } else if ($newestcontenttime > $pdfmtime) {
         $statushtml = html_writer::tag('span',
             '<i class="fa fa-exclamation-triangle mr-1"></i>' . get_string('pdfoutdated', 'local_casospracticos'),
             ['class' => 'badge bg-warning text-dark']
@@ -208,7 +232,7 @@ foreach ($categories as $cat) {
     // Action buttons.
     $actions = [];
 
-    if ($pdfexists) {
+    if ($pdfexists && $haspublishedcases) {
         // Download.
         $downloadurl = new moodle_url('/local/casospracticos/pdf_library.php', [
             'action' => 'download',
@@ -266,14 +290,17 @@ $outdated = 0;
 foreach ($categories as $cat) {
     $filename = get_pdf_filename($cat->name);
     $filepath = PDF_OUTPUT_DIR . '/' . $filename;
+    $haspublishedcases = (int) $cat->casecount > 0;
     if (file_exists($filepath)) {
         $totalpdfs++;
         $totalsize += filesize($filepath);
-        if ((int) $cat->newest_case_time > filemtime($filepath)) {
+        if (!$haspublishedcases || (int) $cat->newest_content_time > filemtime($filepath)) {
             $outdated++;
         }
     } else {
-        $missing++;
+        if ($haspublishedcases) {
+            $missing++;
+        }
     }
 }
 

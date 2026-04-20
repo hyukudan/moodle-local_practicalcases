@@ -158,7 +158,8 @@ class api extends external_api {
         self::check_rate_limit('get_categories', 'read');
 
         // Optimized: Uses single query for case counts instead of N+1.
-        $categories = category_manager::get_flat_tree_with_counts();
+        $statusfilter = case_manager::can_view_unpublished($context) ? null : case_manager::STATUS_PUBLISHED;
+        $categories = category_manager::get_flat_tree_with_counts($statusfilter);
         $result = [];
 
         foreach ($categories as $cat) {
@@ -218,6 +219,9 @@ class api extends external_api {
         ]);
 
         $statusfilter = !empty($params['status']) ? $params['status'] : null;
+        if (!case_manager::can_view_unpublished($context)) {
+            $statusfilter = case_manager::STATUS_PUBLISHED;
+        }
 
         if ($params['categoryid'] > 0) {
             $cases = case_manager::get_with_counts($params['categoryid'], $statusfilter);
@@ -285,13 +289,8 @@ class api extends external_api {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
-        // Security: Draft cases can only be viewed by their creator or users with editall.
-        global $USER;
-        $context = \context_system::instance();
-        if ($case->status === 'draft' && (int) $case->createdby !== (int) $USER->id) {
-            if (!has_capability('local/casospracticos:editall', $context)) {
-                throw new \moodle_exception('error:nopermission', 'local_casospracticos');
-            }
+        if (!case_manager::is_visible_to_user($case, $context)) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
         $questions = [];

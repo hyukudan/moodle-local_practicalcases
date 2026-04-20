@@ -255,11 +255,15 @@ class category_manager {
      * @param bool $recursive Include subcategories
      * @return int Number of cases
      */
-    public static function count_cases(int $categoryid, bool $recursive = false): int {
+    public static function count_cases(int $categoryid, bool $recursive = false, ?string $status = null): int {
         global $DB;
 
         if (!$recursive) {
-            return $DB->count_records('local_cp_cases', ['categoryid' => $categoryid]);
+            $params = ['categoryid' => $categoryid];
+            if ($status !== null) {
+                $params['status'] = $status;
+            }
+            return $DB->count_records('local_cp_cases', $params);
         }
 
         // Collect all descendant category IDs in PHP (categories are already cached in get_all).
@@ -268,6 +272,11 @@ class category_manager {
 
         // Single query for all categories at once.
         list($insql, $params) = $DB->get_in_or_equal($allids, SQL_PARAMS_NAMED);
+        if ($status !== null) {
+            $params['status'] = $status;
+            return $DB->count_records_select('local_cp_cases', "categoryid $insql AND status = :status", $params);
+        }
+
         return $DB->count_records_select('local_cp_cases', "categoryid $insql", $params);
     }
 
@@ -290,13 +299,20 @@ class category_manager {
      *
      * @return array Associative array [categoryid => count]
      */
-    public static function count_cases_all(): array {
+    public static function count_cases_all(?string $status = null): array {
         global $DB;
 
         $sql = "SELECT categoryid, COUNT(*) AS casecount
-                  FROM {local_cp_cases}
-              GROUP BY categoryid";
-        $counts = $DB->get_records_sql($sql);
+                  FROM {local_cp_cases}";
+        $params = [];
+
+        if ($status !== null) {
+            $sql .= " WHERE status = :status";
+            $params['status'] = $status;
+        }
+
+        $sql .= " GROUP BY categoryid";
+        $counts = $DB->get_records_sql($sql, $params);
 
         $result = [];
         foreach ($counts as $row) {
@@ -311,9 +327,9 @@ class category_manager {
      *
      * @return array Array of categories with depth and casecount
      */
-    public static function get_flat_tree_with_counts(): array {
+    public static function get_flat_tree_with_counts(?string $status = null): array {
         $categories = self::get_flat_tree();
-        $counts = self::count_cases_all();
+        $counts = self::count_cases_all($status);
 
         foreach ($categories as $category) {
             $category->casecount = $counts[$category->id] ?? 0;

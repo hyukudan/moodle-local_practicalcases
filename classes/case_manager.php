@@ -44,6 +44,35 @@ class case_manager {
     const STATUS_ARCHIVED = 'archived';
 
     /**
+     * Whether the current user can access unpublished cases.
+     *
+     * @param \context|null $context Context to evaluate capabilities in
+     * @return bool
+     */
+    public static function can_view_unpublished(?\context $context = null): bool {
+        $context = $context ?? \context_system::instance();
+        return has_capability('local/casospracticos:edit', $context);
+    }
+
+    /**
+     * Whether a case is visible to the current user.
+     *
+     * Published cases are visible to all viewers. Draft/archived cases are
+     * limited to editorial users.
+     *
+     * @param \stdClass $case Case record
+     * @param \context|null $context Context to evaluate capabilities in
+     * @return bool
+     */
+    public static function is_visible_to_user(\stdClass $case, ?\context $context = null): bool {
+        if (($case->status ?? null) === self::STATUS_PUBLISHED) {
+            return true;
+        }
+
+        return self::can_view_unpublished($context);
+    }
+
+    /**
      * Get a case by ID.
      *
      * @param int $id Case ID

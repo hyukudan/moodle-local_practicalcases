@@ -44,6 +44,9 @@ $case = case_manager::get_with_questions($id);
 if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
+if (!case_manager::is_visible_to_user($case, $context)) {
+    throw new moodle_exception('error:casenotfound', 'local_casospracticos');
+}
 
 $category = category_manager::get($case->categoryid);
 

@@ -226,8 +226,11 @@ echo html_writer::start_div('row');
 echo html_writer::start_div('col-md-3');
 echo html_writer::tag('h4', get_string('categories', 'local_casospracticos'));
 
+$canviewunpublished = case_manager::can_view_unpublished($context);
+
 // Optimized: Use single query with counts instead of N+1 queries.
-$categories = category_manager::get_flat_tree_with_counts();
+$categorystatus = $canviewunpublished ? null : case_manager::STATUS_PUBLISHED;
+$categories = category_manager::get_flat_tree_with_counts($categorystatus);
 if (empty($categories)) {
     echo html_writer::tag('p', get_string('nocategories', 'local_casospracticos'), ['class' => 'text-muted']);
 } else {
@@ -289,6 +292,10 @@ if ($categoryid > 0) {
     $filters['categoryid'] = $categoryid;
 }
 
+if (!$canviewunpublished) {
+    $filters['status'] = case_manager::STATUS_PUBLISHED;
+}
+
 // Display filter form.
 $filteroptions = filter_manager::get_filter_options();
 echo html_writer::start_tag('form', [
@@ -303,16 +310,18 @@ if ($categoryid > 0) {
 echo html_writer::start_div('row g-2 align-items-end');
 
 // Status filter.
-echo html_writer::start_div('col-md-2');
-echo html_writer::tag('label', get_string('status', 'local_casospracticos'), ['class' => 'form-label', 'for' => 'filter-status']);
-echo html_writer::start_tag('select', ['name' => 'status', 'id' => 'filter-status', 'class' => 'form-select form-select-sm']);
-echo html_writer::tag('option', get_string('all'), ['value' => '']);
-foreach ($filteroptions['statuses'] as $s) {
-    $selected = (isset($filters['status']) && $filters['status'] === $s['value']) ? ['selected' => 'selected'] : [];
-    echo html_writer::tag('option', $s['label'], array_merge(['value' => $s['value']], $selected));
+if ($canviewunpublished) {
+    echo html_writer::start_div('col-md-2');
+    echo html_writer::tag('label', get_string('status', 'local_casospracticos'), ['class' => 'form-label', 'for' => 'filter-status']);
+    echo html_writer::start_tag('select', ['name' => 'status', 'id' => 'filter-status', 'class' => 'form-select form-select-sm']);
+    echo html_writer::tag('option', get_string('all'), ['value' => '']);
+    foreach ($filteroptions['statuses'] as $s) {
+        $selected = (isset($filters['status']) && $filters['status'] === $s['value']) ? ['selected' => 'selected'] : [];
+        echo html_writer::tag('option', $s['label'], array_merge(['value' => $s['value']], $selected));
+    }
+    echo html_writer::end_tag('select');
+    echo html_writer::end_div();
 }
-echo html_writer::end_tag('select');
-echo html_writer::end_div();
 
 // Difficulty filter.
 echo html_writer::start_div('col-md-2');

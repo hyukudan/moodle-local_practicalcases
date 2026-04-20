@@ -126,11 +126,18 @@ foreach ($questionorder as $qid) {
         }
     }
 }
+$questions = $orderedquestions;
+$allnormativa = local_casospracticos_get_normativa_links(array_column($questions, 'id'));
 
 echo html_writer::tag('h4', get_string('detailedresults', 'local_casospracticos'), ['class' => 'mt-4 mb-3']);
 
+echo html_writer::div(
+    format_text($case->statement, $case->statementformat),
+    'case-statement card card-body mb-4 bg-light'
+);
+
 $qnum = 0;
-foreach ($orderedquestions as $question) {
+foreach ($questions as $question) {
     $qnum++;
     $qresult = $responsedata[$question->id] ?? null;
 
@@ -166,10 +173,15 @@ foreach ($orderedquestions as $question) {
             foreach ($question->answers as $answer) {
                 if ($answer->id == $answerid) {
                     $style = $answer->fraction > 0 ? 'color: green;' : 'color: red;';
-                    echo html_writer::tag('li',
-                        format_text($answer->answer, $answer->answerformat),
-                        ['style' => $style]
-                    );
+                    $answercontent = format_text($answer->answer, $answer->answerformat);
+                    if (!empty($answer->feedback)) {
+                        $answercontent .= html_writer::div(
+                            $OUTPUT->pix_icon('i/info', '') . ' ' .
+                            format_text($answer->feedback, $answer->feedbackformat),
+                            'answer-feedback small text-muted mt-1'
+                        );
+                    }
+                    echo html_writer::tag('li', $answercontent, ['style' => $style]);
                 }
             }
         }
@@ -194,6 +206,19 @@ foreach ($orderedquestions as $question) {
         }
 
         echo html_writer::end_tag('ul');
+    }
+
+    if (!empty($question->generalfeedback)) {
+        echo html_writer::div(
+            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
+            format_text($question->generalfeedback, $question->generalfeedbackformat),
+            'alert alert-info mt-3'
+        );
+    }
+
+    $qnormativa = $allnormativa[$question->id] ?? [];
+    if (!empty($qnormativa)) {
+        echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
     }
 
     // Score for this question.

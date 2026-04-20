@@ -53,6 +53,37 @@ class question_manager {
     const QTYPE_MATCHING = 'matching';
 
     /**
+     * Touch the parent case so downstream consumers detect question/answer edits.
+     *
+     * @param int $caseid Case ID
+     * @return void
+     */
+    private static function touch_case(int $caseid): void {
+        global $DB;
+
+        if ($caseid <= 0) {
+            return;
+        }
+
+        $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
+    }
+
+    /**
+     * Touch the parent case of a given question.
+     *
+     * @param int $questionid Question ID
+     * @return void
+     */
+    private static function touch_case_by_question(int $questionid): void {
+        global $DB;
+
+        $caseid = $DB->get_field(self::TABLE, 'caseid', ['id' => $questionid]);
+        if ($caseid) {
+            self::touch_case((int) $caseid);
+        }
+    }
+
+    /**
      * Get a question by ID.
      *
      * @param int $id Question ID
@@ -187,6 +218,7 @@ class question_manager {
             self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
         }
 
+        self::touch_case((int) $record->caseid);
         return $questionid;
     }
 
@@ -228,7 +260,10 @@ class question_manager {
 
         $record->timemodified = time();
 
-        return $DB->update_record(self::TABLE, $record);
+        $result = $DB->update_record(self::TABLE, $record);
+        self::touch_case_by_question((int) $record->id);
+
+        return $result;
     }
 
     /**
@@ -239,11 +274,18 @@ class question_manager {
      */
     public static function delete(int $id): bool {
         global $DB;
+        $question = self::get($id);
+        if (!$question) {
+            return false;
+        }
 
         // Delete answers first.
         $DB->delete_records(self::ANSWERS_TABLE, ['questionid' => $id]);
 
-        return $DB->delete_records(self::TABLE, ['id' => $id]);
+        $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+        self::touch_case((int) $question->caseid);
+
+        return $result;
     }
 
     /**
@@ -311,6 +353,7 @@ class question_manager {
             $DB->set_field(self::TABLE, 'sortorder', $sortorder, ['id' => $id]);
         }
 
+        self::touch_case((int) $question->caseid);
         return true;
     }
 
@@ -389,7 +432,10 @@ class question_manager {
         $record->feedbackformat = $data->feedbackformat ?? FORMAT_HTML;
         $record->sortorder = $data->sortorder ?? self::get_next_answer_sortorder($data->questionid);
 
-        return $DB->insert_record(self::ANSWERS_TABLE, $record);
+        $answerid = $DB->insert_record(self::ANSWERS_TABLE, $record);
+        self::touch_case_by_question((int) $record->questionid);
+
+        return $answerid;
     }
 
     /**
@@ -400,6 +446,7 @@ class question_manager {
      */
     public static function update_answer(object $data): bool {
         global $DB;
+        $questionid = $DB->get_field(self::ANSWERS_TABLE, 'questionid', ['id' => $data->id]);
 
         $record = new \stdClass();
         $record->id = $data->id;
@@ -419,7 +466,12 @@ class question_manager {
             $record->sortorder = $data->sortorder;
         }
 
-        return $DB->update_record(self::ANSWERS_TABLE, $record);
+        $result = $DB->update_record(self::ANSWERS_TABLE, $record);
+        if ($questionid) {
+            self::touch_case_by_question((int) $questionid);
+        }
+
+        return $result;
     }
 
     /**
@@ -430,7 +482,13 @@ class question_manager {
      */
     public static function delete_answer(int $id): bool {
         global $DB;
-        return $DB->delete_records(self::ANSWERS_TABLE, ['id' => $id]);
+        $questionid = $DB->get_field(self::ANSWERS_TABLE, 'questionid', ['id' => $id]);
+        $result = $DB->delete_records(self::ANSWERS_TABLE, ['id' => $id]);
+        if ($questionid) {
+            self::touch_case_by_question((int) $questionid);
+        }
+
+        return $result;
     }
 
     /**
