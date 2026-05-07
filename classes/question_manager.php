@@ -602,4 +602,67 @@ class question_manager {
 
         return $errors;
     }
+
+    /**
+     * Shuffle multichoice/truefalse answers in-place for rendering.
+     *
+     * Bank data has a strong "correct answer in sortorder=1" bias (~92%), so iterating
+     * by sortorder ASC made students see the correct option in position A almost always.
+     *
+     * If $sessionkeyprefix is provided, the shuffled order is cached in $SESSION per
+     * question so re-renders within the same attempt (e.g. autosave round-trips,
+     * submit redirects, page reloads) keep the same order. Without a prefix, every
+     * call reshuffles — appropriate for review pages where matching is by answer id.
+     *
+     * @param array $questions Questions with ->answers populated; modified in place.
+     * @param string|null $sessionkeyprefix If set, persist/restore order via $SESSION.
+     */
+    public static function shuffle_answers_for_render(array $questions,
+            ?string $sessionkeyprefix = null): void {
+        global $SESSION;
+        foreach ($questions as $question) {
+            if (empty($question->answers) || count($question->answers) < 2) {
+                continue;
+            }
+            if (!in_array($question->qtype, [self::QTYPE_MULTICHOICE, self::QTYPE_TRUEFALSE], true)) {
+                continue;
+            }
+
+            $sessionkey = $sessionkeyprefix
+                ? $sessionkeyprefix . '_q' . $question->id
+                : null;
+
+            $byid = [];
+            foreach ($question->answers as $a) {
+                $byid[$a->id] = $a;
+            }
+
+            if ($sessionkey && !empty($SESSION->$sessionkey)) {
+                $orderids = $SESSION->$sessionkey;
+                $reordered = [];
+                foreach ($orderids as $id) {
+                    if (isset($byid[$id])) {
+                        $reordered[$id] = $byid[$id];
+                        unset($byid[$id]);
+                    }
+                }
+                foreach ($byid as $a) {
+                    $reordered[$a->id] = $a;
+                }
+                $question->answers = $reordered;
+                continue;
+            }
+
+            $shuffled = array_values($byid);
+            shuffle($shuffled);
+            $question->answers = [];
+            foreach ($shuffled as $a) {
+                $question->answers[$a->id] = $a;
+            }
+
+            if ($sessionkey) {
+                $SESSION->$sessionkey = array_keys($question->answers);
+            }
+        }
+    }
 }

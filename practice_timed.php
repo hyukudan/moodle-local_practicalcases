@@ -109,6 +109,13 @@ foreach ($questionorder as $qid) {
 }
 $questions = $orderedquestions;
 
+// Shuffle answer order so students don't see the correct option always in
+// position A (the bank stores correct answers with sortorder=1 ~92% of the
+// time). Order is cached in $SESSION keyed by attemptid so reloads, autosave
+// round-trips and the submit redirect keep the same order the student picked.
+$answersorderkey = 'casospracticos_aorder_timed_' . $attemptid;
+question_manager::shuffle_answers_for_render($questions, $answersorderkey);
+
 // Process submitted answers.
 $results = [];
 $score = 0;
