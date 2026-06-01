@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026060100" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026060101" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >

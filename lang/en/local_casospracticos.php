@@ -39,6 +39,7 @@ $string['casospracticos:export'] = 'Export practical cases';
 $string['casospracticos:import'] = 'Import practical cases';
 $string['casospracticos:insertquiz'] = 'Insert cases into quizzes';
 $string['casospracticos:review'] = 'Review practical cases';
+$string['casospracticos:viewanswers'] = 'View question answer keys';
 $string['casospracticos:viewaudit'] = 'View audit log';
 $string['casospracticos:bulk'] = 'Perform bulk operations';
 
@@ -315,6 +316,9 @@ $string['error:nopermission'] = 'You do not have permission to perform this acti
 $string['error:nopermissiontoexport'] = 'You do not have permission to export the selected cases. You can only export cases you created or have editall capability.';
 $string['error:invaliddata'] = 'Invalid data provided';
 $string['error:invalidstatus'] = 'Invalid case status';
+$string['error:invalidqtype'] = 'Invalid question type';
+$string['error:qtypechangeanswers'] = 'The existing answers are not compatible with the new question type ({$a}). Please provide a compatible answer set before changing the type.';
+$string['error:categorycycle'] = 'A category cannot be its own parent or be moved under one of its own descendants';
 $string['error:nocases'] = 'No cases selected';
 $string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';
 $string['error:sessionexpired'] = 'Your practice session has expired. Please start a new attempt.';

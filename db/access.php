@@ -138,6 +138,16 @@ $capabilities = [
         ],
     ],
 
+    // View question answer keys (correct-answer fraction / feedback).
+    'local/casospracticos:viewanswers' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+    ],
+
     // View audit log.
     'local/casospracticos:viewaudit' => [
         'captype' => 'read',

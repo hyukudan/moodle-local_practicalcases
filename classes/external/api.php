@@ -142,19 +142,21 @@ class api extends external_api {
     /**
      * Whether the current user may see answer-key data (fraction/feedback).
      *
-     * Only authoring/review users (anyone who can view unpublished cases, i.e.
-     * holders of local/casospracticos:edit and above) may receive the answer
-     * key. Plain viewers (students) must never receive correctness data.
+     * Gated by the dedicated local/casospracticos:viewanswers capability, which
+     * by default is granted to editingteacher and manager only. Plain viewers
+     * (students) must never receive correctness data.
      *
-     * NOTE: there is no dedicated local/casospracticos:viewanswers capability;
-     * we reuse the editorial capability via case_manager::can_view_unpublished().
-     * A dedicated :viewanswers capability could be added later for finer control.
+     * As a safety net we also honour the editorial capability (anyone who can
+     * view unpublished cases, i.e. holders of local/casospracticos:edit and
+     * above) so that existing privileged roles keep access even before the new
+     * capability has been assigned to their role.
      *
      * @param \context $context The context
      * @return bool True if the user may see answer keys
      */
     protected static function can_view_answer_keys(\context $context): bool {
-        return case_manager::can_view_unpublished($context);
+        return has_capability('local/casospracticos:viewanswers', $context)
+            || case_manager::can_view_unpublished($context);
     }
 
     /**

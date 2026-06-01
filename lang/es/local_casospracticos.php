@@ -37,6 +37,7 @@ $string['casospracticos:export'] = 'Exportar casos prácticos';
 $string['casospracticos:import'] = 'Importar casos prácticos';
 $string['casospracticos:insertquiz'] = 'Insertar casos en cuestionarios';
 $string['casospracticos:review'] = 'Revisar casos prácticos';
+$string['casospracticos:viewanswers'] = 'Ver las claves de respuesta de las preguntas';
 $string['casospracticos:viewaudit'] = 'Ver registro de auditoría';
 $string['casospracticos:bulk'] = 'Realizar operaciones en lote';
 
@@ -305,6 +306,9 @@ $string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
 $string['error:nopermissiontoexport'] = 'No tiene permiso para exportar los casos seleccionados. Solo puede exportar casos que haya creado o tener la capacidad editall.';
 $string['error:invaliddata'] = 'Datos proporcionados no válidos';
 $string['error:invalidstatus'] = 'Estado del caso no válido.';
+$string['error:invalidqtype'] = 'Tipo de pregunta no válido';
+$string['error:qtypechangeanswers'] = 'Las respuestas existentes no son compatibles con el nuevo tipo de pregunta ({$a}). Proporcione un conjunto de respuestas compatible antes de cambiar el tipo.';
+$string['error:categorycycle'] = 'Una categoría no puede ser su propio padre ni moverse bajo uno de sus propios descendientes';
 $string['error:nocases'] = 'No hay casos seleccionados';
 $string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
 $string['error:sessionexpired'] = 'Tu sesión de práctica ha expirado. Por favor inicia un nuevo intento.';

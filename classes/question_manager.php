@@ -202,20 +202,31 @@ class question_manager {
         $record->timecreated = time();
         $record->timemodified = time();
 
-        $questionid = $DB->insert_record(self::TABLE, $record);
+        // Wrap question insert + answer inserts in a transaction so a failed
+        // answer insert does not orphan the question row (G2-07).
+        $transaction = $DB->start_delegated_transaction();
 
-        // Create answers if provided.
-        if (!empty($data->answers)) {
-            foreach ($data->answers as $answer) {
-                $answer = (object) $answer;
-                $answer->questionid = $questionid;
-                self::create_answer($answer);
+        try {
+            $questionid = $DB->insert_record(self::TABLE, $record);
+
+            // Create answers if provided.
+            if (!empty($data->answers)) {
+                foreach ($data->answers as $answer) {
+                    $answer = (object) $answer;
+                    $answer->questionid = $questionid;
+                    self::create_answer($answer);
+                }
             }
-        }
 
-        // For truefalse, create default answers if not provided.
-        if ($record->qtype === self::QTYPE_TRUEFALSE && empty($data->answers)) {
-            self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
+            // For truefalse, create default answers if not provided.
+            if ($record->qtype === self::QTYPE_TRUEFALSE && empty($data->answers)) {
+                self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
+            }
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
         }
 
         self::touch_case((int) $record->caseid);
@@ -231,6 +242,11 @@ class question_manager {
     public static function update(object $data): bool {
         global $DB;
 
+        $existing = self::get((int) $data->id);
+        if (!$existing) {
+            throw new \moodle_exception('error:questionnotfound', 'local_casospracticos');
+        }
+
         $record = new \stdClass();
         $record->id = $data->id;
 
@@ -239,6 +255,10 @@ class question_manager {
             $record->questiontextformat = $data->questiontextformat ?? FORMAT_HTML;
         }
         if (isset($data->qtype)) {
+            // Validate against known types (G2-06).
+            if (!in_array($data->qtype, self::valid_qtypes(), true)) {
+                throw new \moodle_exception('error:invalidqtype', 'local_casospracticos');
+            }
             $record->qtype = $data->qtype;
         }
         if (isset($data->defaultmark)) {
@@ -260,7 +280,43 @@ class question_manager {
 
         $record->timemodified = time();
 
-        $result = $DB->update_record(self::TABLE, $record);
+        // When the question type changes, the existing answers may violate the
+        // new type's invariants (e.g. multichoice -> truefalse leaving >2
+        // answers). Reconcile by validating the answer set that will be in
+        // effect after this update against the new type's rules. We prefer to
+        // reject (clear moodle_exception) rather than silently corrupt the
+        // answer set; the caller must supply a compatible answer set first.
+        $qtypechanged = isset($record->qtype) && $record->qtype !== $existing->qtype;
+
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            $result = $DB->update_record(self::TABLE, $record);
+
+            if ($qtypechanged) {
+                // Use caller-supplied answers if present, otherwise the answers
+                // currently stored for this question.
+                if (!empty($data->answers)) {
+                    $candidateanswers = array_map(static function ($answer) {
+                        return (object) $answer;
+                    }, $data->answers);
+                } else {
+                    $candidateanswers = array_values(self::get_answers((int) $record->id));
+                }
+
+                $errors = self::validate_answer_set($record->qtype, $candidateanswers);
+                if (!empty($errors)) {
+                    throw new \moodle_exception('error:qtypechangeanswers', 'local_casospracticos',
+                            '', $record->qtype);
+                }
+            }
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
+
         self::touch_case_by_question((int) $record->id);
 
         return $result;
@@ -568,9 +624,25 @@ class question_manager {
         }
 
         $answers = self::get_answers($questionid);
+
+        return self::validate_answer_set($question->qtype, $answers);
+    }
+
+    /**
+     * Validate an answer set against a question type's invariants.
+     *
+     * Pure helper so the same rules can be enforced both against stored answers
+     * (validate_answers) and against an in-memory set (e.g. when reconciling a
+     * qtype change before persisting).
+     *
+     * @param string $qtype Target question type (one of the QTYPE_* constants)
+     * @param array $answers Array of answer objects (need ->fraction)
+     * @return array Array of error strings (empty if valid)
+     */
+    public static function validate_answer_set(string $qtype, array $answers): array {
         $errors = [];
 
-        switch ($question->qtype) {
+        switch ($qtype) {
             case self::QTYPE_MULTICHOICE:
                 if (count($answers) < 2) {
                     $errors[] = 'Multichoice questions need at least 2 answers';
@@ -601,6 +673,21 @@ class question_manager {
         }
 
         return $errors;
+    }
+
+    /**
+     * Known question types accepted by this plugin.
+     *
+     * @return string[]
+     */
+    public static function valid_qtypes(): array {
+        return [
+            self::QTYPE_MULTICHOICE,
+            self::QTYPE_TRUEFALSE,
+            self::QTYPE_SHORTANSWER,
+            self::QTYPE_ESSAY,
+            self::QTYPE_MATCHING,
+        ];
     }
 
     /**

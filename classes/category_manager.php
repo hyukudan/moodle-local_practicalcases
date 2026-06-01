@@ -199,6 +199,25 @@ class category_manager {
         $record->description = $data->description ?? '';
         $record->descriptionformat = $data->descriptionformat ?? FORMAT_HTML;
         $record->parent = $data->parent ?? 0;
+
+        // Guard against parent cycles / invalid parents (G2-02). A category
+        // must not become its own parent, its own descendant, or point at a
+        // parent that does not exist.
+        if ($record->parent != 0) {
+            if ($record->parent == $record->id) {
+                throw new \moodle_exception('error:categorycycle', 'local_casospracticos');
+            }
+            if (!self::get($record->parent)) {
+                throw new \moodle_exception('error:categorynotfound', 'local_casospracticos');
+            }
+            // is_descendant($newparent, $thiscategory): true if the proposed
+            // parent is itself a descendant of this category, which would
+            // create a cycle.
+            if (self::is_descendant((int) $record->parent, (int) $record->id)) {
+                throw new \moodle_exception('error:categorycycle', 'local_casospracticos');
+            }
+        }
+
         if (isset($data->sortorder)) {
             $record->sortorder = $data->sortorder;
         }
