@@ -540,6 +540,26 @@ $string['generalfeedback_help'] = 'Retroalimentación mostrada después de respo
 $string['categoryoptions'] = 'Opciones para la categoría';
 $string['removeanswer'] = 'Eliminar esta respuesta';
 
+// JavaScript user-facing strings (AMD modules).
+$string['js:truevalue'] = 'Verdadero';
+$string['js:falsevalue'] = 'Falso';
+$string['js:savequestionfailed'] = 'No se pudo guardar la pregunta. Inténtalo de nuevo.';
+$string['js:questiontextrequired'] = 'El texto de la pregunta es obligatorio';
+$string['js:minanswers'] = 'Se necesitan al menos 2 respuestas';
+$string['js:mincorrectanswer'] = 'Se necesita al menos una respuesta correcta';
+$string['js:reorderfailed'] = 'No se pudo reordenar la pregunta. Recarga la página.';
+$string['js:questionupdated'] = 'Pregunta actualizada';
+$string['js:updatequestionfailed'] = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.';
+$string['js:deletequestionfailed'] = 'No se pudo eliminar la pregunta. Inténtalo de nuevo.';
+
+// Timer (timed practice mode) JavaScript strings.
+$string['timer:leavewarning'] = 'Tu intento cronometrado sigue en curso. ¿Seguro que quieres salir?';
+$string['timer:warning5min'] = '¡Quedan 5 minutos!';
+$string['timer:warning1min'] = '¡Queda 1 minuto!';
+$string['timer:timeup'] = '¡TIEMPO AGOTADO!';
+$string['timer:autosubmitting'] = '¡Se acabó el tiempo! Enviando tus respuestas...';
+$string['timer:submityouranswers'] = '¡Se acabó el tiempo! Por favor envía tus respuestas.';
+
 // Claves añadidas para paridad EN/ES.
 
 // Capabilities (additional).

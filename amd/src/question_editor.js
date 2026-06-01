@@ -21,8 +21,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['jquery', 'core/ajax', 'core/notification', 'core/templates', 'core/modal_factory', 'core/modal_events'],
-function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
+define(['jquery', 'core/ajax', 'core/notification', 'core/templates', 'core/str', 'core/modal_factory', 'core/modal_events'],
+function($, Ajax, Notification, Templates, Str, ModalFactory, ModalEvents) {
 
     /**
      * Question editor class.
@@ -35,6 +35,62 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
         this.answerCount = 0;
         // Monotonic counter to guarantee unique answer-row ids across dynamically added rows.
         this.answerRowSeq = 0;
+
+        // Pre-loaded localised strings, with English fallbacks until they resolve.
+        this.strings = {
+            qtypeMultichoice: 'Multiple choice',
+            qtypeTruefalse: 'True/False',
+            qtypeShortanswer: 'Short answer',
+            editQuestion: 'Edit question',
+            newQuestion: 'New question',
+            trueValue: 'True',
+            falseValue: 'False',
+            correctAnswer: 'Correct',
+            incorrectAnswer: 'Incorrect',
+            saveFailed: 'The question could not be saved. Please try again.',
+            questionTextRequired: 'The question text is required',
+            minAnswers: 'At least 2 answers are required',
+            minCorrectAnswer: 'At least one correct answer is required'
+        };
+
+        // Kick off string loading immediately; open() awaits this so labels and
+        // the modal title are localised before the form renders.
+        var self = this;
+        this.stringsReady = Str.get_strings([
+            {key: 'qtype_multichoice', component: 'local_casospracticos'},
+            {key: 'qtype_truefalse', component: 'local_casospracticos'},
+            {key: 'qtype_shortanswer', component: 'local_casospracticos'},
+            {key: 'editquestion', component: 'local_casospracticos'},
+            {key: 'newquestion', component: 'local_casospracticos'},
+            {key: 'js:truevalue', component: 'local_casospracticos'},
+            {key: 'js:falsevalue', component: 'local_casospracticos'},
+            {key: 'correctanswer', component: 'local_casospracticos'},
+            {key: 'incorrectanswer', component: 'local_casospracticos'},
+            {key: 'js:savequestionfailed', component: 'local_casospracticos'},
+            {key: 'js:questiontextrequired', component: 'local_casospracticos'},
+            {key: 'js:minanswers', component: 'local_casospracticos'},
+            {key: 'js:mincorrectanswer', component: 'local_casospracticos'}
+        ]).then(function(strings) {
+            self.strings = {
+                qtypeMultichoice: strings[0],
+                qtypeTruefalse: strings[1],
+                qtypeShortanswer: strings[2],
+                editQuestion: strings[3],
+                newQuestion: strings[4],
+                trueValue: strings[5],
+                falseValue: strings[6],
+                correctAnswer: strings[7],
+                incorrectAnswer: strings[8],
+                saveFailed: strings[9],
+                questionTextRequired: strings[10],
+                minAnswers: strings[11],
+                minCorrectAnswer: strings[12]
+            };
+            return self.strings;
+        }).catch(function() {
+            // Keep English defaults on failure.
+            return self.strings;
+        });
     };
 
     /**
@@ -46,37 +102,40 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
     QuestionEditor.prototype.open = function(questionId) {
         var self = this;
 
-        var context = {
-            caseid: this.caseId,
-            uniqid: 'qe_' + Date.now(),
-            qtypes: [
-                {value: 'multichoice', label: 'Opción múltiple', selected: true},
-                {value: 'truefalse', label: 'Verdadero/Falso', selected: false},
-                {value: 'shortanswer', label: 'Respuesta corta', selected: false}
-            ]
-        };
+        // Wait for localised strings before building labels/title.
+        return this.stringsReady.then(function() {
+            var context = {
+                caseid: self.caseId,
+                uniqid: 'qe_' + Date.now(),
+                qtypes: [
+                    {value: 'multichoice', label: self.strings.qtypeMultichoice, selected: true},
+                    {value: 'truefalse', label: self.strings.qtypeTruefalse, selected: false},
+                    {value: 'shortanswer', label: self.strings.qtypeShortanswer, selected: false}
+                ]
+            };
 
-        // If editing, load question data.
-        var dataPromise;
-        if (questionId) {
-            dataPromise = this.loadQuestion(questionId).then(function(question) {
-                context.question = question;
-                // Update selected qtype.
-                context.qtypes.forEach(function(qt) {
-                    qt.selected = (qt.value === question.qtype);
+            // If editing, load question data.
+            var dataPromise;
+            if (questionId) {
+                dataPromise = self.loadQuestion(questionId).then(function(question) {
+                    context.question = question;
+                    // Update selected qtype.
+                    context.qtypes.forEach(function(qt) {
+                        qt.selected = (qt.value === question.qtype);
+                    });
+                    return context;
                 });
-                return context;
-            });
-        } else {
-            dataPromise = Promise.resolve(context);
-        }
+            } else {
+                dataPromise = Promise.resolve(context);
+            }
 
-        return dataPromise.then(function(ctx) {
+            return dataPromise;
+        }).then(function(ctx) {
             return Templates.render('local_casospracticos/question_form', ctx);
         }).then(function(html) {
             return ModalFactory.create({
                 type: ModalFactory.types.DEFAULT,
-                title: questionId ? 'Editar pregunta' : 'Nueva pregunta',
+                title: questionId ? self.strings.editQuestion : self.strings.newQuestion,
                 body: html,
                 large: true
             });
@@ -168,6 +227,7 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
      */
     QuestionEditor.prototype.handleQtypeChange = function(qtype) {
         var container = this.modal.getRoot().find('.answers-section');
+        var s = this.strings;
 
         if (qtype === 'truefalse') {
             // Replace with true/false answers.
@@ -175,16 +235,18 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
                 '<div class="answer-row card mb-2"><div class="card-body py-2">' +
                 '<div class="row g-2">' +
                 '<div class="col-md-8"><input type="text" class="form-control form-control-sm" ' +
-                'name="answer_text[]" value="Verdadero" readonly></div>' +
+                'name="answer_text[]" value="' + s.trueValue + '" readonly></div>' +
                 '<div class="col-md-4"><select class="form-select form-select-sm" name="answer_fraction[]">' +
-                '<option value="1.0">Correcta</option><option value="0.0" selected>Incorrecta</option></select></div>' +
+                '<option value="1.0">' + s.correctAnswer + '</option>' +
+                '<option value="0.0" selected>' + s.incorrectAnswer + '</option></select></div>' +
                 '</div></div></div>' +
                 '<div class="answer-row card mb-2"><div class="card-body py-2">' +
                 '<div class="row g-2">' +
                 '<div class="col-md-8"><input type="text" class="form-control form-control-sm" ' +
-                'name="answer_text[]" value="Falso" readonly></div>' +
+                'name="answer_text[]" value="' + s.falseValue + '" readonly></div>' +
                 '<div class="col-md-4"><select class="form-select form-select-sm" name="answer_fraction[]">' +
-                '<option value="1.0">Correcta</option><option value="0.0" selected>Incorrecta</option></select></div>' +
+                '<option value="1.0">' + s.correctAnswer + '</option>' +
+                '<option value="0.0" selected>' + s.incorrectAnswer + '</option></select></div>' +
                 '</div></div></div>'
             );
             container.find('[id^="add-answer-"]').hide();
@@ -229,7 +291,7 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
                 window.location.reload();
             } else {
                 Notification.addNotification({
-                    message: 'No se pudo guardar la pregunta. Inténtalo de nuevo.',
+                    message: self.strings.saveFailed,
                     type: 'error'
                 });
             }
@@ -278,7 +340,7 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
     QuestionEditor.prototype.validateForm = function(data) {
         if (!data.questiontext || !data.questiontext.trim()) {
             Notification.addNotification({
-                message: 'El texto de la pregunta es obligatorio',
+                message: this.strings.questionTextRequired,
                 type: 'error'
             });
             return false;
@@ -286,7 +348,7 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
 
         if (data.answers.length < 2 && data.qtype !== 'shortanswer') {
             Notification.addNotification({
-                message: 'Se necesitan al menos 2 respuestas',
+                message: this.strings.minAnswers,
                 type: 'error'
             });
             return false;
@@ -298,7 +360,7 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
         });
         if (!hasCorrect && data.qtype !== 'shortanswer') {
             Notification.addNotification({
-                message: 'Se necesita al menos una respuesta correcta',
+                message: this.strings.minCorrectAnswer,
                 type: 'error'
             });
             return false;

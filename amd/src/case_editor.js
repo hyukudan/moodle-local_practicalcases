@@ -32,6 +32,13 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     var CaseEditor = function(caseId) {
         this.caseId = caseId;
         this.container = $('.local-casospracticos-case-view[data-caseid="' + caseId + '"]');
+        // Pre-loaded localised strings, with English fallbacks until they resolve.
+        this.strings = {
+            reorderFailed: 'The question could not be reordered. Please reload the page.',
+            questionUpdated: 'Question updated',
+            updateQuestionFailed: 'The question could not be updated. Please try again.',
+            deleteQuestionFailed: 'The question could not be deleted. Please try again.'
+        };
         this.init();
     };
 
@@ -39,6 +46,29 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Initialize the editor.
      */
     CaseEditor.prototype.init = function() {
+        var self = this;
+
+        // Pre-load strings (bulk_actions pattern). They are only used after a
+        // user interaction (reorder, inline save, delete) so binding events
+        // immediately is safe; the fallbacks above cover the brief load window.
+        Str.get_strings([
+            {key: 'js:reorderfailed', component: 'local_casospracticos'},
+            {key: 'js:questionupdated', component: 'local_casospracticos'},
+            {key: 'js:updatequestionfailed', component: 'local_casospracticos'},
+            {key: 'js:deletequestionfailed', component: 'local_casospracticos'}
+        ]).then(function(strings) {
+            self.strings = {
+                reorderFailed: strings[0],
+                questionUpdated: strings[1],
+                updateQuestionFailed: strings[2],
+                deleteQuestionFailed: strings[3]
+            };
+            return self.strings;
+        }).catch(function() {
+            // Keep English defaults on failure.
+            return self.strings;
+        });
+
         this.bindEvents();
     };
 
@@ -80,6 +110,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {jQuery} item The moved item.
      */
     CaseEditor.prototype.handleQuestionReorder = function(item) {
+        var self = this;
         var questionId = item.data('questionid');
         var newPosition = item.index() + 1;
 
@@ -97,7 +128,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 });
             } else {
                 Notification.addNotification({
-                    message: 'No se pudo reordenar la pregunta. Recarga la página.',
+                    message: self.strings.reorderFailed,
                     type: 'error'
                 });
             }
@@ -178,13 +209,13 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 // Use the escaped text for display.
                 element.html(htmlText);
                 Notification.addNotification({
-                    message: 'Pregunta actualizada',
+                    message: self.strings.questionUpdated,
                     type: 'success'
                 });
             } else {
                 element.html(originalText);
                 Notification.addNotification({
-                    message: 'No se pudo actualizar la pregunta. Inténtalo de nuevo.',
+                    message: self.strings.updateQuestionFailed,
                     type: 'error'
                 });
             }
@@ -235,6 +266,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {jQuery} questionItem The question item element.
      */
     CaseEditor.prototype.deleteQuestion = function(questionId, questionItem) {
+        var self = this;
         Ajax.call([{
             methodname: 'local_casospracticos_delete_question',
             args: {id: questionId}
@@ -252,7 +284,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 });
             } else {
                 Notification.addNotification({
-                    message: 'No se pudo eliminar la pregunta. Inténtalo de nuevo.',
+                    message: self.strings.deleteQuestionFailed,
                     type: 'error'
                 });
             }

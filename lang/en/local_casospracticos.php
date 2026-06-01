@@ -595,3 +595,23 @@ $string['defaultmark_help'] = 'Points awarded for a fully correct answer';
 $string['generalfeedback_help'] = 'Feedback shown after the question is answered';
 $string['categoryoptions'] = 'Options for category';
 $string['removeanswer'] = 'Remove this answer';
+
+// JavaScript user-facing strings (AMD modules).
+$string['js:truevalue'] = 'True';
+$string['js:falsevalue'] = 'False';
+$string['js:savequestionfailed'] = 'The question could not be saved. Please try again.';
+$string['js:questiontextrequired'] = 'The question text is required';
+$string['js:minanswers'] = 'At least 2 answers are required';
+$string['js:mincorrectanswer'] = 'At least one correct answer is required';
+$string['js:reorderfailed'] = 'The question could not be reordered. Please reload the page.';
+$string['js:questionupdated'] = 'Question updated';
+$string['js:updatequestionfailed'] = 'The question could not be updated. Please try again.';
+$string['js:deletequestionfailed'] = 'The question could not be deleted. Please try again.';
+
+// Timer (timed practice mode) JavaScript strings.
+$string['timer:leavewarning'] = 'Your timed attempt is still in progress. Are you sure you want to leave?';
+$string['timer:warning5min'] = '5 minutes remaining!';
+$string['timer:warning1min'] = '1 minute remaining!';
+$string['timer:timeup'] = 'TIME UP!';
+$string['timer:autosubmitting'] = 'Time is up! Submitting your answers...';
+$string['timer:submityouranswers'] = 'Time is up! Please submit your answers.';

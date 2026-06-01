@@ -21,13 +21,24 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['jquery'], function($) {
+define(['jquery', 'core/str'], function($, Str) {
 
     var Timer = {
         timeLeft: 0,
         autoSubmit: false,
         interval: null,
         unloadHandler: null,
+        // Pre-loaded localised strings. Populated by init() before the countdown
+        // and the beforeunload handler can need them (the unload handler fires
+        // synchronously, so the string must already be resolved by then).
+        strings: {
+            leavewarning: 'Your timed attempt is still in progress. Are you sure you want to leave?',
+            warning5min: '5 minutes remaining!',
+            warning1min: '1 minute remaining!',
+            timeup: 'TIME UP!',
+            autosubmitting: 'Time is up! Submitting your answers...',
+            submityouranswers: 'Time is up! Please submit your answers.'
+        },
 
         /**
          * Initialize the timer.
@@ -59,10 +70,34 @@ define(['jquery'], function($) {
             this.updateDisplay();
             this.startCountdown();
 
+            // Pre-load localised strings. English defaults stay in place until
+            // these resolve so nothing ever shows an unresolved key.
+            Str.get_strings([
+                {key: 'timer:leavewarning', component: 'local_casospracticos'},
+                {key: 'timer:warning5min', component: 'local_casospracticos'},
+                {key: 'timer:warning1min', component: 'local_casospracticos'},
+                {key: 'timer:timeup', component: 'local_casospracticos'},
+                {key: 'timer:autosubmitting', component: 'local_casospracticos'},
+                {key: 'timer:submityouranswers', component: 'local_casospracticos'}
+            ]).then(function(strings) {
+                Timer.strings = {
+                    leavewarning: strings[0],
+                    warning5min: strings[1],
+                    warning1min: strings[2],
+                    timeup: strings[3],
+                    autosubmitting: strings[4],
+                    submityouranswers: strings[5]
+                };
+                return Timer.strings;
+            }).catch(function() {
+                // Keep English defaults on failure.
+                return Timer.strings;
+            });
+
             // Warn before leaving page.
             this.unloadHandler = function(e) {
                 if (Timer.timeLeft > 0) {
-                    var confirmationMessage = 'Your timed attempt is still in progress. Are you sure you want to leave?';
+                    var confirmationMessage = Timer.strings.leavewarning;
                     e.returnValue = confirmationMessage;
                     return confirmationMessage;
                 }
@@ -85,12 +120,12 @@ define(['jquery'], function($) {
 
                 // Warning when 5 minutes left.
                 if (Timer.timeLeft === 300) {
-                    Timer.showWarning('5 minutes remaining!');
+                    Timer.showWarning(Timer.strings.warning5min);
                 }
 
                 // Warning when 1 minute left.
                 if (Timer.timeLeft === 60) {
-                    Timer.showWarning('1 minute remaining!');
+                    Timer.showWarning(Timer.strings.warning1min);
                 }
 
                 // Time expired.
@@ -157,7 +192,7 @@ define(['jquery'], function($) {
          * Handle time expiration.
          */
         timeExpired: function() {
-            $('#timer-display').text('TIME UP!').addClass('timer-expired');
+            $('#timer-display').text(Timer.strings.timeup).addClass('timer-expired');
 
             if (this.autoSubmit) {
                 // Auto-submit the form.
@@ -166,7 +201,7 @@ define(['jquery'], function($) {
                     // Show notification.
                     require(['core/notification'], function(Notification) {
                         Notification.addNotification({
-                            message: 'Time is up! Submitting your answers...',
+                            message: Timer.strings.autosubmitting,
                             type: 'error'
                         });
                     });
@@ -182,7 +217,7 @@ define(['jquery'], function($) {
 
                 require(['core/notification'], function(Notification) {
                     Notification.addNotification({
-                        message: 'Time is up! Please submit your answers.',
+                        message: Timer.strings.submityouranswers,
                         type: 'error'
                     });
                 });
