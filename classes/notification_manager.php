@@ -49,11 +49,16 @@ class notification_manager {
             return;
         }
 
-        // Get case author.
+        // Get case author. May be false if the author was deleted/anonymized.
         $author = $DB->get_record('user', ['id' => $case->createdby]);
+        // Concrete sender/display user, used for both userfrom and fullname().
+        $sender = $author ?: \core_user::get_noreply_user();
 
         // Build notification.
         $caseurl = new \moodle_url('/local/casospracticos/case_view.php', ['id' => $case->id]);
+
+        // Batch-load all recipients once to avoid an N+1 query pattern in the loop.
+        $recipients = $DB->get_records_list('user', 'id', $userids);
 
         foreach ($userids as $userid) {
             // Don't notify the author.
@@ -61,7 +66,7 @@ class notification_manager {
                 continue;
             }
 
-            $user = $DB->get_record('user', ['id' => $userid]);
+            $user = $recipients[$userid] ?? null;
             if (!$user) {
                 continue;
             }
@@ -69,18 +74,18 @@ class notification_manager {
             $message = new \core\message\message();
             $message->component = 'local_casospracticos';
             $message->name = 'casepublished';
-            $message->userfrom = $author ?: \core_user::get_noreply_user();
+            $message->userfrom = $sender;
             $message->userto = $user;
             $message->subject = get_string('notification:casepublished_subject', 'local_casospracticos', $case->name);
             $message->fullmessage = get_string('notification:casepublished_body', 'local_casospracticos', [
                 'casename' => $case->name,
-                'author' => fullname($author),
+                'author' => fullname($sender),
                 'url' => $caseurl->out(false),
             ]);
             $message->fullmessageformat = FORMAT_PLAIN;
             $message->fullmessagehtml = get_string('notification:casepublished_body_html', 'local_casospracticos', [
                 'casename' => format_string($case->name),
-                'author' => fullname($author),
+                'author' => fullname($sender),
                 'url' => $caseurl->out(false),
             ]);
             $message->smallmessage = get_string('notification:casepublished_small', 'local_casospracticos', $case->name);
@@ -106,24 +111,26 @@ class notification_manager {
             return;
         }
 
+        // Author may be false if deleted/anonymized; resolve a concrete sender.
         $author = $DB->get_record('user', ['id' => $case->createdby]);
+        $sender = $author ?: \core_user::get_noreply_user();
         $caseurl = new \moodle_url('/local/casospracticos/case_view.php', ['id' => $case->id]);
 
         $message = new \core\message\message();
         $message->component = 'local_casospracticos';
         $message->name = 'reviewassigned';
-        $message->userfrom = $author ?: \core_user::get_noreply_user();
+        $message->userfrom = $sender;
         $message->userto = $reviewer;
         $message->subject = get_string('notification:reviewassigned_subject', 'local_casospracticos', $case->name);
         $message->fullmessage = get_string('notification:reviewassigned_body', 'local_casospracticos', [
             'casename' => $case->name,
-            'author' => fullname($author),
+            'author' => fullname($sender),
             'url' => $caseurl->out(false),
         ]);
         $message->fullmessageformat = FORMAT_PLAIN;
         $message->fullmessagehtml = get_string('notification:reviewassigned_body_html', 'local_casospracticos', [
             'casename' => format_string($case->name),
-            'author' => fullname($author),
+            'author' => fullname($sender),
             'url' => $caseurl->out(false),
         ]);
         $message->smallmessage = get_string('notification:reviewassigned_small', 'local_casospracticos', $case->name);
@@ -148,7 +155,9 @@ class notification_manager {
             return;
         }
 
+        // Reviewer may be false if deleted/anonymized; resolve a concrete sender.
         $reviewer = $DB->get_record('user', ['id' => $review->reviewerid]);
+        $sender = $reviewer ?: \core_user::get_noreply_user();
         $caseurl = new \moodle_url('/local/casospracticos/case_view.php', ['id' => $case->id]);
 
         $statusstr = get_string('review_status_' . $review->status, 'local_casospracticos');
@@ -156,7 +165,7 @@ class notification_manager {
         $message = new \core\message\message();
         $message->component = 'local_casospracticos';
         $message->name = 'reviewcompleted';
-        $message->userfrom = $reviewer ?: \core_user::get_noreply_user();
+        $message->userfrom = $sender;
         $message->userto = $author;
         $message->subject = get_string('notification:reviewcompleted_subject', 'local_casospracticos', [
             'casename' => $case->name,
@@ -164,7 +173,7 @@ class notification_manager {
         ]);
         $message->fullmessage = get_string('notification:reviewcompleted_body', 'local_casospracticos', [
             'casename' => $case->name,
-            'reviewer' => fullname($reviewer),
+            'reviewer' => fullname($sender),
             'status' => $statusstr,
             'comments' => $review->comments ?? '',
             'url' => $caseurl->out(false),
@@ -172,7 +181,7 @@ class notification_manager {
         $message->fullmessageformat = FORMAT_PLAIN;
         $message->fullmessagehtml = get_string('notification:reviewcompleted_body_html', 'local_casospracticos', [
             'casename' => format_string($case->name),
-            'reviewer' => fullname($reviewer),
+            'reviewer' => fullname($sender),
             'status' => $statusstr,
             'comments' => format_text($review->comments ?? '', FORMAT_PLAIN),
             'url' => $caseurl->out(false),

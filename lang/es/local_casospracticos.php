@@ -538,3 +538,68 @@ $string['defaultmark_help'] = 'Puntos otorgados por una respuesta completamente 
 $string['generalfeedback_help'] = 'Retroalimentación mostrada después de responder la pregunta';
 $string['categoryoptions'] = 'Opciones para la categoría';
 $string['removeanswer'] = 'Eliminar esta respuesta';
+
+// Claves añadidas para paridad EN/ES.
+
+// Capabilities (additional).
+$string['casospracticos:editall'] = 'Editar cualquier caso práctico';
+$string['casospracticos:deleteall'] = 'Eliminar cualquier caso práctico';
+
+// Events (additional).
+$string['eventratelimitexceeded'] = 'Límite de velocidad de la API excedido';
+
+// Settings — Security.
+$string['settings:security'] = 'Configuración de seguridad';
+$string['settings:enableratelimiting'] = 'Habilitar limitación de velocidad';
+$string['settings:enableratelimiting_desc'] = 'Limitar el número de peticiones a la API por usuario para prevenir abusos (los administradores del sitio quedan exentos)';
+$string['settings:ratelimitread'] = 'Límite de operaciones de lectura';
+$string['settings:ratelimitread_desc'] = 'Máximo de peticiones de lectura a la API por minuto y usuario';
+$string['settings:ratelimitwrite'] = 'Límite de operaciones de escritura';
+$string['settings:ratelimitwrite_desc'] = 'Máximo de peticiones de escritura a la API por minuto y usuario';
+
+// Message providers.
+$string['messageprovider:casepublished'] = 'Caso práctico publicado';
+$string['messageprovider:reviewassigned'] = 'Revisión asignada';
+$string['messageprovider:reviewcompleted'] = 'Revisión completada';
+$string['messageprovider:achievementearned'] = 'Logro conseguido';
+
+// Notification strings.
+$string['notification:casepublished_subject'] = 'Nuevo caso práctico publicado: {$a}';
+$string['notification:casepublished_body'] = 'Se ha publicado un nuevo caso práctico "{$a->casename}" por {$a->author}.
+
+Ver el caso: {$a->url}';
+$string['notification:casepublished_body_html'] = '<p>Se ha publicado un nuevo caso práctico "<strong>{$a->casename}</strong>" por {$a->author}.</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:casepublished_small'] = 'Nuevo caso: {$a}';
+
+$string['notification:reviewassigned_subject'] = 'Revisión asignada: {$a}';
+$string['notification:reviewassigned_body'] = 'Se te ha asignado revisar el caso "{$a->casename}" de {$a->author}.
+
+Ver el caso: {$a->url}';
+$string['notification:reviewassigned_body_html'] = '<p>Se te ha asignado revisar el caso "<strong>{$a->casename}</strong>" de {$a->author}.</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:reviewassigned_small'] = 'Revisión asignada: {$a}';
+
+$string['notification:reviewcompleted_subject'] = 'Revisión completada: {$a->casename} - {$a->status}';
+$string['notification:reviewcompleted_body'] = 'Tu caso "{$a->casename}" ha sido revisado por {$a->reviewer}.
+
+Estado: {$a->status}
+
+Comentarios: {$a->comments}
+
+Ver el caso: {$a->url}';
+$string['notification:reviewcompleted_body_html'] = '<p>Tu caso "<strong>{$a->casename}</strong>" ha sido revisado por {$a->reviewer}.</p><p><strong>Estado:</strong> {$a->status}</p><p><strong>Comentarios:</strong> {$a->comments}</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:reviewcompleted_small'] = 'Revisión: {$a->casename} - {$a->status}';
+
+$string['notification:achievementearned_subject'] = 'Logro desbloqueado: {$a}';
+$string['notification:achievementearned_body'] = '¡Felicidades! Has conseguido el logro "{$a->achievement}".
+
+{$a->description}
+
+Ver tus logros: {$a->url}';
+$string['notification:achievementearned_body_html'] = '<p>¡Felicidades! Has conseguido el logro "<strong>{$a->achievement}</strong>".</p><p>{$a->description}</p><p><a href="{$a->url}">Ver tus logros</a></p>';
+$string['notification:achievementearned_small'] = 'Logro: {$a}';
+
+// Review status strings.
+$string['review_status_pending'] = 'Pendiente';
+$string['review_status_approved'] = 'Aprobado';
+$string['review_status_rejected'] = 'Rechazado';
+$string['review_status_revision_requested'] = 'Revisión solicitada';

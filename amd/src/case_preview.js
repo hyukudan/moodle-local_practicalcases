@@ -64,13 +64,13 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
     /**
      * Build the preview DOM fragment for a case.
      *
-     * Security note: all server-supplied values (statement, questiontext, answer,
-     * question count) are inserted via textContent / createTextNode, never via
-     * innerHTML or string concatenation.  This eliminates stored-XSS even though
-     * get_case() returns PARAM_RAW fields without format_text() sanitisation.
-     * TODO: the server-side fix is to run format_text() in the external API so
-     * that rich-text fields arrive as clean HTML; at that point the statement and
-     * questiontext nodes may safely switch to innerHTML.
+     * Security note: the rich-text fields statement, questiontext and answer are
+     * run through format_text() server-side (see api::format_richtext()), so they
+     * arrive as cleaned, render-ready HTML and are safely assigned via innerHTML
+     * to preserve their formatting.  Computed/local values (question count, answer
+     * letters, the correct-answer badge) are plain and stay as textContent /
+     * createTextNode.  No field that the server does NOT format_text() is ever
+     * passed to innerHTML.
      *
      * @param {Object} data Case data returned by local_casospracticos_get_case.
      * @return {HTMLElement}  The panel element, ready to be appended to the DOM.
@@ -78,11 +78,11 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
     function buildPreviewDom(data) {
         var panel = el('div', 'cp-preview-panel');
 
-        // Statement.
+        // Statement: server-format_text'd HTML -> safe to render via innerHTML.
         var stmtWrap = el('div', 'cp-preview-statement');
         stmtWrap.appendChild(el('h6', 'cp-preview-label', 'Enunciado'));
         var stmtBody = el('div', 'cp-preview-statement-body');
-        stmtBody.textContent = data.statement || '';
+        stmtBody.innerHTML = data.statement || ''; // eslint-disable-line
         stmtWrap.appendChild(stmtBody);
         panel.appendChild(stmtWrap);
 
@@ -104,7 +104,10 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
                 numStrong.textContent = (idx + 1) + '.';
                 qText.appendChild(numStrong);
                 qText.appendChild(document.createTextNode(' '));
-                qText.appendChild(document.createTextNode(q.questiontext || ''));
+                // Question text: server-format_text'd HTML -> safe via innerHTML.
+                var qTextBody = document.createElement('span');
+                qTextBody.innerHTML = q.questiontext || ''; // eslint-disable-line
+                qText.appendChild(qTextBody);
                 qDiv.appendChild(qText);
 
                 // Answers.
@@ -119,8 +122,11 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
                         var letter = letters[ai] || String.fromCharCode(97 + ai);
                         aDiv.appendChild(el('span', 'cp-answer-letter', letter + ')'));
                         aDiv.appendChild(document.createTextNode(' '));
-                        // Answer text: server value — set via createTextNode (safe).
-                        aDiv.appendChild(document.createTextNode(a.answer || ''));
+                        // Answer text: server-format_text'd HTML -> safe via innerHTML.
+                        var aText = document.createElement('span');
+                        aText.className = 'cp-answer-text';
+                        aText.innerHTML = a.answer || ''; // eslint-disable-line
+                        aDiv.appendChild(aText);
 
                         if (isCorrect) {
                             var badge = el('span', 'cp-correct-badge');

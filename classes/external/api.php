@@ -160,21 +160,49 @@ class api extends external_api {
     }
 
     /**
+     * Run a rich-text field through format_text() so it arrives at the client
+     * as cleaned, render-ready HTML.
+     *
+     * The client (case_preview.js) renders these fields via innerHTML, relying
+     * on the cleaning performed here. We force cleaning (noclean => false) and
+     * disable filters (the preview is a lightweight, unfiltered view), and treat
+     * the stored content as HTML.
+     *
+     * @param string|null $text The raw rich-text value (may be null/empty)
+     * @param \context $context The context used for cleaning/filtering
+     * @return string Cleaned HTML, safe to render
+     */
+    protected static function format_richtext($text, \context $context): string {
+        if ($text === null || $text === '') {
+            return '';
+        }
+        return format_text($text, FORMAT_HTML, [
+            'context' => $context,
+            'noclean' => false,
+            'filter' => false,
+        ]);
+    }
+
+    /**
      * Build the answer payload for an answer record, stripping the answer key
      * (fraction / feedback) for non-privileged users.
      *
+     * Rich-text fields (answer, feedback) are run through format_text() so the
+     * client can safely render them as HTML.
+     *
      * @param \stdClass $a Answer record
      * @param bool $includekeys Whether to include fraction/feedback
+     * @param \context $context The context used to clean rich text
      * @return array Answer payload
      */
-    protected static function build_answer_payload(\stdClass $a, bool $includekeys): array {
+    protected static function build_answer_payload(\stdClass $a, bool $includekeys, \context $context): array {
         $payload = [
             'id' => $a->id,
-            'answer' => $a->answer,
+            'answer' => self::format_richtext($a->answer, $context),
         ];
         if ($includekeys) {
             $payload['fraction'] = (float) $a->fraction;
-            $payload['feedback'] = $a->feedback ?? '';
+            $payload['feedback'] = self::format_richtext($a->feedback ?? '', $context);
         }
         return $payload;
     }
@@ -382,12 +410,13 @@ class api extends external_api {
             $answers = question_manager::get_answers($q->id);
             $answerdata = [];
             foreach ($answers as $a) {
-                $answerdata[] = self::build_answer_payload($a, $includekeys);
+                $answerdata[] = self::build_answer_payload($a, $includekeys, $context);
             }
 
             $questions[] = [
                 'id' => $q->id,
-                'questiontext' => $q->questiontext,
+                // Cleaned HTML, render-ready: see format_richtext().
+                'questiontext' => self::format_richtext($q->questiontext, $context),
                 'qtype' => $q->qtype,
                 'defaultmark' => (float) $q->defaultmark,
                 'sortorder' => $q->sortorder,
@@ -399,7 +428,8 @@ class api extends external_api {
             'id' => $case->id,
             'categoryid' => $case->categoryid,
             'name' => $case->name,
-            'statement' => $case->statement,
+            // Cleaned HTML, render-ready: see format_richtext().
+            'statement' => self::format_richtext($case->statement, $context),
             'statementformat' => $case->statementformat,
             'status' => $case->status,
             'difficulty' => $case->difficulty ?? 0,
@@ -418,7 +448,7 @@ class api extends external_api {
             'id' => new external_value(PARAM_INT, 'Case ID'),
             'categoryid' => new external_value(PARAM_INT, 'Category ID'),
             'name' => new external_value(PARAM_TEXT, 'Case name'),
-            'statement' => new external_value(PARAM_RAW, 'Statement HTML'),
+            'statement' => new external_value(PARAM_RAW, 'Statement, cleaned HTML (format_text)'),
             'statementformat' => new external_value(PARAM_INT, 'Statement format'),
             'status' => new external_value(PARAM_ALPHANUMEXT, 'Status'),
             'difficulty' => new external_value(PARAM_INT, 'Difficulty'),
@@ -428,16 +458,16 @@ class api extends external_api {
             'questions' => new external_multiple_structure(
                 new external_single_structure([
                     'id' => new external_value(PARAM_INT, 'Question ID'),
-                    'questiontext' => new external_value(PARAM_RAW, 'Question text'),
+                    'questiontext' => new external_value(PARAM_RAW, 'Question text, cleaned HTML (format_text)'),
                     'qtype' => new external_value(PARAM_ALPHA, 'Question type'),
                     'defaultmark' => new external_value(PARAM_FLOAT, 'Default mark'),
                     'sortorder' => new external_value(PARAM_INT, 'Sort order'),
                     'answers' => new external_multiple_structure(
                         new external_single_structure([
                             'id' => new external_value(PARAM_INT, 'Answer ID'),
-                            'answer' => new external_value(PARAM_RAW, 'Answer text'),
+                            'answer' => new external_value(PARAM_RAW, 'Answer text, cleaned HTML (format_text)'),
                             'fraction' => new external_value(PARAM_FLOAT, 'Fraction', VALUE_OPTIONAL),
-                            'feedback' => new external_value(PARAM_RAW, 'Feedback', VALUE_OPTIONAL),
+                            'feedback' => new external_value(PARAM_RAW, 'Feedback, cleaned HTML (format_text)', VALUE_OPTIONAL),
                         ])
                     ),
                 ])
@@ -650,16 +680,18 @@ class api extends external_api {
         foreach ($questions as $q) {
             $answers = [];
             foreach ($q->answers as $a) {
-                $answers[] = self::build_answer_payload($a, $includekeys);
+                $answers[] = self::build_answer_payload($a, $includekeys, $context);
             }
 
             $result[] = [
                 'id' => $q->id,
-                'questiontext' => $q->questiontext,
+                // Cleaned HTML, render-ready: see format_richtext().
+                'questiontext' => self::format_richtext($q->questiontext, $context),
                 'qtype' => $q->qtype,
                 'defaultmark' => (float) $q->defaultmark,
                 'sortorder' => $q->sortorder,
-                'generalfeedback' => $q->generalfeedback ?? '',
+                // Cleaned HTML, render-ready: see format_richtext().
+                'generalfeedback' => self::format_richtext($q->generalfeedback ?? '', $context),
                 'answers' => $answers,
             ];
         }
@@ -674,17 +706,17 @@ class api extends external_api {
         return new external_multiple_structure(
             new external_single_structure([
                 'id' => new external_value(PARAM_INT, 'Question ID'),
-                'questiontext' => new external_value(PARAM_RAW, 'Question text'),
+                'questiontext' => new external_value(PARAM_RAW, 'Question text, cleaned HTML (format_text)'),
                 'qtype' => new external_value(PARAM_ALPHA, 'Question type'),
                 'defaultmark' => new external_value(PARAM_FLOAT, 'Default mark'),
                 'sortorder' => new external_value(PARAM_INT, 'Sort order'),
-                'generalfeedback' => new external_value(PARAM_RAW, 'General feedback'),
+                'generalfeedback' => new external_value(PARAM_RAW, 'General feedback, cleaned HTML (format_text)'),
                 'answers' => new external_multiple_structure(
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Answer ID'),
-                        'answer' => new external_value(PARAM_RAW, 'Answer text'),
+                        'answer' => new external_value(PARAM_RAW, 'Answer text, cleaned HTML (format_text)'),
                         'fraction' => new external_value(PARAM_FLOAT, 'Fraction', VALUE_OPTIONAL),
-                        'feedback' => new external_value(PARAM_RAW, 'Feedback', VALUE_OPTIONAL),
+                        'feedback' => new external_value(PARAM_RAW, 'Feedback, cleaned HTML (format_text)', VALUE_OPTIONAL),
                     ])
                 ),
             ])

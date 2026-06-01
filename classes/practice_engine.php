@@ -53,8 +53,14 @@ class practice_engine {
         $maxscore = 0;
 
         foreach ($questions as $question) {
-            $maxscore += $question->defaultmark;
             $paramname = 'q' . $question->id;
+
+            // Manually-graded question types (essay) always auto-score 0 and are
+            // graded by hand later, so they must not be counted in the auto-graded
+            // maxscore denominator or they would deflate the learner's percentage.
+            if ($question->qtype !== 'essay') {
+                $maxscore += $question->defaultmark;
+            }
 
             switch ($question->qtype) {
                 case 'multichoice':
