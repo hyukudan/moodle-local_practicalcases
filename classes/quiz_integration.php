@@ -69,7 +69,15 @@ class quiz_integration {
         }
 
         $course = $DB->get_record('course', ['id' => $quiz->course]);
-        $context = \context_course::instance($course->id);
+
+        // Questions added to a quiz live in the quiz's module context (that is the
+        // context quiz_add_quiz_question() uses for question_references). Resolve the
+        // quiz cm so we can build/fetch the top question category there.
+        if (!isset($quiz->cmid)) {
+            $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
+            $quiz->cmid = $cm->id;
+        }
+        $context = \context_module::instance($quiz->cmid);
 
         // Get or create question category for this case.
         $category = self::get_or_create_category($case, $context);
@@ -137,7 +145,7 @@ class quiz_integration {
                 'questionids' => $questionids,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($transaction)) {
                 $transaction->rollback($e);
             }
@@ -178,7 +186,11 @@ class quiz_integration {
         }
 
         $course = $DB->get_record('course', ['id' => $exam->course]);
-        $context = \context_course::instance($course->id);
+
+        // Questions live in the examsimulator's module context (CONTEXT_MODULE),
+        // which is what question_get_top_category() requires.
+        $cm = get_coursemodule_from_instance('examsimulator', $exam->id, $exam->course, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
 
         // Get or create question category.
         $category = self::get_or_create_category($case, $context);
@@ -219,7 +231,7 @@ class quiz_integration {
                 'categoryid' => $category->id,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($transaction)) {
                 $transaction->rollback($e);
             }
@@ -238,7 +250,8 @@ class quiz_integration {
      * @return object Category record
      */
     private static function get_or_create_category(object $case, \context $context): object {
-        global $DB;
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/questionlib.php');
 
         $catname = self::CATEGORY_PREFIX . $case->id . '_' . clean_param($case->name, PARAM_ALPHANUMEXT);
         $catname = substr($catname, 0, 250); // Limit length.
@@ -253,32 +266,27 @@ class quiz_integration {
             return $category;
         }
 
-        // Get parent category (top level for this context).
-        $parent = $DB->get_record('question_categories', [
-            'contextid' => $context->id,
-            'parent' => 0,
-        ]);
-
-        if (!$parent) {
-            // Create top level category.
-            $parent = new \stdClass();
-            $parent->name = 'top';
-            $parent->contextid = $context->id;
-            $parent->parent = 0;
-            $parent->sortorder = 0;
-            $parent->stamp = make_unique_id_code();
-            $parent->id = $DB->insert_record('question_categories', $parent);
+        // Get (or create) the top-level category for this context using the core
+        // helper. This sets all NOT NULL columns (info, infoformat, ...) correctly;
+        // hand-building it omitted info/infoformat and crashed the insert.
+        // Note: question_get_top_category() requires a CONTEXT_MODULE context.
+        $topcategory = question_get_top_category($context->id, true);
+        if (!$topcategory) {
+            throw new \coding_exception(
+                'Cannot resolve top question category for context ' . $context->id .
+                ' (expected a module context).'
+            );
         }
 
         // Create category for this case.
         $category = new \stdClass();
         $category->name = $catname;
         $category->contextid = $context->id;
-        $category->parent = $parent->id;
+        $category->parent = $topcategory->id;
         $category->sortorder = 999;
         $category->stamp = make_unique_id_code();
         $category->info = get_string('casestatement', 'local_casospracticos') . ': ' . $case->name;
-        $category->infoformat = FORMAT_PLAIN;
+        $category->infoformat = FORMAT_HTML;
         $category->id = $DB->insert_record('question_categories', $category);
 
         return $category;
@@ -552,13 +560,15 @@ class quiz_integration {
      * @param int $questionid Question ID
      * @param float|null $mark Maximum mark for this slot (null = qtype default)
      * @param int $page Target page (0 = append respecting questionsperpage)
-     * @return bool Whether the question was added
+     * @return void Throws on failure; no return value (quiz_add_quiz_question()
+     *              returns null on the success path, so we treat no-exception as
+     *              success rather than constraining the return type).
      */
-    private static function add_question_to_quiz(object $quiz, int $questionid, ?float $mark = null, int $page = 0): bool {
+    private static function add_question_to_quiz(object $quiz, int $questionid, ?float $mark = null, int $page = 0): void {
         global $CFG;
         require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
-        return quiz_add_quiz_question($questionid, $quiz, $page, $mark);
+        quiz_add_quiz_question($questionid, $quiz, $page, $mark);
     }
 
     /**
