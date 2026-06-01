@@ -259,7 +259,7 @@ $string['eventcasepublished'] = 'Caso práctico publicado';
 $string['eventpracticeattemptcompleted'] = 'Intento de práctica completado';
 
 // Search.
-$string['search:case'] = 'Casos prácticos';
+$string['search:case_search'] = 'Casos prácticos';
 
 // Settings.
 $string['settings:general'] = 'Configuración general';
@@ -304,6 +304,7 @@ $string['error:questionnotfound'] = 'Pregunta no encontrada';
 $string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
 $string['error:nopermissiontoexport'] = 'No tiene permiso para exportar los casos seleccionados. Solo puede exportar casos que haya creado o tener la capacidad editall.';
 $string['error:invaliddata'] = 'Datos proporcionados no válidos';
+$string['error:invalidstatus'] = 'Estado del caso no válido.';
 $string['error:nocases'] = 'No hay casos seleccionados';
 $string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
 $string['error:sessionexpired'] = 'Tu sesión de práctica ha expirado. Por favor inicia un nuevo intento.';
@@ -317,6 +318,7 @@ $string['privacy:metadata:local_cp_cases:timemodified'] = 'La fecha de última m
 $string['privacy:metadata:local_cp_audit_log'] = 'Registro de auditoría de todas las acciones realizadas';
 $string['privacy:metadata:local_cp_audit_log:userid'] = 'El ID del usuario que realizó la acción';
 $string['privacy:metadata:local_cp_audit_log:action'] = 'La acción realizada por el usuario';
+$string['privacy:metadata:local_cp_audit_log:changes'] = 'Los cambios de campos registrados (valores antiguos y nuevos) de la acción';
 $string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'La dirección IP del usuario';
 $string['privacy:metadata:local_cp_audit_log:timecreated'] = 'Cuándo se realizó la acción';
 $string['privacy:metadata:local_cp_reviews'] = 'Revisiones de casos para el flujo de trabajo';
@@ -335,6 +337,29 @@ $string['privacy:metadata:local_cp_practice_responses'] = 'Almacena las respuest
 $string['privacy:metadata:local_cp_practice_responses:response'] = 'La respuesta del usuario a la pregunta';
 $string['privacy:metadata:local_cp_practice_responses:score'] = 'La puntuación de esta respuesta';
 $string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Si la respuesta fue correcta';
+$string['privacy:metadata:local_cp_achievements'] = 'Almacena los logros de gamificación obtenidos por los usuarios';
+$string['privacy:metadata:local_cp_achievements:userid'] = 'El ID del usuario que obtuvo el logro';
+$string['privacy:metadata:local_cp_achievements:achievementtype'] = 'El tipo de logro obtenido';
+$string['privacy:metadata:local_cp_achievements:caseid'] = 'El caso relacionado, si procede';
+$string['privacy:metadata:local_cp_achievements:timecreated'] = 'Cuándo se obtuvo el logro';
+$string['privacy:metadata:local_cp_practice_sessions'] = 'Almacena las sesiones de práctica seguras basadas en token iniciadas por los usuarios';
+$string['privacy:metadata:local_cp_practice_sessions:userid'] = 'El ID del usuario que inició la sesión';
+$string['privacy:metadata:local_cp_practice_sessions:caseid'] = 'El caso que se está practicando';
+$string['privacy:metadata:local_cp_practice_sessions:timecreated'] = 'Cuándo se creó la sesión';
+$string['privacy:metadata:local_cp_practice_sessions:timeexpiry'] = 'Cuándo caduca la sesión';
+$string['privacy:metadata:local_cp_timed_attempts'] = 'Almacena los intentos del modo de práctica cronometrada realizados por los usuarios';
+$string['privacy:metadata:local_cp_timed_attempts:userid'] = 'El ID del usuario que realizó el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:caseid'] = 'El caso que se está practicando';
+$string['privacy:metadata:local_cp_timed_attempts:score'] = 'La puntuación obtenida en el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:maxscore'] = 'La puntuación máxima posible';
+$string['privacy:metadata:local_cp_timed_attempts:percentage'] = 'El porcentaje de puntuación';
+$string['privacy:metadata:local_cp_timed_attempts:status'] = 'El estado del intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:responses'] = 'Las respuestas registradas del intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:timestarted'] = 'Cuándo se inició el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:timesubmitted'] = 'Cuándo se envió el intento cronometrado';
+$string['privacy:achievements'] = 'Logros';
+$string['privacy:practicesessions'] = 'Sesiones de práctica';
+$string['privacy:timedattempts'] = 'Intentos cronometrados';
 
 // Default category.
 $string['defaultcategory'] = 'Casos importados';

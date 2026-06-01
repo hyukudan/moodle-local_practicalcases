@@ -62,6 +62,7 @@ class provider implements
             [
                 'userid' => 'privacy:metadata:local_cp_audit_log:userid',
                 'action' => 'privacy:metadata:local_cp_audit_log:action',
+                'changes' => 'privacy:metadata:local_cp_audit_log:changes',
                 'ipaddress' => 'privacy:metadata:local_cp_audit_log:ipaddress',
                 'timecreated' => 'privacy:metadata:local_cp_audit_log:timecreated',
             ],
@@ -102,6 +103,44 @@ class provider implements
             'privacy:metadata:local_cp_practice_responses'
         );
 
+        $collection->add_database_table(
+            'local_cp_achievements',
+            [
+                'userid' => 'privacy:metadata:local_cp_achievements:userid',
+                'achievementtype' => 'privacy:metadata:local_cp_achievements:achievementtype',
+                'caseid' => 'privacy:metadata:local_cp_achievements:caseid',
+                'timecreated' => 'privacy:metadata:local_cp_achievements:timecreated',
+            ],
+            'privacy:metadata:local_cp_achievements'
+        );
+
+        $collection->add_database_table(
+            'local_cp_practice_sessions',
+            [
+                'userid' => 'privacy:metadata:local_cp_practice_sessions:userid',
+                'caseid' => 'privacy:metadata:local_cp_practice_sessions:caseid',
+                'timecreated' => 'privacy:metadata:local_cp_practice_sessions:timecreated',
+                'timeexpiry' => 'privacy:metadata:local_cp_practice_sessions:timeexpiry',
+            ],
+            'privacy:metadata:local_cp_practice_sessions'
+        );
+
+        $collection->add_database_table(
+            'local_cp_timed_attempts',
+            [
+                'userid' => 'privacy:metadata:local_cp_timed_attempts:userid',
+                'caseid' => 'privacy:metadata:local_cp_timed_attempts:caseid',
+                'score' => 'privacy:metadata:local_cp_timed_attempts:score',
+                'maxscore' => 'privacy:metadata:local_cp_timed_attempts:maxscore',
+                'percentage' => 'privacy:metadata:local_cp_timed_attempts:percentage',
+                'status' => 'privacy:metadata:local_cp_timed_attempts:status',
+                'responses' => 'privacy:metadata:local_cp_timed_attempts:responses',
+                'timestarted' => 'privacy:metadata:local_cp_timed_attempts:timestarted',
+                'timesubmitted' => 'privacy:metadata:local_cp_timed_attempts:timesubmitted',
+            ],
+            'privacy:metadata:local_cp_timed_attempts'
+        );
+
         return $collection;
     }
 
@@ -122,6 +161,9 @@ class provider implements
                     OR EXISTS (SELECT 1 FROM {local_cp_audit_log} a WHERE a.userid = :userid2)
                     OR EXISTS (SELECT 1 FROM {local_cp_reviews} r WHERE r.reviewerid = :userid3)
                     OR EXISTS (SELECT 1 FROM {local_cp_practice_attempts} p WHERE p.userid = :userid4)
+                    OR EXISTS (SELECT 1 FROM {local_cp_achievements} ac WHERE ac.userid = :userid5)
+                    OR EXISTS (SELECT 1 FROM {local_cp_practice_sessions} s WHERE s.userid = :userid6)
+                    OR EXISTS (SELECT 1 FROM {local_cp_timed_attempts} t WHERE t.userid = :userid7)
                 )";
 
         $params = [
@@ -130,6 +172,9 @@ class provider implements
             'userid2' => $userid,
             'userid3' => $userid,
             'userid4' => $userid,
+            'userid5' => $userid,
+            'userid6' => $userid,
+            'userid7' => $userid,
         ];
 
         $contextlist->add_from_sql($sql, $params);
@@ -163,6 +208,18 @@ class provider implements
 
         // Users with practice attempts.
         $sql = "SELECT DISTINCT userid FROM {local_cp_practice_attempts} WHERE userid > 0";
+        $userlist->add_from_sql('userid', $sql, []);
+
+        // Users with achievements.
+        $sql = "SELECT DISTINCT userid FROM {local_cp_achievements} WHERE userid > 0";
+        $userlist->add_from_sql('userid', $sql, []);
+
+        // Users with practice sessions.
+        $sql = "SELECT DISTINCT userid FROM {local_cp_practice_sessions} WHERE userid > 0";
+        $userlist->add_from_sql('userid', $sql, []);
+
+        // Users with timed attempts.
+        $sql = "SELECT DISTINCT userid FROM {local_cp_timed_attempts} WHERE userid > 0";
         $userlist->add_from_sql('userid', $sql, []);
     }
 
@@ -211,6 +268,8 @@ class provider implements
                         'objecttype' => $log->objecttype,
                         'objectid' => $log->objectid,
                         'action' => $log->action,
+                        'changes' => $log->changes,
+                        'ipaddress' => $log->ipaddress,
                         'timecreated' => transform::datetime($log->timecreated),
                     ];
                 }
@@ -277,6 +336,66 @@ class provider implements
                     (object) ['attempts' => $attemptdata]
                 );
             }
+
+            // Export achievements (gamification).
+            $achievements = $DB->get_records('local_cp_achievements', ['userid' => $userid], 'timecreated DESC');
+            if (!empty($achievements)) {
+                $achievementdata = [];
+                foreach ($achievements as $achievement) {
+                    $case = $achievement->caseid
+                        ? $DB->get_record('local_cp_cases', ['id' => $achievement->caseid]) : null;
+                    $achievementdata[] = (object) [
+                        'achievementtype' => $achievement->achievementtype,
+                        'casename' => $case ? $case->name : null,
+                        'timecreated' => transform::datetime($achievement->timecreated),
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('privacy:achievements', 'local_casospracticos')]),
+                    (object) ['achievements' => $achievementdata]
+                );
+            }
+
+            // Export practice sessions (secure token-based sessions).
+            $sessions = $DB->get_records('local_cp_practice_sessions', ['userid' => $userid], 'timecreated DESC');
+            if (!empty($sessions)) {
+                $sessiondata = [];
+                foreach ($sessions as $session) {
+                    $case = $DB->get_record('local_cp_cases', ['id' => $session->caseid]);
+                    $sessiondata[] = (object) [
+                        'casename' => $case ? $case->name : 'Deleted case',
+                        'timecreated' => transform::datetime($session->timecreated),
+                        'timeexpiry' => $session->timeexpiry ? transform::datetime($session->timeexpiry) : null,
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('privacy:practicesessions', 'local_casospracticos')]),
+                    (object) ['sessions' => $sessiondata]
+                );
+            }
+
+            // Export timed attempts.
+            $timedattempts = $DB->get_records('local_cp_timed_attempts', ['userid' => $userid], 'timecreated DESC');
+            if (!empty($timedattempts)) {
+                $timeddata = [];
+                foreach ($timedattempts as $timed) {
+                    $case = $DB->get_record('local_cp_cases', ['id' => $timed->caseid]);
+                    $timeddata[] = (object) [
+                        'casename' => $case ? $case->name : 'Deleted case',
+                        'score' => $timed->score,
+                        'maxscore' => $timed->maxscore,
+                        'percentage' => $timed->percentage,
+                        'status' => $timed->status,
+                        'responses' => $timed->responses,
+                        'timestarted' => transform::datetime($timed->timestarted),
+                        'timesubmitted' => $timed->timesubmitted ? transform::datetime($timed->timesubmitted) : null,
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    array_merge($subcontext, [get_string('privacy:timedattempts', 'local_casospracticos')]),
+                    (object) ['timed_attempts' => $timeddata]
+                );
+            }
         }
     }
 
@@ -287,14 +406,30 @@ class provider implements
      */
     public static function delete_data_for_all_users_in_context(\context $context) {
         // We don't delete cases when users are deleted - they are educational content.
-        // Just anonymize the createdby field.
+        // Just anonymize the createdby field. All purely user-specific data is removed.
         global $DB;
 
         if ($context->contextlevel != CONTEXT_SYSTEM) {
             return;
         }
 
+        // Anonymize authored content (educational, retained).
         $DB->set_field('local_cp_cases', 'createdby', 0, []);
+
+        // Anonymize review attribution (workflow content, retained).
+        $DB->set_field('local_cp_reviews', 'reviewerid', 0, []);
+
+        // Anonymize audit log: scrub userid, IP address and change payload.
+        $DB->set_field('local_cp_audit_log', 'userid', 0, []);
+        $DB->set_field('local_cp_audit_log', 'ipaddress', null, []);
+        $DB->set_field('local_cp_audit_log', 'changes', null, []);
+
+        // Delete personal attempt/answer data.
+        $DB->delete_records('local_cp_practice_responses', []);
+        $DB->delete_records('local_cp_practice_attempts', []);
+        $DB->delete_records('local_cp_timed_attempts', []);
+        $DB->delete_records('local_cp_practice_sessions', []);
+        $DB->delete_records('local_cp_achievements', []);
     }
 
     /**
@@ -315,7 +450,10 @@ class provider implements
             // Anonymize cases created by user (don't delete educational content).
             $DB->set_field('local_cp_cases', 'createdby', 0, ['createdby' => $userid]);
 
-            // Anonymize audit log entries.
+            // Anonymize audit log entries: scrub userid, IP address and change payload
+            // (changes can hold user-identifying old/new values).
+            $DB->set_field('local_cp_audit_log', 'ipaddress', null, ['userid' => $userid]);
+            $DB->set_field('local_cp_audit_log', 'changes', null, ['userid' => $userid]);
             $DB->set_field('local_cp_audit_log', 'userid', 0, ['userid' => $userid]);
 
             // Anonymize reviews.
@@ -328,6 +466,11 @@ class provider implements
                 $DB->delete_records_select('local_cp_practice_responses', "attemptid $insql", $params);
             }
             $DB->delete_records('local_cp_practice_attempts', ['userid' => $userid]);
+
+            // Delete timed attempts, practice sessions and achievements (personal data).
+            $DB->delete_records('local_cp_timed_attempts', ['userid' => $userid]);
+            $DB->delete_records('local_cp_practice_sessions', ['userid' => $userid]);
+            $DB->delete_records('local_cp_achievements', ['userid' => $userid]);
         }
     }
 
@@ -354,9 +497,9 @@ class provider implements
             $inparams
         );
 
-        // Anonymize audit log entries.
+        // Anonymize audit log entries: scrub userid, IP address and change payload.
         $DB->execute(
-            "UPDATE {local_cp_audit_log} SET userid = 0 WHERE userid " . $insql,
+            "UPDATE {local_cp_audit_log} SET userid = 0, ipaddress = NULL, changes = NULL WHERE userid " . $insql,
             $inparams
         );
 
@@ -373,5 +516,10 @@ class provider implements
             $DB->delete_records_select('local_cp_practice_responses', "attemptid " . $attinsql, $attparams);
         }
         $DB->delete_records_select('local_cp_practice_attempts', "userid " . $insql, $inparams);
+
+        // Delete timed attempts, practice sessions and achievements (personal data).
+        $DB->delete_records_select('local_cp_timed_attempts', "userid " . $insql, $inparams);
+        $DB->delete_records_select('local_cp_practice_sessions', "userid " . $insql, $inparams);
+        $DB->delete_records_select('local_cp_achievements', "userid " . $insql, $inparams);
     }
 }

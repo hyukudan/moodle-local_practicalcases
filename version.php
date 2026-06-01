@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026031600;  // v1.3.1: SQL audit fixes — missing indexes on practice_attempts.
+$plugin->version   = 2026060100;  // v1.3.2: Timed-practice flow fixes — questionorder columns, field-name + scoring + expiry + race fixes.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.3.0';
+$plugin->release   = '1.3.2';

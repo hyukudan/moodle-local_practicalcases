@@ -86,13 +86,15 @@ if (!empty($format) && !empty($ids)) {
 
     switch ($format) {
         case 'pdf':
-            $content = pdf_exporter::export_cases($caseids);
+            $pdfexporter = new pdf_exporter();
+            $content = $pdfexporter->export_cases($caseids);
             header('Content-Type: application/pdf');
             header('Content-Disposition: attachment; filename="' . $filename . '.pdf"');
             break;
 
         case 'csv':
-            $content = csv_exporter::export_cases($caseids);
+            $csvexporter = new csv_exporter();
+            $content = $csvexporter->export($caseids);
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
             break;
@@ -209,13 +211,15 @@ if ($form->is_cancelled()) {
 
     switch ($data->format) {
         case 'pdf':
-            $content = pdf_exporter::export_cases($caseids);
+            $pdfexporter = new pdf_exporter();
+            $content = $pdfexporter->export_cases($caseids);
             header('Content-Type: application/pdf');
             header('Content-Disposition: attachment; filename="' . $filename . '.pdf"');
             break;
 
         case 'csv':
-            $content = csv_exporter::export_cases($caseids);
+            $csvexporter = new csv_exporter();
+            $content = $csvexporter->export($caseids);
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
             break;

@@ -391,5 +391,32 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026031600, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026060100) {
+        // v1.3.2: Timed-practice flow fixes.
+
+        // Add questionorder column to practice sessions (read/written by practice_session_manager).
+        $table = new xmldb_table('local_cp_practice_sessions');
+        $field = new xmldb_field('questionorder', XMLDB_TYPE_TEXT, null, null, null, null, null, 'timeexpiry');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add questionorder column to timed attempts (persisted by timed_attempt_manager::start_attempt).
+        $table = new xmldb_table('local_cp_timed_attempts');
+        $field = new xmldb_field('questionorder', XMLDB_TYPE_TEXT, null, null, null, null, null, 'responses');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Align status default with the code constant timed_attempt_manager::STATUS_INPROGRESS ('inprogress').
+        // Schema previously defaulted to 'in_progress', which never matches the status the manager queries.
+        $field = new xmldb_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'inprogress', 'percentage');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_default($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060100, 'local', 'casospracticos');
+    }
+
     return true;
 }

@@ -65,7 +65,14 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_questions/cp_question/cp_answers/cp_answer');
         $paths[] = new restore_path_element('casospracticos_answer', $elepath);
 
-        // Add practice attempts paths if user data is being restored.
+        // Reviews and usage are always backed up (workflow/analytics state).
+        $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_reviews/cp_review');
+        $paths[] = new restore_path_element('casospracticos_review', $elepath);
+
+        $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_usages/cp_usage');
+        $paths[] = new restore_path_element('casospracticos_usage', $elepath);
+
+        // Add user-attempt paths if user data is being restored.
         $userinfo = $this->get_setting_value('users');
         if ($userinfo) {
             $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_practice_attempts/cp_attempt');
@@ -73,6 +80,15 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
 
             $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_practice_attempts/cp_attempt/cp_responses/cp_response');
             $paths[] = new restore_path_element('casospracticos_response', $elepath);
+
+            $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_timed_attempts/cp_timed_attempt');
+            $paths[] = new restore_path_element('casospracticos_timed_attempt', $elepath);
+
+            $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_practice_sessions/cp_practice_session');
+            $paths[] = new restore_path_element('casospracticos_session', $elepath);
+
+            $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_achievements/cp_achievement');
+            $paths[] = new restore_path_element('casospracticos_achievement', $elepath);
         }
 
         return $paths;
@@ -137,9 +153,12 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
             $data->categoryid = $defaultcat->id;
         }
 
-        // Map user ID for createdby.
-        $data->createdby = $this->get_mappingid('user', $data->createdby);
-        if (!$data->createdby) {
+        // Map user ID for createdby. When the backup excluded user data the
+        // createdby field is absent, so fall back to the restoring user.
+        if (!empty($data->createdby)) {
+            $data->createdby = $this->get_mappingid('user', $data->createdby);
+        }
+        if (empty($data->createdby)) {
             $data->createdby = $USER->id;
         }
 
@@ -149,8 +168,9 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $newid = $DB->insert_record('local_cp_cases', $data);
         $this->casemapping[$oldid] = $newid;
 
-        // Set mapping for file restore.
-        $this->set_mapping('local_cp_case', $oldid, $newid, true);
+        // Set mapping under the same name used by restore_path_element /
+        // get_new_parentid() (and for file restore). Names MUST match.
+        $this->set_mapping('casospracticos_case', $oldid, $newid, true);
     }
 
     /**
@@ -182,8 +202,9 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $newid = $DB->insert_record('local_cp_questions', $data);
         $this->questionmapping[$oldid] = $newid;
 
-        // Set mapping for file restore.
-        $this->set_mapping('local_cp_question', $oldid, $newid, true);
+        // Set mapping under the same name used by restore_path_element /
+        // get_new_parentid() (and for file restore). Names MUST match.
+        $this->set_mapping('casospracticos_question', $oldid, $newid, true);
     }
 
     /**
@@ -212,8 +233,8 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
 
         $newid = $DB->insert_record('local_cp_answers', $data);
 
-        // Set mapping for file restore.
-        $this->set_mapping('local_cp_answer', $oldid, $newid, true);
+        // Set mapping under the same name used for file restore. Names MUST match.
+        $this->set_mapping('casospracticos_answer', $oldid, $newid, true);
     }
 
     /**
@@ -272,7 +293,7 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         }
 
         // Map question ID.
-        $questionid = $this->get_mappingid('local_cp_question', $data->questionid);
+        $questionid = $this->get_mappingid('casospracticos_question', $data->questionid);
         if (!$questionid && isset($this->questionmapping[$data->questionid])) {
             $questionid = $this->questionmapping[$data->questionid];
         }
@@ -288,14 +309,166 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
     }
 
     /**
+     * Process a review element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_review($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+
+        // Map reviewer (present only when user data was included).
+        if (!empty($data->reviewerid)) {
+            $mapped = $this->get_mappingid('user', $data->reviewerid);
+            $data->reviewerid = $mapped ?: 0;
+        } else {
+            $data->reviewerid = 0;
+        }
+
+        unset($data->id);
+        $DB->insert_record('local_cp_reviews', $data);
+    }
+
+    /**
+     * Process a usage element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_usage($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+
+        // Remap the course id to the course being restored into. The original
+        // quiz instance cannot be reliably mapped here, so it is cleared to
+        // avoid dangling references.
+        $data->courseid = $this->task->get_courseid();
+        $data->quizid = null;
+
+        unset($data->id);
+
+        // The (caseid, quizid) index is unique; guard against duplicates.
+        if (!$DB->record_exists('local_cp_usage', ['caseid' => $caseid, 'quizid' => null])) {
+            $DB->insert_record('local_cp_usage', $data);
+        }
+    }
+
+    /**
+     * Process a timed attempt element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_timed_attempt($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $userid = $this->get_mappingid('user', $data->userid);
+        if (!$userid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+        $data->userid = $userid;
+
+        // Regenerate the token to keep the unique index intact across restores.
+        $data->token = bin2hex(random_bytes(32));
+
+        unset($data->id);
+        $DB->insert_record('local_cp_timed_attempts', $data);
+    }
+
+    /**
+     * Process a practice session element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_session($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $userid = $this->get_mappingid('user', $data->userid);
+        if (!$userid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+        $data->userid = $userid;
+
+        // Regenerate the token to keep the unique index intact across restores.
+        $data->token = bin2hex(random_bytes(32));
+
+        unset($data->id);
+        $DB->insert_record('local_cp_practice_sessions', $data);
+    }
+
+    /**
+     * Process an achievement element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_achievement($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $userid = $this->get_mappingid('user', $data->userid);
+        if (!$userid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+        $data->userid = $userid;
+
+        unset($data->id);
+
+        // The (userid, achievementtype) index is unique; skip if already present.
+        if (!$DB->record_exists('local_cp_achievements',
+                ['userid' => $userid, 'achievementtype' => $data->achievementtype])) {
+            $DB->insert_record('local_cp_achievements', $data);
+        }
+    }
+
+    /**
      * After restore, process files.
      */
     public function after_restore_course() {
-        // Restore files for statements.
-        $this->add_related_files('local_casospracticos', 'statement', 'local_cp_case');
-        $this->add_related_files('local_casospracticos', 'questiontext', 'local_cp_question');
-        $this->add_related_files('local_casospracticos', 'answer', 'local_cp_answer');
-        $this->add_related_files('local_casospracticos', 'feedback', 'local_cp_answer');
+        // Restore files for statements. Itemnames MUST match the set_mapping names.
+        $this->add_related_files('local_casospracticos', 'statement', 'casospracticos_case');
+        $this->add_related_files('local_casospracticos', 'questiontext', 'casospracticos_question');
+        $this->add_related_files('local_casospracticos', 'answer', 'casospracticos_answer');
+        $this->add_related_files('local_casospracticos', 'feedback', 'casospracticos_answer');
     }
 
     /**

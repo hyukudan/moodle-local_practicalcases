@@ -28,7 +28,13 @@ class observer {
     /**
      * Handle user deletion event.
      *
-     * Anonymizes cases created by the deleted user.
+     * Removes/anonymizes all personal data of the deleted user across every
+     * plugin table, consistent with the privacy provider policy:
+     *  - Educational/workflow content (cases, reviews) is retained but
+     *    de-attributed (owner/reviewer set to 0).
+     *  - Audit log rows are de-attributed and the IP address and change
+     *    payload are scrubbed.
+     *  - Personal attempt/answer/session/achievement data is deleted.
      *
      * @param \core\event\user_deleted $event The event.
      */
@@ -37,18 +43,49 @@ class observer {
 
         $userid = $event->objectid;
 
-        // Update createdby to admin user (id 2) for all cases.
-        $DB->set_field('local_cp_cases', 'createdby', 2, ['createdby' => $userid]);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            // Anonymize authored content (educational, retained) to system/no owner.
+            $DB->set_field('local_cp_cases', 'createdby', 0, ['createdby' => $userid]);
 
-        // Invalidate cache.
-        $cache = \cache::make('local_casospracticos', 'cases');
-        $cache->purge();
+            // Anonymize review attribution (workflow content, retained).
+            $DB->set_field('local_cp_reviews', 'reviewerid', 0, ['reviewerid' => $userid]);
+
+            // Anonymize audit log: scrub userid, IP address and change payload
+            // (changes can hold user-identifying old/new values).
+            $DB->set_field('local_cp_audit_log', 'ipaddress', null, ['userid' => $userid]);
+            $DB->set_field('local_cp_audit_log', 'changes', null, ['userid' => $userid]);
+            $DB->set_field('local_cp_audit_log', 'userid', 0, ['userid' => $userid]);
+
+            // Delete personal practice attempts and their responses.
+            $attempts = $DB->get_fieldset_select('local_cp_practice_attempts', 'id', 'userid = ?', [$userid]);
+            if (!empty($attempts)) {
+                list($insql, $params) = $DB->get_in_or_equal($attempts);
+                $DB->delete_records_select('local_cp_practice_responses', "attemptid $insql", $params);
+            }
+            $DB->delete_records('local_cp_practice_attempts', ['userid' => $userid]);
+
+            // Delete timed attempts, practice sessions and achievements (personal data).
+            $DB->delete_records('local_cp_timed_attempts', ['userid' => $userid]);
+            $DB->delete_records('local_cp_practice_sessions', ['userid' => $userid]);
+            $DB->delete_records('local_cp_achievements', ['userid' => $userid]);
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
+
+        // Invalidate caches.
+        self::invalidate_all_caches();
     }
 
     /**
      * Handle course deletion event.
      *
-     * Removes categories and cases associated with the course context.
+     * Removes categories and cases associated with the course context, plus
+     * every dependent row, in correct dependency order (children before
+     * parents) so no orphaned rows or FK/order violations remain.
      *
      * @param \core\event\course_deleted $event The event.
      */
@@ -62,45 +99,151 @@ class observer {
             return;
         }
 
-        // Batch delete: answers -> questions -> cases -> categories using subqueries.
-        // Delete answers for all questions in cases belonging to categories in this context.
-        $DB->execute(
-            "DELETE FROM {local_cp_answers}
-             WHERE questionid IN (
-                SELECT q.id FROM {local_cp_questions} q
-                JOIN {local_cp_cases} c ON c.id = q.caseid
-                JOIN {local_cp_categories} cat ON cat.id = c.categoryid
-                WHERE cat.contextid = ?
-             )",
-            [$context->id]
-        );
+        $contextid = $context->id;
 
-        // Delete questions.
-        $DB->execute(
-            "DELETE FROM {local_cp_questions}
-             WHERE caseid IN (
-                SELECT c.id FROM {local_cp_cases} c
-                JOIN {local_cp_categories} cat ON cat.id = c.categoryid
-                WHERE cat.contextid = ?
-             )",
-            [$context->id]
+        // Resolve the affected case ids up front so we can scope dependent deletes
+        // and audit-log cleanup even after the parent rows are gone.
+        $caseids = $DB->get_fieldset_sql(
+            "SELECT c.id
+               FROM {local_cp_cases} c
+               JOIN {local_cp_categories} cat ON cat.id = c.categoryid
+              WHERE cat.contextid = ?",
+            [$contextid]
         );
-
-        // Delete cases.
-        $DB->execute(
-            "DELETE FROM {local_cp_cases}
-             WHERE categoryid IN (
-                SELECT cat.id FROM {local_cp_categories} cat
-                WHERE cat.contextid = ?
-             )",
-            [$context->id]
+        $questionids = $DB->get_fieldset_sql(
+            "SELECT q.id
+               FROM {local_cp_questions} q
+               JOIN {local_cp_cases} c ON c.id = q.caseid
+               JOIN {local_cp_categories} cat ON cat.id = c.categoryid
+              WHERE cat.contextid = ?",
+            [$contextid]
         );
+        $categoryids = $DB->get_fieldset_select('local_cp_categories', 'id', 'contextid = ?', [$contextid]);
 
-        // Delete categories.
-        $DB->delete_records('local_cp_categories', ['contextid' => $context->id]);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            // Subquery selecting the cases in this context (reused below).
+            $casesubsql = "SELECT c.id FROM {local_cp_cases} c
+                           JOIN {local_cp_categories} cat ON cat.id = c.categoryid
+                           WHERE cat.contextid = ?";
+
+            // 1. Practice responses (depend on practice attempts and questions).
+            $DB->execute(
+                "DELETE FROM {local_cp_practice_responses}
+                  WHERE attemptid IN (
+                     SELECT pa.id FROM {local_cp_practice_attempts} pa
+                      WHERE pa.caseid IN ($casesubsql)
+                  )",
+                [$contextid]
+            );
+
+            // 2. Practice attempts (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_practice_attempts}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 3. Timed attempts (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_timed_attempts}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 4. Practice sessions (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_practice_sessions}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 5. Achievements linked to these cases (caseid is nullable).
+            $DB->execute(
+                "DELETE FROM {local_cp_achievements}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 6. Reviews (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_reviews}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 7. Usage tracking (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_usage}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 8. Answers (depend on questions).
+            $DB->execute(
+                "DELETE FROM {local_cp_answers}
+                  WHERE questionid IN (
+                     SELECT q.id FROM {local_cp_questions} q
+                      WHERE q.caseid IN ($casesubsql)
+                  )",
+                [$contextid]
+            );
+
+            // 9. Questions (depend on cases).
+            $DB->execute(
+                "DELETE FROM {local_cp_questions}
+                  WHERE caseid IN ($casesubsql)",
+                [$contextid]
+            );
+
+            // 10. Audit log rows referencing the deleted objects (loose object ref).
+            self::delete_audit_rows_for('case', $caseids);
+            self::delete_audit_rows_for('question', $questionids);
+            self::delete_audit_rows_for('category', $categoryids);
+
+            // 11. Cases (depend on categories).
+            $DB->execute(
+                "DELETE FROM {local_cp_cases}
+                  WHERE categoryid IN (
+                     SELECT cat.id FROM {local_cp_categories} cat
+                      WHERE cat.contextid = ?
+                  )",
+                [$contextid]
+            );
+
+            // 12. Categories.
+            $DB->delete_records('local_cp_categories', ['contextid' => $contextid]);
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
 
         // Invalidate caches.
         self::invalidate_all_caches();
+    }
+
+    /**
+     * Delete audit-log rows for a set of object ids of a given object type.
+     *
+     * @param string $objecttype The audit log object type (case, question, category, answer).
+     * @param array $objectids The object ids to purge from the audit log.
+     */
+    protected static function delete_audit_rows_for(string $objecttype, array $objectids) {
+        global $DB;
+
+        if (empty($objectids)) {
+            return;
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($objectids);
+        $params[] = $objecttype;
+        $DB->delete_records_select(
+            'local_cp_audit_log',
+            "objectid $insql AND objecttype = ?",
+            $params
+        );
     }
 
     /**

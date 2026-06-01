@@ -58,15 +58,19 @@ class timed_attempt_manager {
         self::cleanup_unfinished_attempts($caseid, $userid);
 
         // Get questions and shuffle them.
-        $questions = question_manager::get_by_case($caseid);
+        $questions = array_values(question_manager::get_by_case($caseid));
         shuffle($questions);
-        $questionids = array_column($questions, 'id');
+        $questionids = array_map(function($q) {
+            return (int) $q->id;
+        }, $questions);
 
         $attempt = new \stdClass();
         $attempt->caseid = $caseid;
         $attempt->userid = $userid;
         $attempt->token = self::generate_token();
         $attempt->timelimit = $timelimit * 60; // Convert to seconds.
+        // Persist the shuffled question order so render and submit use the same set/order.
+        $attempt->questionorder = json_encode($questionids);
         $attempt->timestarted = time();
         $attempt->status = self::STATUS_INPROGRESS;
         $attempt->timecreated = time();
@@ -119,16 +123,57 @@ class timed_attempt_manager {
             return;
         }
 
-        $update = new \stdClass();
-        $update->id = $attemptid;
-        $update->status = self::STATUS_FINISHED;
-        $update->score = $score;
-        $update->maxscore = $maxscore;
-        $update->percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
-        $update->responses = json_encode($responsedata);
-        $update->timesubmitted = time();
+        // Only finalize an attempt that is still in progress. This makes the
+        // transition idempotent: a duplicate/concurrent submit will not re-run
+        // stats recording or re-trigger the submitted event.
+        if ($attempt->status !== self::STATUS_INPROGRESS) {
+            return;
+        }
 
-        $DB->update_record(self::TABLE, $update);
+        $percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
+
+        // Conditional update: only the request that finds the row still in
+        // progress wins the transition. We pre-count, run a status-guarded
+        // UPDATE, then re-read to confirm this request performed the finalize.
+        $now = time();
+        $params = ['id' => $attemptid, 'status' => self::STATUS_INPROGRESS];
+        $matched = $DB->count_records_select(
+            self::TABLE,
+            'id = :id AND status = :status',
+            $params
+        );
+        if ($matched < 1) {
+            // Lost the race; another request already finalized this attempt.
+            return;
+        }
+
+        $DB->execute(
+            'UPDATE {' . self::TABLE . '}
+                SET status = :newstatus,
+                    score = :score,
+                    maxscore = :maxscore,
+                    percentage = :percentage,
+                    responses = :responses,
+                    timesubmitted = :timesubmitted
+              WHERE id = :id AND status = :oldstatus',
+            [
+                'newstatus' => self::STATUS_FINISHED,
+                'score' => $score,
+                'maxscore' => $maxscore,
+                'percentage' => $percentage,
+                'responses' => json_encode($responsedata),
+                'timesubmitted' => $now,
+                'id' => $attemptid,
+                'oldstatus' => self::STATUS_INPROGRESS,
+            ]
+        );
+
+        // Verify we won the transition before recording stats / triggering the event.
+        $finalized = $DB->get_record(self::TABLE, ['id' => $attemptid]);
+        if (!$finalized || $finalized->status !== self::STATUS_FINISHED
+                || (int) $finalized->timesubmitted !== $now) {
+            return;
+        }
 
         // Also record in regular stats for consistency.
         stats_manager::record_practice_attempt(
@@ -148,7 +193,7 @@ class timed_attempt_manager {
                 'caseid' => $attempt->caseid,
                 'score' => $score,
                 'maxscore' => $maxscore,
-                'percentage' => $update->percentage,
+                'percentage' => $percentage,
                 'timespent' => $timespent,
             ],
         ]);
@@ -188,7 +233,7 @@ class timed_attempt_manager {
                 WHERE userid = :userid
                   AND caseid = :caseid
                   AND status = :status
-                ORDER BY percentage DESC, timefinished ASC
+                ORDER BY percentage DESC, timesubmitted ASC
                 LIMIT 1";
 
         return $DB->get_record_sql($sql, [
@@ -270,12 +315,23 @@ class timed_attempt_manager {
             return false;
         }
 
-        // Save the responses.
-        $update = new \stdClass();
-        $update->id = $attemptid;
-        $update->responses = json_encode($responses);
+        // Save the responses with a conditional update keyed on userid AND
+        // status still in-progress. This prevents an autosave that read an
+        // in-progress attempt from overwriting the responses of an attempt that
+        // was finalized (submitted) in the meantime.
+        $DB->execute(
+            'UPDATE {' . self::TABLE . '}
+                SET responses = :responses
+              WHERE id = :id AND userid = :userid AND status = :status',
+            [
+                'responses' => json_encode($responses),
+                'id' => $attemptid,
+                'userid' => $userid,
+                'status' => self::STATUS_INPROGRESS,
+            ]
+        );
 
-        return $DB->update_record(self::TABLE, $update);
+        return true;
     }
 
     /**

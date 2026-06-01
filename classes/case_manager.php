@@ -222,7 +222,7 @@ class case_manager {
         $record->name = trim($data->name);
         $record->statement = $data->statement;
         $record->statementformat = $data->statementformat ?? FORMAT_HTML;
-        $record->status = $data->status ?? self::STATUS_DRAFT;
+        $record->status = self::validate_status($data->status ?? self::STATUS_DRAFT);
         $record->difficulty = $data->difficulty ?? null;
         $record->tags = self::encode_tags($data->tags ?? []);
         $record->timecreated = time();
@@ -255,7 +255,7 @@ class case_manager {
             $record->statementformat = $data->statementformat ?? FORMAT_HTML;
         }
         if (isset($data->status)) {
-            $record->status = $data->status;
+            $record->status = self::validate_status($data->status);
         }
         if (array_key_exists('difficulty', (array) $data)) {
             $record->difficulty = $data->difficulty;
@@ -343,6 +343,21 @@ class case_manager {
             $transaction->rollback($e);
             throw $e;
         }
+    }
+
+    /**
+     * Validate a status value against the allowed workflow statuses.
+     *
+     * @param string $status Candidate status
+     * @return string The validated status
+     * @throws \moodle_exception If the status is not a recognised workflow status
+     */
+    private static function validate_status(string $status): string {
+        $allowed = array_keys(workflow_manager::get_all_statuses());
+        if (!in_array($status, $allowed, true)) {
+            throw new \moodle_exception('error:invalidstatus', 'local_casospracticos', '', $status);
+        }
+        return $status;
     }
 
     /**
@@ -517,6 +532,8 @@ class case_manager {
                 true // Force download.
             );
 
+            // SVG must never be served inline (XSS vector): force download for it.
+            $forceinlinedownload = ($file->get_mimetype() === 'image/svg+xml');
             $viewurl = \moodle_url::make_pluginfile_url(
                 $context->id,
                 'local_casospracticos',
@@ -524,7 +541,7 @@ class case_manager {
                 $caseid,
                 $file->get_filepath(),
                 $filename,
-                false // View inline if possible.
+                $forceinlinedownload // Force download for SVG, view inline otherwise.
             );
 
             $attachments[] = (object)[
@@ -555,12 +572,13 @@ class case_manager {
      * @return bool True if embeddable.
      */
     private static function is_embeddable(string $mimetype): bool {
+        // SVG is deliberately excluded: user-controlled SVG can carry scripts and
+        // is an XSS vector when rendered inline. SVG attachments are forced to download.
         $embeddable = [
             'application/pdf',
             'image/jpeg',
             'image/png',
             'image/gif',
-            'image/svg+xml',
         ];
         return in_array($mimetype, $embeddable);
     }

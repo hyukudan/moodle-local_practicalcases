@@ -166,7 +166,7 @@ class case_search extends \core_search\base {
      * @return string
      */
     public static function get_search_area_name() {
-        return get_string('search:case', 'local_casospracticos');
+        return get_string('search:case_search', 'local_casospracticos');
     }
 
     /**
@@ -185,6 +185,6 @@ class case_search extends \core_search\base {
      * @return string
      */
     public function get_visible_name($lazyload = false) {
-        return get_string('search:case', 'local_casospracticos');
+        return get_string('search:case_search', 'local_casospracticos');
     }
 }

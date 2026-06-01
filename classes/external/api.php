@@ -139,6 +139,85 @@ class api extends external_api {
         return $DB->get_field('local_cp_questions', 'caseid', ['id' => $questionid]);
     }
 
+    /**
+     * Whether the current user may see answer-key data (fraction/feedback).
+     *
+     * Only authoring/review users (anyone who can view unpublished cases, i.e.
+     * holders of local/casospracticos:edit and above) may receive the answer
+     * key. Plain viewers (students) must never receive correctness data.
+     *
+     * NOTE: there is no dedicated local/casospracticos:viewanswers capability;
+     * we reuse the editorial capability via case_manager::can_view_unpublished().
+     * A dedicated :viewanswers capability could be added later for finer control.
+     *
+     * @param \context $context The context
+     * @return bool True if the user may see answer keys
+     */
+    protected static function can_view_answer_keys(\context $context): bool {
+        return case_manager::can_view_unpublished($context);
+    }
+
+    /**
+     * Build the answer payload for an answer record, stripping the answer key
+     * (fraction / feedback) for non-privileged users.
+     *
+     * @param \stdClass $a Answer record
+     * @param bool $includekeys Whether to include fraction/feedback
+     * @return array Answer payload
+     */
+    protected static function build_answer_payload(\stdClass $a, bool $includekeys): array {
+        $payload = [
+            'id' => $a->id,
+            'answer' => $a->answer,
+        ];
+        if ($includekeys) {
+            $payload['fraction'] = (float) $a->fraction;
+            $payload['feedback'] = $a->feedback ?? '';
+        }
+        return $payload;
+    }
+
+    /**
+     * Validate an incoming case status against the allowed set, and reject
+     * privileged transitions (published/archived) unless the user has the
+     * review capability.
+     *
+     * Workflow transitions (pending_review/in_review/approved/published/
+     * archived) are owned by workflow_manager; this API path only allows the
+     * editorial statuses draft/pending_review for normal editors.
+     *
+     * @param string $status Requested status
+     * @param \context $context The context
+     * @throws \moodle_exception If the status is invalid or not permitted
+     */
+    protected static function validate_status_change(string $status, \context $context): void {
+        $allowed = [
+            workflow_manager::STATUS_DRAFT,
+            workflow_manager::STATUS_PENDING_REVIEW,
+            workflow_manager::STATUS_IN_REVIEW,
+            workflow_manager::STATUS_APPROVED,
+            workflow_manager::STATUS_PUBLISHED,
+            workflow_manager::STATUS_ARCHIVED,
+        ];
+
+        // Reject anything not in the known status set.
+        if (!in_array($status, $allowed, true)) {
+            throw new \moodle_exception('error:invalidstatus', 'local_casospracticos');
+        }
+
+        // Privileged statuses must go through the review workflow.
+        $privileged = [
+            workflow_manager::STATUS_IN_REVIEW,
+            workflow_manager::STATUS_APPROVED,
+            workflow_manager::STATUS_PUBLISHED,
+            workflow_manager::STATUS_ARCHIVED,
+        ];
+        if (in_array($status, $privileged, true)
+                && !has_capability('local/casospracticos:review', $context)) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
+    }
+
     // ==================== CATEGORIES ====================
 
     /**
@@ -200,7 +279,7 @@ class api extends external_api {
     public static function get_cases_parameters() {
         return new external_function_parameters([
             'categoryid' => new external_value(PARAM_INT, 'Category ID (0 for all)', VALUE_DEFAULT, 0),
-            'status' => new external_value(PARAM_ALPHA, 'Status filter', VALUE_DEFAULT, ''),
+            'status' => new external_value(PARAM_ALPHANUMEXT, 'Status filter', VALUE_DEFAULT, ''),
         ]);
     }
 
@@ -255,7 +334,7 @@ class api extends external_api {
                 'id' => new external_value(PARAM_INT, 'Case ID'),
                 'categoryid' => new external_value(PARAM_INT, 'Category ID'),
                 'name' => new external_value(PARAM_TEXT, 'Case name'),
-                'status' => new external_value(PARAM_ALPHA, 'Status'),
+                'status' => new external_value(PARAM_ALPHANUMEXT, 'Status'),
                 'difficulty' => new external_value(PARAM_INT, 'Difficulty'),
                 'questioncount' => new external_value(PARAM_INT, 'Number of questions'),
                 'timecreated' => new external_value(PARAM_INT, 'Time created'),
@@ -293,17 +372,15 @@ class api extends external_api {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
+        // Only authoring/review users may receive the answer key (fraction/feedback).
+        $includekeys = self::can_view_answer_keys($context);
+
         $questions = [];
         foreach ($case->questions as $q) {
             $answers = question_manager::get_answers($q->id);
             $answerdata = [];
             foreach ($answers as $a) {
-                $answerdata[] = [
-                    'id' => $a->id,
-                    'answer' => $a->answer,
-                    'fraction' => (float) $a->fraction,
-                    'feedback' => $a->feedback ?? '',
-                ];
+                $answerdata[] = self::build_answer_payload($a, $includekeys);
             }
 
             $questions[] = [
@@ -341,7 +418,7 @@ class api extends external_api {
             'name' => new external_value(PARAM_TEXT, 'Case name'),
             'statement' => new external_value(PARAM_RAW, 'Statement HTML'),
             'statementformat' => new external_value(PARAM_INT, 'Statement format'),
-            'status' => new external_value(PARAM_ALPHA, 'Status'),
+            'status' => new external_value(PARAM_ALPHANUMEXT, 'Status'),
             'difficulty' => new external_value(PARAM_INT, 'Difficulty'),
             'tags' => new external_multiple_structure(
                 new external_value(PARAM_TEXT, 'Tag')
@@ -357,8 +434,8 @@ class api extends external_api {
                         new external_single_structure([
                             'id' => new external_value(PARAM_INT, 'Answer ID'),
                             'answer' => new external_value(PARAM_RAW, 'Answer text'),
-                            'fraction' => new external_value(PARAM_FLOAT, 'Fraction'),
-                            'feedback' => new external_value(PARAM_RAW, 'Feedback'),
+                            'fraction' => new external_value(PARAM_FLOAT, 'Fraction', VALUE_OPTIONAL),
+                            'feedback' => new external_value(PARAM_RAW, 'Feedback', VALUE_OPTIONAL),
                         ])
                     ),
                 ])
@@ -376,7 +453,7 @@ class api extends external_api {
             'categoryid' => new external_value(PARAM_INT, 'Category ID'),
             'name' => new external_value(PARAM_TEXT, 'Case name'),
             'statement' => new external_value(PARAM_RAW, 'Statement HTML'),
-            'status' => new external_value(PARAM_ALPHA, 'Status', VALUE_DEFAULT, 'draft'),
+            'status' => new external_value(PARAM_ALPHANUMEXT, 'Status', VALUE_DEFAULT, 'draft'),
             'difficulty' => new external_value(PARAM_INT, 'Difficulty', VALUE_DEFAULT, 0),
         ]);
     }
@@ -397,6 +474,11 @@ class api extends external_api {
             'status' => $status,
             'difficulty' => $difficulty,
         ]);
+
+        // Validate and gate the requested status: privileged statuses
+        // (published/archived/etc.) require the review capability and must
+        // otherwise go through the workflow endpoints.
+        self::validate_status_change($params['status'], $context);
 
         $data = (object) $params;
         $data->statementformat = FORMAT_HTML;
@@ -424,7 +506,7 @@ class api extends external_api {
             'id' => new external_value(PARAM_INT, 'Case ID'),
             'name' => new external_value(PARAM_TEXT, 'Case name', VALUE_DEFAULT, ''),
             'statement' => new external_value(PARAM_RAW, 'Statement', VALUE_DEFAULT, ''),
-            'status' => new external_value(PARAM_ALPHA, 'Status', VALUE_DEFAULT, ''),
+            'status' => new external_value(PARAM_ALPHANUMEXT, 'Status', VALUE_DEFAULT, ''),
             'categoryid' => new external_value(PARAM_INT, 'Category ID', VALUE_DEFAULT, 0),
         ]);
     }
@@ -462,6 +544,10 @@ class api extends external_api {
             $data->statementformat = FORMAT_HTML;
         }
         if (!empty($params['status'])) {
+            // Validate and gate the requested status: privileged statuses
+            // (published/archived/etc.) require the review capability and must
+            // otherwise go through the workflow endpoints.
+            self::validate_status_change($params['status'], $context);
             $data->status = $params['status'];
         }
         if (!empty($params['categoryid'])) {
@@ -543,18 +629,26 @@ class api extends external_api {
 
         $params = self::validate_parameters(self::get_questions_parameters(), ['caseid' => $caseid]);
 
+        // Enforce parent-case visibility (same as get_case): students must not
+        // be able to enumerate draft/archived cases by ID.
+        $case = case_manager::get($params['caseid']);
+        if (!$case) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+        if (!case_manager::is_visible_to_user($case, $context)) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+
+        // Only authoring/review users may receive the answer key (fraction/feedback).
+        $includekeys = self::can_view_answer_keys($context);
+
         $questions = question_manager::get_by_case_with_answers($params['caseid']);
 
         $result = [];
         foreach ($questions as $q) {
             $answers = [];
             foreach ($q->answers as $a) {
-                $answers[] = [
-                    'id' => $a->id,
-                    'answer' => $a->answer,
-                    'fraction' => (float) $a->fraction,
-                    'feedback' => $a->feedback ?? '',
-                ];
+                $answers[] = self::build_answer_payload($a, $includekeys);
             }
 
             $result[] = [
@@ -587,8 +681,8 @@ class api extends external_api {
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Answer ID'),
                         'answer' => new external_value(PARAM_RAW, 'Answer text'),
-                        'fraction' => new external_value(PARAM_FLOAT, 'Fraction'),
-                        'feedback' => new external_value(PARAM_RAW, 'Feedback'),
+                        'fraction' => new external_value(PARAM_FLOAT, 'Fraction', VALUE_OPTIONAL),
+                        'feedback' => new external_value(PARAM_RAW, 'Feedback', VALUE_OPTIONAL),
                     ])
                 ),
             ])
@@ -833,6 +927,25 @@ class api extends external_api {
             'shuffle' => $shuffle,
         ]);
 
+        // Validate the target quiz's course/module context and require quiz
+        // management capability THERE before mutating the quiz. The system-level
+        // :insertquiz capability alone is not enough to mutate an arbitrary quiz.
+        global $DB;
+        $quiz = $DB->get_record('quiz', ['id' => $params['quizid']], 'id, course', MUST_EXIST);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
+        $quizcontext = \context_module::instance($cm->id);
+        self::validate_context($quizcontext);
+        require_capability('mod/quiz:manage', $quizcontext);
+
+        // Ensure the case is visible/usable to this user.
+        $case = case_manager::get($params['caseid']);
+        if (!$case) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+        if (!case_manager::is_visible_to_user($case, $context)) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+
         $options = [
             'random_count' => $params['randomcount'],
             'include_statement' => $params['includestatement'],
@@ -878,6 +991,16 @@ class api extends external_api {
         $params = self::validate_parameters(self::get_available_quizzes_parameters(), [
             'courseid' => $courseid,
         ]);
+
+        // Validate the course context and require course access + quiz
+        // management capability there, so a user cannot enumerate quizzes in
+        // courses they cannot access.
+        global $DB;
+        $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
+        $coursecontext = \context_course::instance($course->id);
+        require_login($course, false);
+        self::validate_context($coursecontext);
+        require_capability('mod/quiz:manage', $coursecontext);
 
         $quizzes = quiz_integration::get_available_quizzes($params['courseid']);
 
@@ -1254,7 +1377,7 @@ class api extends external_api {
                 'id' => new external_value(PARAM_INT, 'Review ID'),
                 'caseid' => new external_value(PARAM_INT, 'Case ID'),
                 'casename' => new external_value(PARAM_TEXT, 'Case name'),
-                'status' => new external_value(PARAM_ALPHA, 'Status'),
+                'status' => new external_value(PARAM_ALPHANUMEXT, 'Status'),
                 'timecreated' => new external_value(PARAM_INT, 'Time created'),
             ])
         );

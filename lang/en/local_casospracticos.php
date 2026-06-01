@@ -262,7 +262,7 @@ $string['eventpracticeattemptcompleted'] = 'Practice attempt completed';
 $string['eventratelimitexceeded'] = 'API rate limit exceeded';
 
 // Search.
-$string['search:case'] = 'Practical cases';
+$string['search:case_search'] = 'Practical cases';
 
 // Settings.
 $string['settings:general'] = 'General settings';
@@ -314,6 +314,7 @@ $string['error:questionnotfound'] = 'Question not found';
 $string['error:nopermission'] = 'You do not have permission to perform this action';
 $string['error:nopermissiontoexport'] = 'You do not have permission to export the selected cases. You can only export cases you created or have editall capability.';
 $string['error:invaliddata'] = 'Invalid data provided';
+$string['error:invalidstatus'] = 'Invalid case status';
 $string['error:nocases'] = 'No cases selected';
 $string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';
 $string['error:sessionexpired'] = 'Your practice session has expired. Please start a new attempt.';
@@ -327,6 +328,7 @@ $string['privacy:metadata:local_cp_cases:timemodified'] = 'The time when the cas
 $string['privacy:metadata:local_cp_audit_log'] = 'Audit log of all actions performed';
 $string['privacy:metadata:local_cp_audit_log:userid'] = 'The ID of the user who performed the action';
 $string['privacy:metadata:local_cp_audit_log:action'] = 'The action performed by the user';
+$string['privacy:metadata:local_cp_audit_log:changes'] = 'The recorded field changes (old and new values) for the action';
 $string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'The IP address of the user';
 $string['privacy:metadata:local_cp_audit_log:timecreated'] = 'When the action was performed';
 $string['privacy:metadata:local_cp_reviews'] = 'Case reviews for workflow';
@@ -345,6 +347,29 @@ $string['privacy:metadata:local_cp_practice_responses'] = 'Stores individual que
 $string['privacy:metadata:local_cp_practice_responses:response'] = 'The user response to the question';
 $string['privacy:metadata:local_cp_practice_responses:score'] = 'The score for this response';
 $string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Whether the response was correct';
+$string['privacy:metadata:local_cp_achievements'] = 'Stores gamification achievements earned by users';
+$string['privacy:metadata:local_cp_achievements:userid'] = 'The ID of the user who earned the achievement';
+$string['privacy:metadata:local_cp_achievements:achievementtype'] = 'The type of achievement earned';
+$string['privacy:metadata:local_cp_achievements:caseid'] = 'The related case, if applicable';
+$string['privacy:metadata:local_cp_achievements:timecreated'] = 'When the achievement was earned';
+$string['privacy:metadata:local_cp_practice_sessions'] = 'Stores secure token-based practice sessions started by users';
+$string['privacy:metadata:local_cp_practice_sessions:userid'] = 'The ID of the user who started the session';
+$string['privacy:metadata:local_cp_practice_sessions:caseid'] = 'The case being practised';
+$string['privacy:metadata:local_cp_practice_sessions:timecreated'] = 'When the session was created';
+$string['privacy:metadata:local_cp_practice_sessions:timeexpiry'] = 'When the session expires';
+$string['privacy:metadata:local_cp_timed_attempts'] = 'Stores timed practice mode attempts made by users';
+$string['privacy:metadata:local_cp_timed_attempts:userid'] = 'The ID of the user who made the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:caseid'] = 'The case being practised';
+$string['privacy:metadata:local_cp_timed_attempts:score'] = 'The score obtained in the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:maxscore'] = 'The maximum possible score';
+$string['privacy:metadata:local_cp_timed_attempts:percentage'] = 'The percentage score';
+$string['privacy:metadata:local_cp_timed_attempts:status'] = 'The status of the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:responses'] = 'The recorded responses for the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:timestarted'] = 'When the timed attempt was started';
+$string['privacy:metadata:local_cp_timed_attempts:timesubmitted'] = 'When the timed attempt was submitted';
+$string['privacy:achievements'] = 'Achievements';
+$string['privacy:practicesessions'] = 'Practice sessions';
+$string['privacy:timedattempts'] = 'Timed attempts';
 
 // Default category.
 $string['defaultcategory'] = 'Imported cases';
