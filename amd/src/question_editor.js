@@ -33,6 +33,8 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
         this.caseId = caseId;
         this.modal = null;
         this.answerCount = 0;
+        // Monotonic counter to guarantee unique answer-row ids across dynamically added rows.
+        this.answerRowSeq = 0;
     };
 
     /**
@@ -146,7 +148,15 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
     QuestionEditor.prototype.addAnswerRow = function() {
         var container = this.modal.getRoot().find('[id^="answers-container-"]');
 
-        Templates.render('local_casospracticos/answer_row', {}).then(function(html) {
+        // Supply a unique uniqid/index so the rendered row gets unique element ids
+        // (answer-text-<uniqid>-<index>) instead of empty "answer-text--".
+        this.answerRowSeq++;
+        var context = {
+            uniqid: 'qe_new_' + Date.now() + '_' + this.answerRowSeq,
+            index: this.answerRowSeq
+        };
+
+        Templates.render('local_casospracticos/answer_row', context).then(function(html) {
             container.append(html);
         }).catch(Notification.exception);
     };
@@ -217,6 +227,11 @@ function($, Ajax, Notification, Templates, ModalFactory, ModalEvents) {
                 self.modal.hide();
                 // Reload page to show changes.
                 window.location.reload();
+            } else {
+                Notification.addNotification({
+                    message: 'No se pudo guardar la pregunta. Inténtalo de nuevo.',
+                    type: 'error'
+                });
             }
         }).fail(Notification.exception);
     };

@@ -46,18 +46,61 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
     /** @var {HTMLElement} statusIndicator Status indicator element */
     var statusIndicator = null;
 
+    /** @var {boolean} initialized Whether init() has already run (idempotency guard) */
+    var initialized = false;
+
+    /** @var {Function} changeHandler Bound change listener so it can be removed on re-init */
+    var changeHandler = null;
+
+    /** @var {Function} unloadHandler Bound beforeunload listener so it can be removed on re-init */
+    var unloadHandler = null;
+
+    /** @var {Function} visibilityHandler Bound visibilitychange listener so it can be removed on re-init */
+    var visibilityHandler = null;
+
+    /** @var {HTMLElement} changeTarget The form element the change listener was attached to */
+    var changeTarget = null;
+
+    /** @var {boolean} isSaving Whether an async save request is currently in flight */
+    var isSaving = false;
+
+    /** @var {boolean} pendingSave Whether another save was requested while one was in flight */
+    var pendingSave = false;
+
+    /** @var {number} saveSeq Monotonic counter to discard stale (out-of-order) responses */
+    var saveSeq = 0;
+
+    /** @var {number} acceptedSeq Highest save sequence whose response has been accepted */
+    var acceptedSeq = 0;
+
     /**
      * Initialize the auto-save functionality.
+     *
+     * Idempotent: calling init() again tears down the previous interval,
+     * listeners and status element before re-registering, so repeated calls
+     * never duplicate handlers, status nodes or beacons.
      *
      * @param {Object} config Configuration object
      * @param {number} config.attemptId The timed attempt ID
      * @param {string} config.formSelector CSS selector for the form
      */
     var init = function(config) {
+        // Tear down any previous initialization first (idempotent re-init).
+        if (initialized) {
+            teardown();
+        }
+
         attemptId = config.attemptId;
         formSelector = config.formSelector || 'form';
 
-        // Create status indicator.
+        // Reset save-tracking state.
+        lastSavedResponses = null;
+        isSaving = false;
+        pendingSave = false;
+        saveSeq = 0;
+        acceptedSeq = 0;
+
+        // Create (or reuse) status indicator.
         createStatusIndicator();
 
         // Start auto-save interval.
@@ -66,28 +109,74 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
         // Also save on form input changes (debounced).
         var form = document.querySelector(formSelector);
         if (form) {
-            form.addEventListener('change', debounce(function() {
+            changeTarget = form;
+            changeHandler = debounce(function() {
                 saveResponses();
-            }, 2000));
+            }, 2000);
+            form.addEventListener('change', changeHandler);
         }
 
         // Save before page unload.
-        window.addEventListener('beforeunload', function() {
+        unloadHandler = function() {
             saveResponsesSync();
-        });
+        };
+        window.addEventListener('beforeunload', unloadHandler);
 
         // Save when visibility changes (tab switch).
-        document.addEventListener('visibilitychange', function() {
+        visibilityHandler = function() {
             if (document.visibilityState === 'hidden') {
                 saveResponses();
             }
-        });
+        };
+        document.addEventListener('visibilitychange', visibilityHandler);
+
+        initialized = true;
+    };
+
+    /**
+     * Tear down the current initialization: stop the interval, remove all
+     * registered listeners and drop the status element. Safe to call when
+     * not initialized.
+     */
+    var teardown = function() {
+        stopAutoSave();
+
+        if (changeTarget && changeHandler) {
+            changeTarget.removeEventListener('change', changeHandler);
+        }
+        changeTarget = null;
+        changeHandler = null;
+
+        if (unloadHandler) {
+            window.removeEventListener('beforeunload', unloadHandler);
+        }
+        unloadHandler = null;
+
+        if (visibilityHandler) {
+            document.removeEventListener('visibilitychange', visibilityHandler);
+        }
+        visibilityHandler = null;
+
+        if (statusIndicator && statusIndicator.parentNode) {
+            statusIndicator.parentNode.removeChild(statusIndicator);
+        }
+        statusIndicator = null;
+
+        initialized = false;
     };
 
     /**
      * Create the status indicator element.
+     *
+     * Reuses any existing #autosave-status node so re-init never appends a
+     * duplicate element.
      */
     var createStatusIndicator = function() {
+        var existing = document.getElementById('autosave-status');
+        if (existing) {
+            statusIndicator = existing;
+            return;
+        }
         statusIndicator = document.createElement('div');
         statusIndicator.id = 'autosave-status';
         statusIndicator.className = 'autosave-status';
@@ -223,6 +312,12 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
 
     /**
      * Save responses via AJAX.
+     *
+     * Serializes concurrent saves: while a request is in flight, a new
+     * request is not started; instead a single pending flag is set and the
+     * latest state is flushed once the in-flight request settles. A
+     * monotonic sequence number guards against an older response completing
+     * after a newer one and clobbering lastSavedResponses with stale data.
      */
     var saveResponses = function() {
         var responses = collectResponses();
@@ -237,6 +332,17 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
             return;
         }
 
+        // If a save is already in flight, coalesce this request: remember
+        // that another save is needed and re-run once the current one
+        // settles, capturing the latest form state at that point.
+        if (isSaving) {
+            pendingSave = true;
+            return;
+        }
+
+        isSaving = true;
+        var seq = ++saveSeq;
+
         Str.get_string('saving', 'admin').then(function(str) {
             showStatus(str + '...', 'saving');
         }).catch(function() {
@@ -246,18 +352,32 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
         Repository.savePracticeResponses(attemptId, responses)
             .then(function(result) {
                 if (result.success) {
-                    lastSavedResponses = responses;
-                    Str.get_string('changessaved', 'moodle').then(function(str) {
-                        showStatus(str, 'saved');
-                    }).catch(function() {
-                        showStatus('Saved', 'saved');
-                    });
+                    // Only accept this response if it is the newest one seen;
+                    // a stale (out-of-order) response must not overwrite a
+                    // newer accepted state.
+                    if (seq >= acceptedSeq) {
+                        acceptedSeq = seq;
+                        lastSavedResponses = responses;
+                        Str.get_string('changessaved', 'moodle').then(function(str) {
+                            showStatus(str, 'saved');
+                        }).catch(function() {
+                            showStatus('Saved', 'saved');
+                        });
+                    }
                 } else {
                     showStatus('Auto-save failed', 'error');
                 }
             })
             .catch(function() {
                 showStatus('Auto-save error', 'error');
+            })
+            .then(function() {
+                // Release the in-flight guard and flush any coalesced save.
+                isSaving = false;
+                if (pendingSave) {
+                    pendingSave = false;
+                    saveResponses();
+                }
             });
     };
 
@@ -271,19 +391,44 @@ define(['local_casospracticos/repository', 'core/notification', 'core/str'], fun
             return;
         }
 
-        // Use sendBeacon for reliable async save during page unload.
-        if (navigator.sendBeacon) {
-            var url = M.cfg.wwwroot + '/lib/ajax/service.php?sesskey=' + M.cfg.sesskey;
-            var data = JSON.stringify([{
-                index: 0,
-                methodname: 'local_casospracticos_save_practice_responses',
-                args: {
-                    attemptid: attemptId,
-                    responses: JSON.stringify(responses)
-                }
-            }]);
+        var url = M.cfg.wwwroot + '/lib/ajax/service.php?sesskey=' + M.cfg.sesskey;
+        var data = JSON.stringify([{
+            index: 0,
+            methodname: 'local_casospracticos_save_practice_responses',
+            args: {
+                attemptid: attemptId,
+                responses: JSON.stringify(responses)
+            }
+        }]);
 
-            navigator.sendBeacon(url, data);
+        // Use sendBeacon for reliable async save during page unload.
+        // service.php expects a JSON body, so send a Blob with the correct
+        // content-type rather than a bare string (which the browser would
+        // label text/plain and Moodle could mis-parse). Fall back to a
+        // keepalive fetch when sendBeacon is unavailable or refuses the
+        // payload, instead of failing silently.
+        var queued = false;
+        if (navigator.sendBeacon) {
+            try {
+                var blob = new Blob([data], {type: 'application/json'});
+                queued = navigator.sendBeacon(url, blob);
+            } catch (e) {
+                queued = false;
+            }
+        }
+
+        if (!queued && typeof window.fetch === 'function') {
+            // Keepalive lets the request outlive the unloading page.
+            window.fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: data,
+                keepalive: true,
+                credentials: 'same-origin'
+            }).catch(function() {
+                // Best-effort during unload; nothing else we can do here.
+                return;
+            });
         }
     };
 

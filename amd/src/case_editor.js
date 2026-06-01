@@ -95,6 +95,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 $('.question-item').each(function(index) {
                     $(this).find('.badge.bg-primary').text('#' + (index + 1));
                 });
+            } else {
+                Notification.addNotification({
+                    message: 'No se pudo reordenar la pregunta. Recarga la página.',
+                    type: 'error'
+                });
             }
         }).fail(Notification.exception);
     };
@@ -178,10 +183,14 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 });
             } else {
                 element.html(originalText);
+                Notification.addNotification({
+                    message: 'No se pudo actualizar la pregunta. Inténtalo de nuevo.',
+                    type: 'error'
+                });
             }
-        }).fail(function() {
+        }).fail(function(error) {
             element.html(originalText);
-            Notification.exception();
+            Notification.exception(error);
         });
     };
 
@@ -195,23 +204,27 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
         var questionItem = link.closest('.question-item');
         var questionId = questionItem.data('questionid');
 
+        var yesLabel;
         Str.get_strings([
             {key: 'deletequestion', component: 'local_casospracticos'},
             {key: 'confirm'},
             {key: 'yes'},
             {key: 'no'}
         ]).then(function(strings) {
+            yesLabel = strings[2];
             return ModalFactory.create({
                 type: ModalFactory.types.SAVE_CANCEL,
                 title: strings[1],
                 body: strings[0] + '?'
             });
         }).then(function(modal) {
-            modal.setSaveButtonText(Str.get_string('yes'));
+            // Use the already-resolved 'yes' string, not the unresolved Str.get_string() Promise.
+            modal.setSaveButtonText(yesLabel);
             modal.getRoot().on(ModalEvents.save, function() {
                 self.deleteQuestion(questionId, questionItem);
             });
             modal.show();
+            return modal;
         }).catch(Notification.exception);
     };
 
@@ -236,6 +249,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                     // Update count.
                     var count = $('.question-item').length;
                     $('.case-questions h4 .badge').text(count);
+                });
+            } else {
+                Notification.addNotification({
+                    message: 'No se pudo eliminar la pregunta. Inténtalo de nuevo.',
+                    type: 'error'
                 });
             }
         }).fail(Notification.exception);

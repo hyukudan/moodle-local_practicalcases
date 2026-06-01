@@ -149,8 +149,21 @@ class category_manager {
         $categories = self::get_flat_tree();
         $menu = [0 => get_string('toplevel', 'local_casospracticos')];
 
+        // Build the set of ids to exclude: the category itself plus all of its
+        // descendants, so a category cannot be offered as a parent of itself or
+        // of any of its children (G2-03).
+        $excluded = [];
+        if ($excludeid !== null) {
+            $excluded[$excludeid] = true;
+            $descendants = [];
+            self::collect_descendant_ids($excludeid, $descendants);
+            foreach ($descendants as $id) {
+                $excluded[$id] = true;
+            }
+        }
+
         foreach ($categories as $category) {
-            if ($excludeid !== null && $category->id == $excludeid) {
+            if (isset($excluded[$category->id])) {
                 continue;
             }
             $indent = str_repeat('— ', $category->depth);
@@ -302,14 +315,45 @@ class category_manager {
     /**
      * Recursively collect all descendant category IDs.
      *
+     * Loads every category once and walks an in-memory parent-to-children map,
+     * avoiding one query per tree node (G2-10).
+     *
      * @param int $parentid Parent category ID
      * @param array &$ids Accumulated IDs (passed by reference)
      */
     private static function collect_descendant_ids(int $parentid, array &$ids): void {
-        $children = self::get_all($parentid);
-        foreach ($children as $child) {
+        // Single load of all categories, then walk in memory.
+        $bychildren = self::build_children_map();
+        self::walk_descendants($parentid, $bychildren, $ids);
+    }
+
+    /**
+     * Build a parent-id => [child category objects] map from a single query.
+     *
+     * @return array Map of parent id to array of child category objects.
+     */
+    private static function build_children_map(): array {
+        $bychildren = [];
+        foreach (self::get_all() as $category) {
+            $bychildren[$category->parent][] = $category;
+        }
+        return $bychildren;
+    }
+
+    /**
+     * Walk a pre-built children map collecting all descendant ids.
+     *
+     * @param int $parentid Parent category ID
+     * @param array $bychildren Map of parent id => child category objects
+     * @param array &$ids Accumulated IDs (passed by reference)
+     */
+    private static function walk_descendants(int $parentid, array $bychildren, array &$ids): void {
+        if (empty($bychildren[$parentid])) {
+            return;
+        }
+        foreach ($bychildren[$parentid] as $child) {
             $ids[] = $child->id;
-            self::collect_descendant_ids($child->id, $ids);
+            self::walk_descendants((int) $child->id, $bychildren, $ids);
         }
     }
 

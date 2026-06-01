@@ -27,14 +27,32 @@ define(['jquery'], function($) {
         timeLeft: 0,
         autoSubmit: false,
         interval: null,
+        unloadHandler: null,
 
         /**
          * Initialize the timer.
+         *
+         * Idempotent: re-initializing clears any existing countdown interval
+         * and removes the previously registered beforeunload handler before
+         * installing new ones, so repeated init() calls never run multiple
+         * intervals (faster countdown) or fire duplicate expiry actions.
          *
          * @param {number} timeleft Time left in seconds.
          * @param {boolean} autosubmit Auto-submit when time expires.
          */
         init: function(timeleft, autosubmit) {
+            // Clear any prior countdown so we don't run multiple intervals.
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+
+            // Remove any prior beforeunload handler so it isn't registered twice.
+            if (this.unloadHandler) {
+                window.removeEventListener('beforeunload', this.unloadHandler);
+                this.unloadHandler = null;
+            }
+
             this.timeLeft = timeleft;
             this.autoSubmit = autosubmit || false;
 
@@ -42,19 +60,25 @@ define(['jquery'], function($) {
             this.startCountdown();
 
             // Warn before leaving page.
-            window.addEventListener('beforeunload', function(e) {
+            this.unloadHandler = function(e) {
                 if (Timer.timeLeft > 0) {
                     var confirmationMessage = 'Your timed attempt is still in progress. Are you sure you want to leave?';
                     e.returnValue = confirmationMessage;
                     return confirmationMessage;
                 }
-            });
+            };
+            window.addEventListener('beforeunload', this.unloadHandler);
         },
 
         /**
          * Start the countdown.
          */
         startCountdown: function() {
+            // Defensive: never leave a previous interval running.
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
             this.interval = setInterval(function() {
                 Timer.timeLeft--;
                 Timer.updateDisplay();

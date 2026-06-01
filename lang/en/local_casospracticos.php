@@ -201,6 +201,7 @@ $string['casespublished'] = '{$a} cases published successfully';
 $string['casesarchived'] = '{$a} cases archived successfully';
 $string['nocasesselected'] = 'No cases selected';
 $string['selecttargetcategory'] = 'Select target category';
+$string['bulkactionfailed'] = 'The operation could not be completed. Please try again.';
 
 // Workflow.
 $string['submitforreview'] = 'Submit for review';

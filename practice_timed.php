@@ -36,6 +36,16 @@ $attemptid = optional_param('attempt', 0, PARAM_INT);
 $submit = optional_param('submit', 0, PARAM_BOOL);
 $timelimit = optional_param('timelimit', 30, PARAM_INT); // Default 30 minutes.
 
+// The time limit is the assessment deadline, so it must be server-authoritative:
+// a client could otherwise post an arbitrarily large value and effectively
+// disable the timer. There is no per-case configured limit, so clamp the
+// request value to a sane minimum/maximum range (in minutes). The clamped
+// value is the only thing handed to start_attempt(); the persisted attempt
+// timelimit then drives every server-side deadline/expiry check below.
+$mintimelimit = 1;   // Minutes.
+$maxtimelimit = 180; // Minutes (3 hours).
+$timelimit = max($mintimelimit, min($maxtimelimit, $timelimit));
+
 $context = context_system::instance();
 require_login();
 require_capability('local/casospracticos:view', $context);

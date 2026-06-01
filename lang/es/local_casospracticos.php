@@ -199,6 +199,7 @@ $string['casespublished'] = '{$a} casos publicados correctamente';
 $string['casesarchived'] = '{$a} casos archivados correctamente';
 $string['nocasesselected'] = 'No hay casos seleccionados';
 $string['selecttargetcategory'] = 'Seleccionar categoría de destino';
+$string['bulkactionfailed'] = 'No se pudo completar la operación. Inténtalo de nuevo.';
 
 // Workflow.
 $string['submitforreview'] = 'Enviar a revisión';

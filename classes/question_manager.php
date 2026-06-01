@@ -714,6 +714,11 @@ class question_manager {
             if (!in_array($question->qtype, [self::QTYPE_MULTICHOICE, self::QTYPE_TRUEFALSE], true)) {
                 continue;
             }
+            // Honour the per-question shuffle flag: if shuffling is disabled for
+            // this question, leave answers in their stored order (G2-12).
+            if (empty($question->shuffleanswers)) {
+                continue;
+            }
 
             $sessionkey = $sessionkeyprefix
                 ? $sessionkeyprefix . '_q' . $question->id

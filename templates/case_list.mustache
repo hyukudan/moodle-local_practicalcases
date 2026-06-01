@@ -20,13 +20,15 @@
     Template for displaying a list of practical cases.
 
     Context variables required for this template:
-    * cases - Array of case objects
+    * cases - Array of case objects (rendered one table row each)
+    * hascases - Boolean: true when the cases array is non-empty (wraps the table once)
     * categoryname - Current category name
     * canedit - Boolean for edit capability
     * candelete - Boolean for delete capability
 
     Example context (json):
     {
+        "hascases": true,
         "cases": [
             {
                 "id": 1,
@@ -56,7 +58,7 @@
     </div>
     {{/cases}}
 
-    {{#cases}}
+    {{#hascases}}
     <div class="case-list-table">
         <table class="table table-striped table-hover" aria-describedby="category-heading">
             <thead>
@@ -106,5 +108,5 @@
             </tbody>
         </table>
     </div>
-    {{/cases}}
+    {{/hascases}}
 </div>
