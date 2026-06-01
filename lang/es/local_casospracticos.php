@@ -111,12 +111,6 @@ $string['shuffleanswers'] = 'Barajar respuestas';
 $string['singleanswer'] = 'Respuesta única';
 $string['multipleanswers'] = 'Respuestas múltiples';
 
-// Question types.
-$string['qtype_multichoice'] = 'Opción múltiple';
-$string['qtype_truefalse'] = 'Verdadero/Falso';
-$string['qtype_shortanswer'] = 'Respuesta corta';
-$string['qtype_matching'] = 'Emparejamiento';
-
 // Answers.
 $string['answers'] = 'Respuestas';
 $string['answer'] = 'Respuesta';
@@ -125,7 +119,6 @@ $string['answertext'] = 'Texto de la respuesta';
 $string['fraction'] = 'Calificación';
 $string['fraction_help'] = '1.0 = respuesta correcta, 0 = respuesta incorrecta. Use valores intermedios para crédito parcial.';
 $string['feedback'] = 'Retroalimentación';
-$string['correctanswer'] = 'Correcta';
 $string['incorrectanswer'] = 'Incorrecta';
 
 // Import/Export.
@@ -418,7 +411,6 @@ $string['youranswer'] = 'Tu respuesta';
 $string['yourmark'] = 'Tu puntuación';
 $string['tryagain'] = 'Intentar de nuevo';
 $string['practicenow'] = 'Practicar ahora';
-$string['started'] = 'Iniciado';
 $string['completed'] = 'Completado';
 $string['correct'] = 'Correcto';
 $string['incorrect'] = 'Incorrecto';

@@ -113,12 +113,6 @@ $string['shuffleanswers'] = 'Shuffle answers';
 $string['singleanswer'] = 'Single answer';
 $string['multipleanswers'] = 'Multiple answers';
 
-// Question types.
-$string['qtype_multichoice'] = 'Multiple choice';
-$string['qtype_truefalse'] = 'True/False';
-$string['qtype_shortanswer'] = 'Short answer';
-$string['qtype_matching'] = 'Matching';
-
 // Answers.
 $string['answers'] = 'Answers';
 $string['answer'] = 'Answer';
@@ -127,7 +121,6 @@ $string['answertext'] = 'Answer text';
 $string['fraction'] = 'Grade';
 $string['fraction_help'] = '1.0 = correct answer, 0 = wrong answer. Use values in between for partial credit.';
 $string['feedback'] = 'Feedback';
-$string['correctanswer'] = 'Correct';
 $string['incorrectanswer'] = 'Incorrect';
 
 // Import/Export.
@@ -428,7 +421,6 @@ $string['youranswer'] = 'Your answer';
 $string['yourmark'] = 'Your mark';
 $string['tryagain'] = 'Try again';
 $string['practicenow'] = 'Practice now';
-$string['started'] = 'Started';
 $string['completed'] = 'Completed';
 $string['correct'] = 'Correct';
 $string['incorrect'] = 'Incorrect';
