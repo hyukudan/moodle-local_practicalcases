@@ -410,15 +410,23 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
 
         // Align status default with the code constant timed_attempt_manager::STATUS_INPROGRESS ('inprogress').
         // Schema previously defaulted to 'in_progress', which never matches the status the manager queries.
-        // The status column is part of the (userid, status) index; Moodle's DDL refuses to alter an indexed
-        // field (ddldependencyerror), so drop the index, change the default, then recreate it.
-        $statusindex = new xmldb_index('userid_status', XMLDB_INDEX_NOTUNIQUE, ['userid', 'status']);
+        // The status column participates in TWO indexes: the composite (userid, status) and the standalone
+        // (status). Moodle's DDL refuses to alter a field that any index depends on (ddldependencyerror),
+        // so drop both indexes, change the default, then recreate both to match install.xml.
+        $useridstatusindex = new xmldb_index('userid_status', XMLDB_INDEX_NOTUNIQUE, ['userid', 'status']);
+        if ($dbman->index_exists($table, $useridstatusindex)) {
+            $dbman->drop_index($table, $useridstatusindex);
+        }
+        $statusindex = new xmldb_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
         if ($dbman->index_exists($table, $statusindex)) {
             $dbman->drop_index($table, $statusindex);
         }
         $field = new xmldb_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'inprogress', 'percentage');
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_default($table, $field);
+        }
+        if (!$dbman->index_exists($table, $useridstatusindex)) {
+            $dbman->add_index($table, $useridstatusindex);
         }
         if (!$dbman->index_exists($table, $statusindex)) {
             $dbman->add_index($table, $statusindex);
