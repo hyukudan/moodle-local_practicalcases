@@ -54,7 +54,8 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
             {key: 'casespublished', component: 'local_casospracticos'},
             {key: 'casesarchived', component: 'local_casospracticos'},
             {key: 'casesmoved', component: 'local_casospracticos'},
-            {key: 'selecttargetcategory', component: 'local_casospracticos'}
+            {key: 'selecttargetcategory', component: 'local_casospracticos'},
+            {key: 'bulkactionfailed', component: 'local_casospracticos'}
         ]).then(function(strings) {
             self.strings = {
                 confirmDelete: strings[0],
@@ -70,7 +71,8 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 casesPublished: strings[10],
                 casesArchived: strings[11],
                 casesMoved: strings[12],
-                selectTargetCategory: strings[13]
+                selectTargetCategory: strings[13],
+                bulkActionFailed: strings[14]
             };
             self.bindEvents();
             self.updateBulkActionsVisibility();
@@ -326,6 +328,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                     type: 'success'
                 });
                 window.location.reload();
+            } else {
+                Notification.addNotification({
+                    message: self.strings.bulkActionFailed,
+                    type: 'error'
+                });
             }
         }).fail(function(error) {
             self.hideLoading();
@@ -406,6 +413,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                     type: 'success'
                 });
                 window.location.reload();
+            } else {
+                Notification.addNotification({
+                    message: self.strings.bulkActionFailed,
+                    type: 'error'
+                });
             }
         }).fail(function(error) {
             self.hideLoading();

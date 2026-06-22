@@ -58,18 +58,21 @@ class timed_attempt_manager {
         self::cleanup_unfinished_attempts($caseid, $userid);
 
         // Get questions and shuffle them.
-        $questions = question_manager::get_by_case($caseid);
+        $questions = array_values(question_manager::get_by_case($caseid));
         shuffle($questions);
-        $questionids = array_column($questions, 'id');
+        $questionids = array_map(function($q) {
+            return (int) $q->id;
+        }, $questions);
 
         $attempt = new \stdClass();
         $attempt->caseid = $caseid;
         $attempt->userid = $userid;
+        $attempt->token = self::generate_token();
         $attempt->timelimit = $timelimit * 60; // Convert to seconds.
-        $attempt->timestart = time();
-        $attempt->timeend = time() + ($timelimit * 60);
-        $attempt->status = self::STATUS_INPROGRESS;
+        // Persist the shuffled question order so render and submit use the same set/order.
         $attempt->questionorder = json_encode($questionids);
+        $attempt->timestarted = time();
+        $attempt->status = self::STATUS_INPROGRESS;
         $attempt->timecreated = time();
 
         return $DB->insert_record(self::TABLE, $attempt);
@@ -98,7 +101,8 @@ class timed_attempt_manager {
             return 0;
         }
 
-        $timeleft = $attempt->timeend - time();
+        $timeend = $attempt->timestarted + $attempt->timelimit;
+        $timeleft = $timeend - time();
         return max(0, $timeleft);
     }
 
@@ -119,17 +123,57 @@ class timed_attempt_manager {
             return;
         }
 
-        $update = new \stdClass();
-        $update->id = $attemptid;
-        $update->status = self::STATUS_FINISHED;
-        $update->score = $score;
-        $update->maxscore = $maxscore;
-        $update->percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
-        $update->responsedata = json_encode($responsedata);
-        $update->timespent = $timespent;
-        $update->timefinished = time();
+        // Only finalize an attempt that is still in progress. This makes the
+        // transition idempotent: a duplicate/concurrent submit will not re-run
+        // stats recording or re-trigger the submitted event.
+        if ($attempt->status !== self::STATUS_INPROGRESS) {
+            return;
+        }
 
-        $DB->update_record(self::TABLE, $update);
+        $percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
+
+        // Conditional update: only the request that finds the row still in
+        // progress wins the transition. We pre-count, run a status-guarded
+        // UPDATE, then re-read to confirm this request performed the finalize.
+        $now = time();
+        $params = ['id' => $attemptid, 'status' => self::STATUS_INPROGRESS];
+        $matched = $DB->count_records_select(
+            self::TABLE,
+            'id = :id AND status = :status',
+            $params
+        );
+        if ($matched < 1) {
+            // Lost the race; another request already finalized this attempt.
+            return;
+        }
+
+        $DB->execute(
+            'UPDATE {' . self::TABLE . '}
+                SET status = :newstatus,
+                    score = :score,
+                    maxscore = :maxscore,
+                    percentage = :percentage,
+                    responses = :responses,
+                    timesubmitted = :timesubmitted
+              WHERE id = :id AND status = :oldstatus',
+            [
+                'newstatus' => self::STATUS_FINISHED,
+                'score' => $score,
+                'maxscore' => $maxscore,
+                'percentage' => $percentage,
+                'responses' => json_encode($responsedata),
+                'timesubmitted' => $now,
+                'id' => $attemptid,
+                'oldstatus' => self::STATUS_INPROGRESS,
+            ]
+        );
+
+        // Verify we won the transition before recording stats / triggering the event.
+        $finalized = $DB->get_record(self::TABLE, ['id' => $attemptid]);
+        if (!$finalized || $finalized->status !== self::STATUS_FINISHED
+                || (int) $finalized->timesubmitted !== $now) {
+            return;
+        }
 
         // Also record in regular stats for consistency.
         stats_manager::record_practice_attempt(
@@ -149,7 +193,7 @@ class timed_attempt_manager {
                 'caseid' => $attempt->caseid,
                 'score' => $score,
                 'maxscore' => $maxscore,
-                'percentage' => $update->percentage,
+                'percentage' => $percentage,
                 'timespent' => $timespent,
             ],
         ]);
@@ -189,7 +233,7 @@ class timed_attempt_manager {
                 WHERE userid = :userid
                   AND caseid = :caseid
                   AND status = :status
-                ORDER BY percentage DESC, timefinished ASC
+                ORDER BY percentage DESC, timesubmitted ASC
                 LIMIT 1";
 
         return $DB->get_record_sql($sql, [
@@ -223,20 +267,95 @@ class timed_attempt_manager {
     public static function expire_old_attempts(): int {
         global $DB;
 
-        $count = $DB->count_records_select(
-            self::TABLE,
-            'status = :status AND timeend < :now',
-            ['status' => self::STATUS_INPROGRESS, 'now' => time()]
-        );
+        // Calculate expired attempts: timestarted + timelimit < now
+        $sql = 'status = :status AND (timestarted + timelimit) < :now';
+        $params = ['status' => self::STATUS_INPROGRESS, 'now' => time()];
+
+        $count = $DB->count_records_select(self::TABLE, $sql, $params);
 
         $DB->set_field_select(
             self::TABLE,
             'status',
             self::STATUS_EXPIRED,
-            'status = :status AND timeend < :now',
-            ['status' => self::STATUS_INPROGRESS, 'now' => time()]
+            $sql,
+            $params
         );
 
         return $count;
+    }
+
+    /**
+     * Save partial responses for auto-save functionality.
+     *
+     * @param int $attemptid Attempt ID
+     * @param int $userid User ID (for verification)
+     * @param array $responses Array of question responses
+     * @return bool Success
+     */
+    public static function save_responses(int $attemptid, int $userid, array $responses): bool {
+        global $DB;
+
+        $attempt = self::get_attempt($attemptid);
+        if (!$attempt) {
+            return false;
+        }
+
+        // Verify attempt belongs to user.
+        if ((int)$attempt->userid !== $userid) {
+            return false;
+        }
+
+        // Only save if attempt is still in progress.
+        if ($attempt->status !== self::STATUS_INPROGRESS) {
+            return false;
+        }
+
+        // Check if time has expired.
+        if (self::get_time_left($attemptid) <= 0) {
+            return false;
+        }
+
+        // Save the responses with a conditional update keyed on userid AND
+        // status still in-progress. This prevents an autosave that read an
+        // in-progress attempt from overwriting the responses of an attempt that
+        // was finalized (submitted) in the meantime.
+        $DB->execute(
+            'UPDATE {' . self::TABLE . '}
+                SET responses = :responses
+              WHERE id = :id AND userid = :userid AND status = :status',
+            [
+                'responses' => json_encode($responses),
+                'id' => $attemptid,
+                'userid' => $userid,
+                'status' => self::STATUS_INPROGRESS,
+            ]
+        );
+
+        return true;
+    }
+
+    /**
+     * Get saved responses for an attempt.
+     *
+     * @param int $attemptid Attempt ID
+     * @return array Saved responses or empty array
+     */
+    public static function get_saved_responses(int $attemptid): array {
+        $attempt = self::get_attempt($attemptid);
+        if (!$attempt || empty($attempt->responses)) {
+            return [];
+        }
+
+        $responses = json_decode($attempt->responses, true);
+        return is_array($responses) ? $responses : [];
+    }
+
+    /**
+     * Generate a unique secure token for an attempt.
+     *
+     * @return string 64-character hex token
+     */
+    private static function generate_token(): string {
+        return bin2hex(random_bytes(32));
     }
 }

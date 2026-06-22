@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026011217;  // v1.2.2: Security fixes + Performance optimizations.
+$plugin->version   = 2026061500;  // Stage 2a: add optional per-case document deliverable (local_cp_case_deliverable + deliverable filearea).
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.2.2';
+$plugin->release   = '1.3.2';

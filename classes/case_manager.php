@@ -44,6 +44,35 @@ class case_manager {
     const STATUS_ARCHIVED = 'archived';
 
     /**
+     * Whether the current user can access unpublished cases.
+     *
+     * @param \context|null $context Context to evaluate capabilities in
+     * @return bool
+     */
+    public static function can_view_unpublished(?\context $context = null): bool {
+        $context = $context ?? \context_system::instance();
+        return has_capability('local/casospracticos:edit', $context);
+    }
+
+    /**
+     * Whether a case is visible to the current user.
+     *
+     * Published cases are visible to all viewers. Draft/archived cases are
+     * limited to editorial users.
+     *
+     * @param \stdClass $case Case record
+     * @param \context|null $context Context to evaluate capabilities in
+     * @return bool
+     */
+    public static function is_visible_to_user(\stdClass $case, ?\context $context = null): bool {
+        if (($case->status ?? null) === self::STATUS_PUBLISHED) {
+            return true;
+        }
+
+        return self::can_view_unpublished($context);
+    }
+
+    /**
      * Get a case by ID.
      *
      * @param int $id Case ID
@@ -86,7 +115,8 @@ class case_manager {
             $params['status'] = $status;
         }
 
-        return $DB->get_records(self::TABLE, $params, $sort);
+        // Safety limit: a category shouldn't have more than 5000 cases.
+        return $DB->get_records(self::TABLE, $params, $sort, '*', 0, 5000);
     }
 
     /**
@@ -117,14 +147,17 @@ class case_manager {
     }
 
     /**
-     * Search cases.
+     * Search cases with pagination.
      *
      * @param string $search Search term
      * @param int|null $categoryid Category filter
      * @param string|null $status Status filter
-     * @return array Array of matching cases
+     * @param int $page Page number (0-based)
+     * @param int $perpage Items per page
+     * @return array Array with 'cases', 'total', 'page', 'perpage'
      */
-    public static function search(string $search, int $categoryid = null, string $status = null): array {
+    public static function search(string $search, int $categoryid = null, string $status = null,
+                                  int $page = 0, int $perpage = 50): array {
         global $DB;
 
         $params = [];
@@ -150,10 +183,29 @@ class case_manager {
 
         $where = implode(' AND ', $conditions);
         if (empty($where)) {
-            return self::get_all();
+            $where = '1=1';
         }
 
-        return $DB->get_records_select(self::TABLE, $where, $params, 'name ASC');
+        // Count total matching records.
+        $total = $DB->count_records_select(self::TABLE, $where, $params);
+
+        // Deferred join: Phase 1 — get only IDs for the current page.
+        $ids = $DB->get_records_select(self::TABLE, $where, $params, 'name ASC', 'id', $page * $perpage, $perpage);
+
+        if (empty($ids)) {
+            return ['cases' => [], 'total' => $total, 'page' => $page, 'perpage' => $perpage];
+        }
+
+        // Phase 2: Full data for just those IDs.
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($ids), SQL_PARAMS_NAMED);
+        $cases = $DB->get_records_select(self::TABLE, "id $insql", $inparams, 'name ASC');
+
+        return [
+            'cases' => array_values($cases),
+            'total' => $total,
+            'page' => $page,
+            'perpage' => $perpage,
+        ];
     }
 
     /**
@@ -170,7 +222,7 @@ class case_manager {
         $record->name = trim($data->name);
         $record->statement = $data->statement;
         $record->statementformat = $data->statementformat ?? FORMAT_HTML;
-        $record->status = $data->status ?? self::STATUS_DRAFT;
+        $record->status = self::validate_status($data->status ?? self::STATUS_DRAFT);
         $record->difficulty = $data->difficulty ?? null;
         $record->tags = self::encode_tags($data->tags ?? []);
         $record->timecreated = time();
@@ -203,7 +255,7 @@ class case_manager {
             $record->statementformat = $data->statementformat ?? FORMAT_HTML;
         }
         if (isset($data->status)) {
-            $record->status = $data->status;
+            $record->status = self::validate_status($data->status);
         }
         if (array_key_exists('difficulty', (array) $data)) {
             $record->difficulty = $data->difficulty;
@@ -218,7 +270,7 @@ class case_manager {
     }
 
     /**
-     * Delete a case and all its questions.
+     * Delete a case and all its questions and attachments.
      *
      * @param int $id Case ID
      * @return bool Success
@@ -235,6 +287,9 @@ class case_manager {
             foreach ($questions as $question) {
                 question_manager::delete($question->id);
             }
+
+            // Delete all attachments.
+            self::delete_attachments($id);
 
             $result = $DB->delete_records(self::TABLE, ['id' => $id]);
 
@@ -288,6 +343,21 @@ class case_manager {
             $transaction->rollback($e);
             throw $e;
         }
+    }
+
+    /**
+     * Validate a status value against the allowed workflow statuses.
+     *
+     * @param string $status Candidate status
+     * @return string The validated status
+     * @throws \moodle_exception If the status is not a recognised workflow status
+     */
+    private static function validate_status(string $status): string {
+        $allowed = array_keys(workflow_manager::get_all_statuses());
+        if (!in_array($status, $allowed, true)) {
+            throw new \moodle_exception('error:invalidstatus', 'local_casospracticos', '', $status);
+        }
+        return $status;
     }
 
     /**
@@ -413,13 +483,185 @@ class case_manager {
             $params['status'] = $status;
         }
 
-        $sql = "SELECT c.*, COUNT(q.id) as questioncount
+        // Use a subquery for question counts to avoid GROUP BY compatibility issues with PostgreSQL.
+        // PostgreSQL requires all non-aggregated SELECT columns to appear in GROUP BY.
+        $sql = "SELECT c.*, COALESCE(qc.questioncount, 0) AS questioncount
                 FROM {" . self::TABLE . "} c
-                LEFT JOIN {local_cp_questions} q ON q.caseid = c.id
+                LEFT JOIN (
+                    SELECT caseid, COUNT(*) AS questioncount
+                    FROM {local_cp_questions}
+                    GROUP BY caseid
+                ) qc ON qc.caseid = c.id
                 WHERE {$where}
-                GROUP BY c.id
                 ORDER BY c.name ASC";
 
-        return $DB->get_records_sql($sql, $params);
+        return $DB->get_records_sql($sql, $params, 0, 5000);
+    }
+
+    /**
+     * Get attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return array Array of file objects with download URLs
+     */
+    public static function get_attachments(int $caseid): array {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $files = $fs->get_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            'filename',
+            false
+        );
+
+        $attachments = [];
+        foreach ($files as $file) {
+            $filename = $file->get_filename();
+            $fileinfo = local_casospracticos_get_file_icon($filename);
+
+            $url = \moodle_url::make_pluginfile_url(
+                $context->id,
+                'local_casospracticos',
+                'case_attachments',
+                $caseid,
+                $file->get_filepath(),
+                $filename,
+                true // Force download.
+            );
+
+            // SVG must never be served inline (XSS vector): force download for it.
+            $forceinlinedownload = ($file->get_mimetype() === 'image/svg+xml');
+            $viewurl = \moodle_url::make_pluginfile_url(
+                $context->id,
+                'local_casospracticos',
+                'case_attachments',
+                $caseid,
+                $file->get_filepath(),
+                $filename,
+                $forceinlinedownload // Force download for SVG, view inline otherwise.
+            );
+
+            $attachments[] = (object)[
+                'id' => $file->get_id(),
+                'filename' => $filename,
+                'filepath' => $file->get_filepath(),
+                'filesize' => $file->get_filesize(),
+                'filesizeformatted' => display_size($file->get_filesize()),
+                'mimetype' => $file->get_mimetype(),
+                'timecreated' => $file->get_timecreated(),
+                'timemodified' => $file->get_timemodified(),
+                'downloadurl' => $url->out(false),
+                'viewurl' => $viewurl->out(false),
+                'icon' => $fileinfo['icon'],
+                'type' => $fileinfo['type'],
+                'isimage' => strpos($file->get_mimetype(), 'image/') === 0,
+                'isembeddable' => self::is_embeddable($file->get_mimetype()),
+            ];
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Check if a file type can be embedded for preview.
+     *
+     * @param string $mimetype The file MIME type.
+     * @return bool True if embeddable.
+     */
+    private static function is_embeddable(string $mimetype): bool {
+        // SVG is deliberately excluded: user-controlled SVG can carry scripts and
+        // is an XSS vector when rendered inline. SVG attachments are forced to download.
+        $embeddable = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+        ];
+        return in_array($mimetype, $embeddable);
+    }
+
+    /**
+     * Save attachments for a case from file manager draft area.
+     *
+     * @param int $caseid Case ID
+     * @param int $draftitemid Draft item ID from form submission
+     * @return void
+     */
+    public static function save_attachments(int $caseid, int $draftitemid): void {
+        $context = \context_system::instance();
+
+        file_save_draft_area_files(
+            $draftitemid,
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            local_casospracticos_get_attachment_options()
+        );
+    }
+
+    /**
+     * Delete all attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return void
+     */
+    public static function delete_attachments(int $caseid): void {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $fs->delete_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid
+        );
+    }
+
+    /**
+     * Count attachments for a case.
+     *
+     * @param int $caseid Case ID
+     * @return int Number of attachments
+     */
+    public static function count_attachments(int $caseid): int {
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+
+        $files = $fs->get_area_files(
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            'filename',
+            false
+        );
+
+        return count($files);
+    }
+
+    /**
+     * Get draft item ID for editing existing attachments.
+     *
+     * @param int $caseid Case ID
+     * @return int Draft item ID
+     */
+    public static function get_attachments_draft_itemid(int $caseid): int {
+        $context = \context_system::instance();
+        $draftitemid = 0;
+
+        file_prepare_draft_area(
+            $draftitemid,
+            $context->id,
+            'local_casospracticos',
+            'case_attachments',
+            $caseid,
+            local_casospracticos_get_attachment_options()
+        );
+
+        return $draftitemid;
     }
 }

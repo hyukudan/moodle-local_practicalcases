@@ -20,13 +20,15 @@
     Template for displaying a list of practical cases.
 
     Context variables required for this template:
-    * cases - Array of case objects
+    * cases - Array of case objects (rendered one table row each)
+    * hascases - Boolean: true when the cases array is non-empty (wraps the table once)
     * categoryname - Current category name
     * canedit - Boolean for edit capability
     * candelete - Boolean for delete capability
 
     Example context (json):
     {
+        "hascases": true,
         "cases": [
             {
                 "id": 1,
@@ -56,7 +58,7 @@
     </div>
     {{/cases}}
 
-    {{#cases}}
+    {{#hascases}}
     <div class="case-list-table">
         <table class="table table-striped table-hover" aria-describedby="category-heading">
             <thead>
@@ -86,18 +88,18 @@
                     <td class="case-actions" role="group" aria-label="{{#str}}actions, local_casospracticos{{/str}}">
                         <a href="{{viewurl}}" class="btn btn-sm btn-outline-primary" aria-label="{{#str}}viewcase, local_casospracticos{{/str}} {{name}}">
                             {{#pix}}i/preview, core{{/pix}}
-                            <span class="sr-only">{{#str}}view{{/str}}</span>
+                            <span class="visually-hidden">{{#str}}view{{/str}}</span>
                         </a>
                         {{#canedit}}
                         <a href="{{editurl}}" class="btn btn-sm btn-outline-secondary" aria-label="{{#str}}editcase, local_casospracticos{{/str}} {{name}}">
                             {{#pix}}t/edit, core{{/pix}}
-                            <span class="sr-only">{{#str}}edit{{/str}}</span>
+                            <span class="visually-hidden">{{#str}}edit{{/str}}</span>
                         </a>
                         {{/canedit}}
                         {{#candelete}}
                         <a href="{{deleteurl}}" class="btn btn-sm btn-outline-danger" aria-label="{{#str}}deletecase, local_casospracticos{{/str}} {{name}}">
                             {{#pix}}t/delete, core{{/pix}}
-                            <span class="sr-only">{{#str}}delete{{/str}}</span>
+                            <span class="visually-hidden">{{#str}}delete{{/str}}</span>
                         </a>
                         {{/candelete}}
                     </td>
@@ -106,5 +108,5 @@
             </tbody>
         </table>
     </div>
-    {{/cases}}
+    {{/hascases}}
 </div>

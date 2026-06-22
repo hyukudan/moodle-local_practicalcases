@@ -345,5 +345,119 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026011215, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026011800) {
+        // v1.3.0: File attachments support for Word/Excel exercises.
+        // No schema changes needed - uses Moodle's file API with 'case_attachments' filearea.
+        // This upgrade step documents the feature addition:
+        // - Cases can now have file attachments (Word, Excel, PDF, images, ZIP)
+        // - Files are served via pluginfile.php handler in lib.php
+        // - Attachments are managed in case_edit.php with Moodle's filemanager element
+        // - Displayed in case_view.php with download and view (if embeddable) options
+
+        upgrade_plugin_savepoint(true, 2026011800, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026011801) {
+        // v1.3.0: Auto-save for timed practice mode.
+        // Add 'responses' field to timed_attempts table for storing draft responses.
+
+        $table = new xmldb_table('local_cp_timed_attempts');
+        $field = new xmldb_field('responses', XMLDB_TYPE_TEXT, null, null, null, null, null, 'status');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026011801, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026031600) {
+        // SQL audit fixes: add missing indexes on local_cp_practice_attempts for stats queries.
+
+        $table = new xmldb_table('local_cp_practice_attempts');
+
+        // Index for stats queries filtering by caseid+status and sorting by timefinished.
+        $index = new xmldb_index('caseid_status_timefinished', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'status', 'timefinished']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Index for user-specific attempt queries filtered by status.
+        $index = new xmldb_index('caseid_userid_status', XMLDB_INDEX_NOTUNIQUE, ['caseid', 'userid', 'status']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026031600, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026060100) {
+        // v1.3.2: Timed-practice flow fixes.
+
+        // Add questionorder column to practice sessions (read/written by practice_session_manager).
+        $table = new xmldb_table('local_cp_practice_sessions');
+        $field = new xmldb_field('questionorder', XMLDB_TYPE_TEXT, null, null, null, null, null, 'timeexpiry');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add questionorder column to timed attempts (persisted by timed_attempt_manager::start_attempt).
+        $table = new xmldb_table('local_cp_timed_attempts');
+        $field = new xmldb_field('questionorder', XMLDB_TYPE_TEXT, null, null, null, null, null, 'responses');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Align status default with the code constant timed_attempt_manager::STATUS_INPROGRESS ('inprogress').
+        // Schema previously defaulted to 'in_progress', which never matches the status the manager queries.
+        // The status column participates in TWO indexes: the composite (userid, status) and the standalone
+        // (status). Moodle's DDL refuses to alter a field that any index depends on (ddldependencyerror),
+        // so drop both indexes, change the default, then recreate both to match install.xml.
+        $useridstatusindex = new xmldb_index('userid_status', XMLDB_INDEX_NOTUNIQUE, ['userid', 'status']);
+        if ($dbman->index_exists($table, $useridstatusindex)) {
+            $dbman->drop_index($table, $useridstatusindex);
+        }
+        $statusindex = new xmldb_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+        if ($dbman->index_exists($table, $statusindex)) {
+            $dbman->drop_index($table, $statusindex);
+        }
+        $field = new xmldb_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'inprogress', 'percentage');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_default($table, $field);
+        }
+        if (!$dbman->index_exists($table, $useridstatusindex)) {
+            $dbman->add_index($table, $useridstatusindex);
+        }
+        if (!$dbman->index_exists($table, $statusindex)) {
+            $dbman->add_index($table, $statusindex);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060100, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026061500) {
+        // Stage 2a: optional per-case document deliverable definition. Additive,
+        // default-off: a case with no row here behaves exactly as today.
+        $table = new xmldb_table('local_cp_case_deliverable');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('filetype', XMLDB_TYPE_CHAR, '10', null, null, null, null);
+            $table->add_field('startfilename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $table->add_field('rubrica', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('maxscore', XMLDB_TYPE_NUMBER, '10, 4', null, XMLDB_NOTNULL, null, '100');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('caseid', XMLDB_KEY_FOREIGN_UNIQUE, ['caseid'], 'local_cp_cases', ['id']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026061500, 'local', 'casospracticos');
+    }
+
     return true;
 }

@@ -74,6 +74,12 @@ class bulk_manager {
                 // Delete practice attempts in batch.
                 $DB->delete_records_select('local_cp_practice_attempts', "caseid $caseinsql", $caseparams);
 
+                // Delete attachment files for each case (filearea: case_attachments).
+                // Mirrors case_manager::delete() so bulk deletion does not orphan files.
+                foreach ($existingids as $caseid) {
+                    case_manager::delete_attachments($caseid);
+                }
+
                 // Delete cases in batch.
                 $DB->delete_records_select('local_cp_cases', "id $caseinsql", $caseparams);
 
@@ -217,8 +223,16 @@ class bulk_manager {
 
             $case = $existingcases[$caseid];
 
-            if ($case->status === 'published') {
+            if ($case->status === workflow_manager::STATUS_PUBLISHED) {
                 $failed[] = ['id' => $caseid, 'reason' => 'already_published'];
+                continue;
+            }
+
+            // Enforce the workflow state machine: only legal source states may
+            // transition to published. When the approval workflow is enabled this
+            // also blocks the direct draft => published jump.
+            if (!workflow_manager::can_transition($case->status, workflow_manager::STATUS_PUBLISHED)) {
+                $failed[] = ['id' => $caseid, 'reason' => 'invalid_transition'];
                 continue;
             }
 
@@ -303,8 +317,15 @@ class bulk_manager {
                 continue;
             }
 
-            if ($existingcases[$caseid]->status === 'archived') {
+            if ($existingcases[$caseid]->status === workflow_manager::STATUS_ARCHIVED) {
                 $failed[] = ['id' => $caseid, 'reason' => 'already_archived'];
+                continue;
+            }
+
+            // Enforce the workflow state machine: only legal source states
+            // (published) may transition to archived.
+            if (!workflow_manager::can_transition($existingcases[$caseid]->status, workflow_manager::STATUS_ARCHIVED)) {
+                $failed[] = ['id' => $caseid, 'reason' => 'invalid_transition'];
                 continue;
             }
 

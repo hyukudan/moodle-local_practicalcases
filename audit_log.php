@@ -165,10 +165,11 @@ if (!empty($userid)) {
     $filters['userid'] = $userid;
 }
 if (!empty($datefrom)) {
-    $filters['datefrom'] = $datefrom;
+    // The logger expects 'from'/'to' keys (see audit_logger::get_all_logs()).
+    $filters['from'] = $datefrom;
 }
 if (!empty($dateto)) {
-    $filters['dateto'] = $dateto;
+    $filters['to'] = $dateto;
 }
 
 // Get logs.
@@ -224,9 +225,11 @@ if (empty($logs)) {
         // Get object type label.
         $objecttypelabel = $objecttypes[$log->objecttype] ?? $log->objecttype;
 
-        // Get user name.
-        $user = $DB->get_record('user', ['id' => $log->userid]);
-        $username = $user ? fullname($user) : get_string('unknownuser', 'local_casospracticos');
+        // Get user name. The logger already enriched each row with $log->user;
+        // reuse it instead of re-querying per row (avoids an N+1 query pattern).
+        $username = !empty($log->user)
+            ? fullname($log->user)
+            : get_string('unknownuser', 'local_casospracticos');
 
         // Build object link.
         $objectlink = $log->objectid;

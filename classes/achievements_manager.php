@@ -360,21 +360,26 @@ class achievements_manager {
             return 0;
         }
 
+        // Read the most recent finished attempts newest-first and stop as soon
+        // as the streak breaks, so we never pull a long-lived user's entire
+        // attempt history into memory. A recordset lets us close the cursor the
+        // moment we hit the first failing attempt.
         $sql = "SELECT id, percentage
                 FROM {local_cp_practice_attempts}
                 WHERE userid = :userid AND status = 'finished'
-                ORDER BY timefinished DESC";
+                ORDER BY timefinished DESC, id DESC";
 
-        $attempts = $DB->get_records_sql($sql, ['userid' => $userid]);
+        $rs = $DB->get_recordset_sql($sql, ['userid' => $userid]);
 
         $streak = 0;
-        foreach ($attempts as $attempt) {
+        foreach ($rs as $attempt) {
             if ($attempt->percentage >= $threshold) {
                 $streak++;
             } else {
                 break;
             }
         }
+        $rs->close();
 
         return $streak;
     }

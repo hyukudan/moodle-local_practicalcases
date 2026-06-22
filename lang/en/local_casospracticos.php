@@ -39,6 +39,7 @@ $string['casospracticos:export'] = 'Export practical cases';
 $string['casospracticos:import'] = 'Import practical cases';
 $string['casospracticos:insertquiz'] = 'Insert cases into quizzes';
 $string['casospracticos:review'] = 'Review practical cases';
+$string['casospracticos:viewanswers'] = 'View question answer keys';
 $string['casospracticos:viewaudit'] = 'View audit log';
 $string['casospracticos:bulk'] = 'Perform bulk operations';
 
@@ -78,6 +79,13 @@ $string['difficulty'] = 'Difficulty';
 $string['difficulty_help'] = 'Difficulty level from 1 (easy) to 5 (hard)';
 $string['tags'] = 'Tags';
 
+// Attachments.
+$string['attachments'] = 'Attachments';
+$string['attachments_help'] = 'Attach supporting materials such as Word documents, Excel spreadsheets, PDFs, or images. Students can download these files to work on exercises. Supported formats: Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF, images, and ZIP archives.';
+$string['noattachments'] = 'No attachments';
+$string['downloadattachment'] = 'Download attachment';
+$string['viewattachment'] = 'View attachment';
+
 // Status.
 $string['status'] = 'Status';
 $string['status_draft'] = 'Draft';
@@ -105,12 +113,6 @@ $string['shuffleanswers'] = 'Shuffle answers';
 $string['singleanswer'] = 'Single answer';
 $string['multipleanswers'] = 'Multiple answers';
 
-// Question types.
-$string['qtype_multichoice'] = 'Multiple choice';
-$string['qtype_truefalse'] = 'True/False';
-$string['qtype_shortanswer'] = 'Short answer';
-$string['qtype_matching'] = 'Matching';
-
 // Answers.
 $string['answers'] = 'Answers';
 $string['answer'] = 'Answer';
@@ -119,7 +121,6 @@ $string['answertext'] = 'Answer text';
 $string['fraction'] = 'Grade';
 $string['fraction_help'] = '1.0 = correct answer, 0 = wrong answer. Use values in between for partial credit.';
 $string['feedback'] = 'Feedback';
-$string['correctanswer'] = 'Correct';
 $string['incorrectanswer'] = 'Incorrect';
 
 // Import/Export.
@@ -193,6 +194,7 @@ $string['casespublished'] = '{$a} cases published successfully';
 $string['casesarchived'] = '{$a} cases archived successfully';
 $string['nocasesselected'] = 'No cases selected';
 $string['selecttargetcategory'] = 'Select target category';
+$string['bulkactionfailed'] = 'The operation could not be completed. Please try again.';
 
 // Workflow.
 $string['submitforreview'] = 'Submit for review';
@@ -255,7 +257,7 @@ $string['eventpracticeattemptcompleted'] = 'Practice attempt completed';
 $string['eventratelimitexceeded'] = 'API rate limit exceeded';
 
 // Search.
-$string['search:case'] = 'Practical cases';
+$string['search:case_search'] = 'Practical cases';
 
 // Settings.
 $string['settings:general'] = 'General settings';
@@ -307,6 +309,10 @@ $string['error:questionnotfound'] = 'Question not found';
 $string['error:nopermission'] = 'You do not have permission to perform this action';
 $string['error:nopermissiontoexport'] = 'You do not have permission to export the selected cases. You can only export cases you created or have editall capability.';
 $string['error:invaliddata'] = 'Invalid data provided';
+$string['error:invalidstatus'] = 'Invalid case status';
+$string['error:invalidqtype'] = 'Invalid question type';
+$string['error:qtypechangeanswers'] = 'The existing answers are not compatible with the new question type ({$a}). Please provide a compatible answer set before changing the type.';
+$string['error:categorycycle'] = 'A category cannot be its own parent or be moved under one of its own descendants';
 $string['error:nocases'] = 'No cases selected';
 $string['error:ratelimitexceeded'] = 'Rate limit exceeded. Please wait a moment before trying again.';
 $string['error:sessionexpired'] = 'Your practice session has expired. Please start a new attempt.';
@@ -320,6 +326,7 @@ $string['privacy:metadata:local_cp_cases:timemodified'] = 'The time when the cas
 $string['privacy:metadata:local_cp_audit_log'] = 'Audit log of all actions performed';
 $string['privacy:metadata:local_cp_audit_log:userid'] = 'The ID of the user who performed the action';
 $string['privacy:metadata:local_cp_audit_log:action'] = 'The action performed by the user';
+$string['privacy:metadata:local_cp_audit_log:changes'] = 'The recorded field changes (old and new values) for the action';
 $string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'The IP address of the user';
 $string['privacy:metadata:local_cp_audit_log:timecreated'] = 'When the action was performed';
 $string['privacy:metadata:local_cp_reviews'] = 'Case reviews for workflow';
@@ -338,6 +345,29 @@ $string['privacy:metadata:local_cp_practice_responses'] = 'Stores individual que
 $string['privacy:metadata:local_cp_practice_responses:response'] = 'The user response to the question';
 $string['privacy:metadata:local_cp_practice_responses:score'] = 'The score for this response';
 $string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Whether the response was correct';
+$string['privacy:metadata:local_cp_achievements'] = 'Stores gamification achievements earned by users';
+$string['privacy:metadata:local_cp_achievements:userid'] = 'The ID of the user who earned the achievement';
+$string['privacy:metadata:local_cp_achievements:achievementtype'] = 'The type of achievement earned';
+$string['privacy:metadata:local_cp_achievements:caseid'] = 'The related case, if applicable';
+$string['privacy:metadata:local_cp_achievements:timecreated'] = 'When the achievement was earned';
+$string['privacy:metadata:local_cp_practice_sessions'] = 'Stores secure token-based practice sessions started by users';
+$string['privacy:metadata:local_cp_practice_sessions:userid'] = 'The ID of the user who started the session';
+$string['privacy:metadata:local_cp_practice_sessions:caseid'] = 'The case being practised';
+$string['privacy:metadata:local_cp_practice_sessions:timecreated'] = 'When the session was created';
+$string['privacy:metadata:local_cp_practice_sessions:timeexpiry'] = 'When the session expires';
+$string['privacy:metadata:local_cp_timed_attempts'] = 'Stores timed practice mode attempts made by users';
+$string['privacy:metadata:local_cp_timed_attempts:userid'] = 'The ID of the user who made the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:caseid'] = 'The case being practised';
+$string['privacy:metadata:local_cp_timed_attempts:score'] = 'The score obtained in the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:maxscore'] = 'The maximum possible score';
+$string['privacy:metadata:local_cp_timed_attempts:percentage'] = 'The percentage score';
+$string['privacy:metadata:local_cp_timed_attempts:status'] = 'The status of the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:responses'] = 'The recorded responses for the timed attempt';
+$string['privacy:metadata:local_cp_timed_attempts:timestarted'] = 'When the timed attempt was started';
+$string['privacy:metadata:local_cp_timed_attempts:timesubmitted'] = 'When the timed attempt was submitted';
+$string['privacy:achievements'] = 'Achievements';
+$string['privacy:practicesessions'] = 'Practice sessions';
+$string['privacy:timedattempts'] = 'Timed attempts';
 
 // Default category.
 $string['defaultcategory'] = 'Imported cases';
@@ -391,7 +421,6 @@ $string['youranswer'] = 'Your answer';
 $string['yourmark'] = 'Your mark';
 $string['tryagain'] = 'Try again';
 $string['practicenow'] = 'Practice now';
-$string['started'] = 'Started';
 $string['completed'] = 'Completed';
 $string['correct'] = 'Correct';
 $string['incorrect'] = 'Incorrect';
@@ -425,6 +454,13 @@ $string['questionscore'] = 'Question Score';
 $string['submitanswers'] = 'Submit Answers';
 $string['error:attemptnotfound'] = 'Timed attempt not found';
 $string['eventtimedattemptsubmitted'] = 'Timed attempt submitted';
+
+// Auto-save.
+$string['autosave'] = 'Auto-save';
+$string['autosaveenabled'] = 'Auto-save is enabled. Your answers are saved automatically every 30 seconds.';
+$string['autosavesuccess'] = 'Answers saved';
+$string['autosavefailed'] = 'Auto-save failed';
+$string['responsesrestored'] = 'Your previous answers have been restored.';
 $string['congratspassed'] = 'Congratulations! You passed!';
 $string['notpassedyet'] = 'You didn\'t pass yet. The pass threshold is {$a}%. Try again!';
 $string['yourscore'] = 'Your score';
@@ -525,6 +561,21 @@ $string['review_status_approved'] = 'Approved';
 $string['review_status_rejected'] = 'Rejected';
 $string['review_status_revision_requested'] = 'Revision requested';
 
+// PDF Library.
+$string['pdflibrary'] = 'PDF Library';
+$string['pdfstatus'] = 'PDF Status';
+$string['pdfgenerated'] = 'PDF generated';
+$string['pdfmissing'] = 'PDF not generated';
+$string['pdfoutdated'] = 'PDF outdated';
+$string['regenerate'] = 'Regenerate';
+$string['regenerateall'] = 'Regenerate all';
+$string['downloadpdf'] = 'Download PDF';
+$string['lastgenerated'] = 'Last generated';
+$string['pdfsize'] = 'Size';
+$string['regenerating'] = 'Regenerating...';
+$string['regeneratesuccess'] = 'PDF regenerated successfully';
+$string['regenerateerror'] = 'Error regenerating PDF';
+
 // Accessibility strings.
 $string['caselist'] = 'List of practical cases';
 $string['caseactions'] = 'Case actions';
@@ -536,3 +587,23 @@ $string['defaultmark_help'] = 'Points awarded for a fully correct answer';
 $string['generalfeedback_help'] = 'Feedback shown after the question is answered';
 $string['categoryoptions'] = 'Options for category';
 $string['removeanswer'] = 'Remove this answer';
+
+// JavaScript user-facing strings (AMD modules).
+$string['js:truevalue'] = 'True';
+$string['js:falsevalue'] = 'False';
+$string['js:savequestionfailed'] = 'The question could not be saved. Please try again.';
+$string['js:questiontextrequired'] = 'The question text is required';
+$string['js:minanswers'] = 'At least 2 answers are required';
+$string['js:mincorrectanswer'] = 'At least one correct answer is required';
+$string['js:reorderfailed'] = 'The question could not be reordered. Please reload the page.';
+$string['js:questionupdated'] = 'Question updated';
+$string['js:updatequestionfailed'] = 'The question could not be updated. Please try again.';
+$string['js:deletequestionfailed'] = 'The question could not be deleted. Please try again.';
+
+// Timer (timed practice mode) JavaScript strings.
+$string['timer:leavewarning'] = 'Your timed attempt is still in progress. Are you sure you want to leave?';
+$string['timer:warning5min'] = '5 minutes remaining!';
+$string['timer:warning1min'] = '1 minute remaining!';
+$string['timer:timeup'] = 'TIME UP!';
+$string['timer:autosubmitting'] = 'Time is up! Submitting your answers...';
+$string['timer:submityouranswers'] = 'Time is up! Please submit your answers.';

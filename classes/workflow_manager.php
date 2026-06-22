@@ -84,12 +84,24 @@ class workflow_manager {
     /**
      * Check if a transition is valid.
      *
+     * When the approval workflow is enabled, the direct draft => published jump
+     * is disallowed: cases must go through the review path
+     * (draft => pending_review => in_review => approved => published).
+     * When the workflow is disabled the base state machine is used as-is, which
+     * still permits the direct draft => published shortcut.
+     *
      * @param string $from Current status.
      * @param string $to Target status.
      * @return bool True if transition is valid.
      */
     public static function can_transition(string $from, string $to): bool {
         if (!isset(self::TRANSITIONS[$from])) {
+            return false;
+        }
+        // Enforce the review path when workflow is enabled: no direct draft => published.
+        if (self::is_workflow_enabled()
+                && $from === self::STATUS_DRAFT
+                && $to === self::STATUS_PUBLISHED) {
             return false;
         }
         return in_array($to, self::TRANSITIONS[$from]);
@@ -174,9 +186,20 @@ class workflow_manager {
 
         $reviewid = $DB->insert_record('local_cp_reviews', $review);
 
+        $oldstatus = $case->status;
+
         // Update case status to in_review.
         $DB->set_field('local_cp_cases', 'status', self::STATUS_IN_REVIEW, ['id' => $caseid]);
         $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
+
+        // Log the reviewer assignment and status change for the workflow audit trail.
+        audit_logger::log_case($caseid, audit_logger::ACTION_SUBMIT_REVIEW, [
+            'event' => 'assign_reviewer',
+            'reviewer' => $reviewerid,
+            'reviewid' => $reviewid,
+            'status_from' => $oldstatus,
+            'status_to' => self::STATUS_IN_REVIEW,
+        ]);
 
         return $reviewid;
     }
@@ -253,7 +276,8 @@ class workflow_manager {
 
         $case = $DB->get_record('local_cp_cases', ['id' => $caseid], '*', MUST_EXIST);
 
-        // Can publish from approved OR directly from draft (if workflow disabled).
+        // Can publish from approved (always) OR directly from draft only when the
+        // approval workflow is disabled. can_transition() enforces the workflow rule.
         if (!self::can_transition($case->status, self::STATUS_PUBLISHED)) {
             throw new \moodle_exception('invalidtransition', 'local_casospracticos');
         }

@@ -69,7 +69,15 @@ class quiz_integration {
         }
 
         $course = $DB->get_record('course', ['id' => $quiz->course]);
-        $context = \context_course::instance($course->id);
+
+        // Questions added to a quiz live in the quiz's module context (that is the
+        // context quiz_add_quiz_question() uses for question_references). Resolve the
+        // quiz cm so we can build/fetch the top question category there.
+        if (!isset($quiz->cmid)) {
+            $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
+            $quiz->cmid = $cm->id;
+        }
+        $context = \context_module::instance($quiz->cmid);
 
         // Get or create question category for this case.
         $category = self::get_or_create_category($case, $context);
@@ -90,27 +98,44 @@ class quiz_integration {
             shuffle($questions);
         }
 
+        // Ensure quiz library is available (defensive: callers may not have loaded it).
+        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
         $questionids = [];
 
         try {
             // Start transaction.
             $transaction = $DB->start_delegated_transaction();
 
+            // Determine the page to insert into. We group the whole case (statement
+            // + its questions) onto a single new page so the case reads as a block,
+            // instead of forcing one page per question. Page 0 would append using the
+            // quiz's questionsperpage; we want the case kept together, so we target the
+            // page after the current last one.
+            $maxpage = (int) ($DB->get_field('quiz_slots', 'MAX(page)', ['quizid' => $quiz->id]) ?? 0);
+            $targetpage = $maxpage + 1;
+
             // Insert case statement as description question first.
             if ($options['include_statement']) {
                 $descid = self::create_description_question($case, $category);
                 $questionids[] = $descid;
-                self::add_question_to_quiz($quiz, $descid, 0);
+                self::add_question_to_quiz($quiz, $descid, 0, $targetpage);
             }
 
-            // Create and add each question.
+            // Create and add each question (all onto the same case page).
             foreach ($questions as $cpquestion) {
                 $qid = self::create_moodle_question($cpquestion, $category, $options['marks_per_question']);
                 $questionids[] = $qid;
 
-                $mark = $options['marks_per_question'] ?? $cpquestion->defaultmark;
-                self::add_question_to_quiz($quiz, $qid, $mark);
+                $mark = $options['marks_per_question'] ?? (float) $cpquestion->defaultmark;
+                self::add_question_to_quiz($quiz, $qid, $mark, $targetpage);
             }
+
+            // Recompute grades via the quiz API (sumgrades) and clear preview attempts,
+            // instead of writing quiz.sumgrades directly.
+            $quizobj = \mod_quiz\quiz_settings::create($quiz->id);
+            quiz_delete_previews($quizobj->get_quiz());
+            $quizobj->get_grade_calculator()->recompute_quiz_sumgrades();
 
             $transaction->allow_commit();
 
@@ -120,7 +145,7 @@ class quiz_integration {
                 'questionids' => $questionids,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($transaction)) {
                 $transaction->rollback($e);
             }
@@ -161,7 +186,11 @@ class quiz_integration {
         }
 
         $course = $DB->get_record('course', ['id' => $exam->course]);
-        $context = \context_course::instance($course->id);
+
+        // Questions live in the examsimulator's module context (CONTEXT_MODULE),
+        // which is what question_get_top_category() requires.
+        $cm = get_coursemodule_from_instance('examsimulator', $exam->id, $exam->course, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
 
         // Get or create question category.
         $category = self::get_or_create_category($case, $context);
@@ -202,7 +231,7 @@ class quiz_integration {
                 'categoryid' => $category->id,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($transaction)) {
                 $transaction->rollback($e);
             }
@@ -221,7 +250,8 @@ class quiz_integration {
      * @return object Category record
      */
     private static function get_or_create_category(object $case, \context $context): object {
-        global $DB;
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/questionlib.php');
 
         $catname = self::CATEGORY_PREFIX . $case->id . '_' . clean_param($case->name, PARAM_ALPHANUMEXT);
         $catname = substr($catname, 0, 250); // Limit length.
@@ -236,32 +266,27 @@ class quiz_integration {
             return $category;
         }
 
-        // Get parent category (top level for this context).
-        $parent = $DB->get_record('question_categories', [
-            'contextid' => $context->id,
-            'parent' => 0,
-        ]);
-
-        if (!$parent) {
-            // Create top level category.
-            $parent = new \stdClass();
-            $parent->name = 'top';
-            $parent->contextid = $context->id;
-            $parent->parent = 0;
-            $parent->sortorder = 0;
-            $parent->stamp = make_unique_id_code();
-            $parent->id = $DB->insert_record('question_categories', $parent);
+        // Get (or create) the top-level category for this context using the core
+        // helper. This sets all NOT NULL columns (info, infoformat, ...) correctly;
+        // hand-building it omitted info/infoformat and crashed the insert.
+        // Note: question_get_top_category() requires a CONTEXT_MODULE context.
+        $topcategory = question_get_top_category($context->id, true);
+        if (!$topcategory) {
+            throw new \coding_exception(
+                'Cannot resolve top question category for context ' . $context->id .
+                ' (expected a module context).'
+            );
         }
 
         // Create category for this case.
         $category = new \stdClass();
         $category->name = $catname;
         $category->contextid = $context->id;
-        $category->parent = $parent->id;
+        $category->parent = $topcategory->id;
         $category->sortorder = 999;
         $category->stamp = make_unique_id_code();
         $category->info = get_string('casestatement', 'local_casospracticos') . ': ' . $case->name;
-        $category->infoformat = FORMAT_PLAIN;
+        $category->infoformat = FORMAT_HTML;
         $category->id = $DB->insert_record('question_categories', $category);
 
         return $category;
@@ -275,34 +300,18 @@ class quiz_integration {
      * @return int Question ID
      */
     private static function create_description_question(object $case, object $category): int {
-        global $DB, $USER;
+        $form = self::base_form(
+            $category,
+            'Caso: ' . $case->name,
+            $case->statement,
+            $case->statementformat,
+            0,        // Description questions carry no mark.
+            '',
+            FORMAT_HTML,
+            0         // No penalty.
+        );
 
-        $question = new \stdClass();
-        $question->category = $category->id;
-        $question->parent = 0;
-        $question->name = substr('Caso: ' . $case->name, 0, 250);
-        $question->questiontext = $case->statement;
-        $question->questiontextformat = $case->statementformat;
-        $question->generalfeedback = '';
-        $question->generalfeedbackformat = FORMAT_HTML;
-        $question->defaultmark = 0;
-        $question->penalty = 0;
-        $question->qtype = 'description';
-        $question->length = 0;
-        $question->stamp = make_unique_id_code();
-        $question->version = make_unique_id_code();
-        $question->hidden = 0;
-        $question->timecreated = time();
-        $question->timemodified = time();
-        $question->createdby = $USER->id;
-        $question->modifiedby = $USER->id;
-
-        $question->id = $DB->insert_record('question', $question);
-
-        // Create question_bank_entry.
-        self::create_question_bank_entry($question, $category);
-
-        return $question->id;
+        return self::save_qtype_question('description', $form);
     }
 
     /**
@@ -314,259 +323,252 @@ class quiz_integration {
      * @return int Question ID
      */
     private static function create_moodle_question(object $cpquestion, object $category, ?float $overridemark = null): int {
-        global $DB, $USER;
-
-        $mark = $overridemark ?? $cpquestion->defaultmark;
-
-        // Base question record.
-        $question = new \stdClass();
-        $question->category = $category->id;
-        $question->parent = 0;
-        $question->name = substr(strip_tags($cpquestion->questiontext), 0, 250);
-        $question->questiontext = $cpquestion->questiontext;
-        $question->questiontextformat = $cpquestion->questiontextformat;
-        $question->generalfeedback = $cpquestion->generalfeedback ?? '';
-        $question->generalfeedbackformat = $cpquestion->generalfeedbackformat ?? FORMAT_HTML;
-        $question->defaultmark = $mark;
-        $question->penalty = 0.3333333;
-        $question->qtype = self::map_qtype($cpquestion->qtype);
-        $question->length = 1;
-        $question->stamp = make_unique_id_code();
-        $question->version = make_unique_id_code();
-        $question->hidden = 0;
-        $question->timecreated = time();
-        $question->timemodified = time();
-        $question->createdby = $USER->id;
-        $question->modifiedby = $USER->id;
-
-        $question->id = $DB->insert_record('question', $question);
-
-        // Create question_bank_entry.
-        self::create_question_bank_entry($question, $category);
-
-        // Create question type specific data.
+        $qtype = self::map_qtype($cpquestion->qtype);
         $answers = question_manager::get_answers($cpquestion->id);
-        self::create_qtype_data($question, $cpquestion, $answers);
+        $mark = $overridemark ?? (float) $cpquestion->defaultmark;
 
-        return $question->id;
-    }
-
-    /**
-     * Create question bank entry for Moodle 4.x+.
-     *
-     * @param object $question Question record
-     * @param object $category Category record
-     */
-    private static function create_question_bank_entry(object $question, object $category): void {
-        global $DB;
-
-        // Check if question_bank_entries table exists (Moodle 4.0+).
-        $dbman = $DB->get_manager();
-        if (!$dbman->table_exists('question_bank_entries')) {
-            return;
-        }
-
-        // Create bank entry.
-        $entry = new \stdClass();
-        $entry->questioncategoryid = $category->id;
-        $entry->idnumber = null;
-        $entry->ownerid = $question->createdby;
-        $entry->id = $DB->insert_record('question_bank_entries', $entry);
-
-        // Create version.
-        if ($dbman->table_exists('question_versions')) {
-            $version = new \stdClass();
-            $version->questionbankentryid = $entry->id;
-            $version->version = 1;
-            $version->questionid = $question->id;
-            $version->status = 'ready';
-            $DB->insert_record('question_versions', $version);
-        }
-    }
-
-    /**
-     * Create question type specific data.
-     *
-     * @param object $question Moodle question
-     * @param object $cpquestion Case practical question
-     * @param array $answers Answers
-     */
-    private static function create_qtype_data(object $question, object $cpquestion, array $answers): void {
-        global $DB;
-
-        switch ($cpquestion->qtype) {
+        switch ($qtype) {
             case 'multichoice':
-                self::create_multichoice_data($question, $cpquestion, $answers);
+                $form = self::build_multichoice_form($cpquestion, $category, $answers, $mark);
                 break;
 
             case 'truefalse':
-                self::create_truefalse_data($question, $answers);
+                $form = self::build_truefalse_form($cpquestion, $category, $answers, $mark);
                 break;
 
             case 'shortanswer':
-                self::create_shortanswer_data($question, $answers);
+                $form = self::build_shortanswer_form($cpquestion, $category, $answers, $mark);
                 break;
+
+            default:
+                throw new \coding_exception('Unsupported qtype: ' . $qtype);
         }
+
+        return self::save_qtype_question($qtype, $form);
     }
 
     /**
-     * Create multichoice question data.
-     */
-    private static function create_multichoice_data(object $question, object $cpquestion, array $answers): void {
-        global $DB;
-
-        // Create answers.
-        $answerids = [];
-        foreach ($answers as $answer) {
-            $moodleanswer = new \stdClass();
-            $moodleanswer->question = $question->id;
-            $moodleanswer->answer = $answer->answer;
-            $moodleanswer->answerformat = $answer->answerformat;
-            $moodleanswer->fraction = $answer->fraction;
-            $moodleanswer->feedback = $answer->feedback ?? '';
-            $moodleanswer->feedbackformat = $answer->feedbackformat ?? FORMAT_HTML;
-            $answerids[] = $DB->insert_record('question_answers', $moodleanswer);
-        }
-
-        // Create multichoice options.
-        $options = new \stdClass();
-        $options->questionid = $question->id;
-        $options->layout = 0; // Vertical.
-        $options->single = $cpquestion->single ?? 1;
-        $options->shuffleanswers = $cpquestion->shuffleanswers ?? 1;
-        $options->correctfeedback = '';
-        $options->correctfeedbackformat = FORMAT_HTML;
-        $options->partiallycorrectfeedback = '';
-        $options->partiallycorrectfeedbackformat = FORMAT_HTML;
-        $options->incorrectfeedback = '';
-        $options->incorrectfeedbackformat = FORMAT_HTML;
-        $options->answernumbering = 'abc';
-        $options->shownumcorrect = 0;
-        $options->showstandardinstruction = 0;
-
-        $DB->insert_record('qtype_multichoice_options', $options);
-    }
-
-    /**
-     * Create truefalse question data.
-     */
-    private static function create_truefalse_data(object $question, array $answers): void {
-        global $DB;
-
-        $trueanswer = null;
-        $falseanswer = null;
-
-        foreach ($answers as $answer) {
-            $moodleanswer = new \stdClass();
-            $moodleanswer->question = $question->id;
-            $moodleanswer->answer = $answer->answer;
-            $moodleanswer->answerformat = FORMAT_PLAIN;
-            $moodleanswer->fraction = $answer->fraction;
-            $moodleanswer->feedback = $answer->feedback ?? '';
-            $moodleanswer->feedbackformat = $answer->feedbackformat ?? FORMAT_HTML;
-            $answerid = $DB->insert_record('question_answers', $moodleanswer);
-
-            // Determine if this is the true or false answer.
-            $answertext = strtolower(strip_tags($answer->answer));
-            if (strpos($answertext, 'true') !== false || strpos($answertext, 'verdadero') !== false) {
-                $trueanswer = $answerid;
-            } else {
-                $falseanswer = $answerid;
-            }
-        }
-
-        // Create truefalse record.
-        $options = new \stdClass();
-        $options->question = $question->id;
-        $options->trueanswer = $trueanswer;
-        $options->falseanswer = $falseanswer;
-        $DB->insert_record('question_truefalse', $options);
-    }
-
-    /**
-     * Create shortanswer question data.
-     */
-    private static function create_shortanswer_data(object $question, array $answers): void {
-        global $DB;
-
-        // Create answers.
-        foreach ($answers as $answer) {
-            $moodleanswer = new \stdClass();
-            $moodleanswer->question = $question->id;
-            $moodleanswer->answer = strip_tags($answer->answer); // Short answers are plain text.
-            $moodleanswer->answerformat = FORMAT_PLAIN;
-            $moodleanswer->fraction = $answer->fraction;
-            $moodleanswer->feedback = $answer->feedback ?? '';
-            $moodleanswer->feedbackformat = $answer->feedbackformat ?? FORMAT_HTML;
-            $DB->insert_record('question_answers', $moodleanswer);
-        }
-
-        // Create shortanswer options.
-        $options = new \stdClass();
-        $options->questionid = $question->id;
-        $options->usecase = 0; // Case insensitive.
-        $DB->insert_record('qtype_shortanswer_options', $options);
-    }
-
-    /**
-     * Add a question to a quiz.
+     * Build an editor-style array as expected by qtype editing forms.
      *
-     * @param object $quiz Quiz record
-     * @param int $questionid Question ID
-     * @param float $mark Mark for this question
+     * @param string $text HTML/text content
+     * @param int $format Moodle text format constant
+     * @return array Editor array (text/format/itemid)
      */
-    private static function add_question_to_quiz(object $quiz, int $questionid, float $mark): void {
-        global $DB;
+    private static function editor(string $text = '', int $format = FORMAT_HTML): array {
+        return [
+            'text' => $text,
+            'format' => $format,
+            'itemid' => 0,
+        ];
+    }
 
-        // Get current max slot.
-        $maxslot = $DB->get_field('quiz_slots', 'MAX(slot)', ['quizid' => $quiz->id]) ?? 0;
-        $newslot = $maxslot + 1;
+    /**
+     * Build the common editing-form-shaped data shared by every qtype.
+     *
+     * This intentionally does NOT set removed/internal columns (version, stamp,
+     * hidden, category as a bare id, timestamps, createdby): the qtype
+     * save_question() API sets those itself. The category MUST be the Moodle
+     * combo string "categoryid,contextid".
+     *
+     * @param object $category Question category record
+     * @param string $name Proposed question name
+     * @param string $questiontext Question text HTML
+     * @param int $questiontextformat Text format
+     * @param float $defaultmark Default mark
+     * @param string $generalfeedback General feedback HTML
+     * @param int $generalfeedbackformat Feedback format
+     * @param float $penalty Penalty (0..1)
+     * @return \stdClass Form-shaped data
+     */
+    private static function base_form(
+        object $category,
+        string $name,
+        string $questiontext,
+        int $questiontextformat,
+        float $defaultmark,
+        string $generalfeedback = '',
+        int $generalfeedbackformat = FORMAT_HTML,
+        float $penalty = 0.3333333
+    ): \stdClass {
+        $form = new \stdClass();
+        $form->category = "{$category->id},{$category->contextid}";
+        $cleanname = trim(strip_tags($name));
+        $form->name = shorten_text($cleanname !== '' ? $cleanname : '-', 255);
+        $form->questiontext = self::editor($questiontext, $questiontextformat);
+        $form->generalfeedback = self::editor($generalfeedback, $generalfeedbackformat);
+        $form->defaultmark = $defaultmark;
+        $form->penalty = $penalty;
+        $form->status = \core_question\local\bank\question_version_status::QUESTION_STATUS_READY;
+        $form->idnumber = null;
+        return $form;
+    }
 
-        // Get max page.
-        $maxpage = $DB->get_field('quiz_slots', 'MAX(page)', ['quizid' => $quiz->id]) ?? 0;
+    /**
+     * Persist a question through its qtype API, which creates the question,
+     * question_bank_entries and question_versions rows for us.
+     *
+     * @param string $qtype Moodle qtype name
+     * @param \stdClass $form Editing-form-shaped data
+     * @return int The new question ID
+     */
+    private static function save_qtype_question(string $qtype, \stdClass $form): int {
+        $question = new \stdClass();
+        $question->qtype = $qtype;
 
-        // Add slot.
-        $slot = new \stdClass();
-        $slot->quizid = $quiz->id;
-        $slot->slot = $newslot;
-        $slot->page = $maxpage + 1;
-        $slot->requireprevious = 0;
-        $slot->maxmark = $mark;
+        $saved = \question_bank::get_qtype($qtype)->save_question($question, $form);
+        return (int) $saved->id;
+    }
 
-        // Moodle 4.x uses questionid directly or through question_references.
-        $dbman = $DB->get_manager();
-        if ($dbman->field_exists('quiz_slots', 'questionid')) {
-            $slot->questionid = $questionid;
+    /**
+     * Build editing-form data for a multichoice question.
+     *
+     * @param object $cpquestion Practical case question
+     * @param object $category Question category
+     * @param array $answers Answer records
+     * @param float $mark Default mark
+     * @return \stdClass Form-shaped data
+     */
+    private static function build_multichoice_form(object $cpquestion, object $category, array $answers, float $mark): \stdClass {
+        $form = self::base_form(
+            $category,
+            $cpquestion->questiontext,
+            $cpquestion->questiontext,
+            $cpquestion->questiontextformat,
+            $mark,
+            $cpquestion->generalfeedback ?? '',
+            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            0.3333333
+        );
+
+        $form->single = !empty($cpquestion->single) ? 1 : 0;
+        $form->shuffleanswers = $cpquestion->shuffleanswers ?? 1;
+        $form->answernumbering = 'abc';
+        $form->showstandardinstruction = 0;
+        $form->layout = 0;
+
+        $form->correctfeedback = self::editor('');
+        $form->partiallycorrectfeedback = self::editor('');
+        $form->incorrectfeedback = self::editor('');
+        $form->shownumcorrect = 0;
+
+        $form->answer = [];
+        $form->fraction = [];
+        $form->feedback = [];
+
+        foreach (array_values($answers) as $i => $answer) {
+            $form->answer[$i] = self::editor($answer->answer, $answer->answerformat ?? FORMAT_HTML);
+            $form->fraction[$i] = (float) $answer->fraction;
+            $form->feedback[$i] = self::editor($answer->feedback ?? '', $answer->feedbackformat ?? FORMAT_HTML);
         }
 
-        $slotid = $DB->insert_record('quiz_slots', $slot);
+        return $form;
+    }
 
-        // Create question_reference for Moodle 4.0+.
-        if ($dbman->table_exists('question_references')) {
-            $question = $DB->get_record('question', ['id' => $questionid]);
-            $version = $DB->get_record('question_versions', ['questionid' => $questionid]);
+    /**
+     * Build editing-form data for a truefalse question.
+     *
+     * qtype_truefalse builds its own true/false answer rows; it expects
+     * correctanswer plus feedbacktrue/feedbackfalse rather than an answer[] array.
+     *
+     * @param object $cpquestion Practical case question
+     * @param object $category Question category
+     * @param array $answers Answer records
+     * @param float $mark Default mark
+     * @return \stdClass Form-shaped data
+     */
+    private static function build_truefalse_form(object $cpquestion, object $category, array $answers, float $mark): \stdClass {
+        $form = self::base_form(
+            $category,
+            $cpquestion->questiontext,
+            $cpquestion->questiontext,
+            $cpquestion->questiontextformat,
+            $mark,
+            $cpquestion->generalfeedback ?? '',
+            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            1
+        );
 
-            if ($version) {
-                $ref = new \stdClass();
-                $ref->usingcontextid = \context_module::instance(
-                    $DB->get_field('course_modules', 'id', ['instance' => $quiz->id, 'module' =>
-                        $DB->get_field('modules', 'id', ['name' => 'quiz'])])
-                )->id;
-                $ref->component = 'mod_quiz';
-                $ref->questionarea = 'slot';
-                $ref->itemid = $slotid;
-                $ref->questionbankentryid = $version->questionbankentryid;
-                $ref->version = null; // Always use latest.
-                $DB->insert_record('question_references', $ref);
+        $correcttrue = false;
+        $truefeedback = '';
+        $falsefeedback = '';
+
+        foreach ($answers as $answer) {
+            $text = strtolower(strip_tags($answer->answer));
+            $istrue = str_contains($text, 'true') || str_contains($text, 'verdadero');
+
+            if ($istrue) {
+                $correcttrue = ((float) $answer->fraction) > 0;
+                $truefeedback = $answer->feedback ?? '';
+            } else {
+                $falsefeedback = $answer->feedback ?? '';
             }
         }
 
-        // Update quiz sumgrades.
-        $sumgrades = $DB->get_field_sql(
-            "SELECT SUM(maxmark) FROM {quiz_slots} WHERE quizid = ?",
-            [$quiz->id]
+        $form->correctanswer = $correcttrue ? 1 : 0;
+        $form->feedbacktrue = self::editor($truefeedback);
+        $form->feedbackfalse = self::editor($falsefeedback);
+        $form->showstandardinstruction = 0;
+
+        return $form;
+    }
+
+    /**
+     * Build editing-form data for a shortanswer question.
+     *
+     * Shortanswer uses plain string answer[] values (not editor arrays).
+     *
+     * @param object $cpquestion Practical case question
+     * @param object $category Question category
+     * @param array $answers Answer records
+     * @param float $mark Default mark
+     * @return \stdClass Form-shaped data
+     */
+    private static function build_shortanswer_form(object $cpquestion, object $category, array $answers, float $mark): \stdClass {
+        $form = self::base_form(
+            $category,
+            $cpquestion->questiontext,
+            $cpquestion->questiontext,
+            $cpquestion->questiontextformat,
+            $mark,
+            $cpquestion->generalfeedback ?? '',
+            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            0.3333333
         );
-        $DB->set_field('quiz', 'sumgrades', $sumgrades, ['id' => $quiz->id]);
+
+        $form->usecase = 0;
+        $form->answer = [];
+        $form->fraction = [];
+        $form->feedback = [];
+
+        foreach (array_values($answers) as $i => $answer) {
+            $form->answer[$i] = trim(strip_tags($answer->answer));
+            $form->fraction[$i] = (float) $answer->fraction;
+            $form->feedback[$i] = self::editor($answer->feedback ?? '', $answer->feedbackformat ?? FORMAT_HTML);
+        }
+
+        return $form;
+    }
+
+    /**
+     * Add an existing question to a quiz using the core quiz API.
+     *
+     * Delegates to quiz_add_quiz_question(), which creates the quiz_slots row and
+     * the question_references entry (with version = null = latest ready version)
+     * correctly. We do NOT write quiz_slots / question_references directly.
+     *
+     * @param object $quiz Quiz record (must include id and course)
+     * @param int $questionid Question ID
+     * @param float|null $mark Maximum mark for this slot (null = qtype default)
+     * @param int $page Target page (0 = append respecting questionsperpage)
+     * @return void Throws on failure; no return value (quiz_add_quiz_question()
+     *              returns null on the success path, so we treat no-exception as
+     *              success rather than constraining the return type).
+     */
+    private static function add_question_to_quiz(object $quiz, int $questionid, ?float $mark = null, int $page = 0): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
+        quiz_add_quiz_question($questionid, $quiz, $page, $mark);
     }
 
     /**

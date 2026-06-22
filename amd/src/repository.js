@@ -228,6 +228,23 @@ define(['core/ajax'], function(Ajax) {
                 methodname: 'local_casospracticos_get_available_quizzes',
                 args: {courseid: courseId}
             }])[0];
+        },
+
+        /**
+         * Save practice responses (auto-save).
+         *
+         * @param {number} attemptId Attempt ID.
+         * @param {Object} responses Responses data.
+         * @return {Promise}
+         */
+        savePracticeResponses: function(attemptId, responses) {
+            return Ajax.call([{
+                methodname: 'local_casospracticos_save_practice_responses',
+                args: {
+                    attemptid: attemptId,
+                    responses: JSON.stringify(responses)
+                }
+            }])[0];
         }
     };
 });

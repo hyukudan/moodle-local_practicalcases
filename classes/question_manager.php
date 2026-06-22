@@ -53,12 +53,43 @@ class question_manager {
     const QTYPE_MATCHING = 'matching';
 
     /**
+     * Touch the parent case so downstream consumers detect question/answer edits.
+     *
+     * @param int $caseid Case ID
+     * @return void
+     */
+    private static function touch_case(int $caseid): void {
+        global $DB;
+
+        if ($caseid <= 0) {
+            return;
+        }
+
+        $DB->set_field('local_cp_cases', 'timemodified', time(), ['id' => $caseid]);
+    }
+
+    /**
+     * Touch the parent case of a given question.
+     *
+     * @param int $questionid Question ID
+     * @return void
+     */
+    private static function touch_case_by_question(int $questionid): void {
+        global $DB;
+
+        $caseid = $DB->get_field(self::TABLE, 'caseid', ['id' => $questionid]);
+        if ($caseid) {
+            self::touch_case((int) $caseid);
+        }
+    }
+
+    /**
      * Get a question by ID.
      *
      * @param int $id Question ID
-     * @return object|false Question object or false if not found
+     * @return \stdClass|false Question object or false if not found
      */
-    public static function get(int $id) {
+    public static function get(int $id): \stdClass|false {
         global $DB;
         return $DB->get_record(self::TABLE, ['id' => $id]);
     }
@@ -67,9 +98,9 @@ class question_manager {
      * Get a question with its answers.
      *
      * @param int $id Question ID
-     * @return object|false Question object with answers array
+     * @return \stdClass|false Question object with answers array
      */
-    public static function get_with_answers(int $id) {
+    public static function get_with_answers(int $id): \stdClass|false {
         $question = self::get($id);
         if (!$question) {
             return false;
@@ -171,22 +202,34 @@ class question_manager {
         $record->timecreated = time();
         $record->timemodified = time();
 
-        $questionid = $DB->insert_record(self::TABLE, $record);
+        // Wrap question insert + answer inserts in a transaction so a failed
+        // answer insert does not orphan the question row (G2-07).
+        $transaction = $DB->start_delegated_transaction();
 
-        // Create answers if provided.
-        if (!empty($data->answers)) {
-            foreach ($data->answers as $answer) {
-                $answer = (object) $answer;
-                $answer->questionid = $questionid;
-                self::create_answer($answer);
+        try {
+            $questionid = $DB->insert_record(self::TABLE, $record);
+
+            // Create answers if provided.
+            if (!empty($data->answers)) {
+                foreach ($data->answers as $answer) {
+                    $answer = (object) $answer;
+                    $answer->questionid = $questionid;
+                    self::create_answer($answer);
+                }
             }
+
+            // For truefalse, create default answers if not provided.
+            if ($record->qtype === self::QTYPE_TRUEFALSE && empty($data->answers)) {
+                self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
+            }
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
         }
 
-        // For truefalse, create default answers if not provided.
-        if ($record->qtype === self::QTYPE_TRUEFALSE && empty($data->answers)) {
-            self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
-        }
-
+        self::touch_case((int) $record->caseid);
         return $questionid;
     }
 
@@ -199,6 +242,11 @@ class question_manager {
     public static function update(object $data): bool {
         global $DB;
 
+        $existing = self::get((int) $data->id);
+        if (!$existing) {
+            throw new \moodle_exception('error:questionnotfound', 'local_casospracticos');
+        }
+
         $record = new \stdClass();
         $record->id = $data->id;
 
@@ -207,6 +255,10 @@ class question_manager {
             $record->questiontextformat = $data->questiontextformat ?? FORMAT_HTML;
         }
         if (isset($data->qtype)) {
+            // Validate against known types (G2-06).
+            if (!in_array($data->qtype, self::valid_qtypes(), true)) {
+                throw new \moodle_exception('error:invalidqtype', 'local_casospracticos');
+            }
             $record->qtype = $data->qtype;
         }
         if (isset($data->defaultmark)) {
@@ -228,7 +280,46 @@ class question_manager {
 
         $record->timemodified = time();
 
-        return $DB->update_record(self::TABLE, $record);
+        // When the question type changes, the existing answers may violate the
+        // new type's invariants (e.g. multichoice -> truefalse leaving >2
+        // answers). Reconcile by validating the answer set that will be in
+        // effect after this update against the new type's rules. We prefer to
+        // reject (clear moodle_exception) rather than silently corrupt the
+        // answer set; the caller must supply a compatible answer set first.
+        $qtypechanged = isset($record->qtype) && $record->qtype !== $existing->qtype;
+
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            $result = $DB->update_record(self::TABLE, $record);
+
+            if ($qtypechanged) {
+                // Use caller-supplied answers if present, otherwise the answers
+                // currently stored for this question.
+                if (!empty($data->answers)) {
+                    $candidateanswers = array_map(static function ($answer) {
+                        return (object) $answer;
+                    }, $data->answers);
+                } else {
+                    $candidateanswers = array_values(self::get_answers((int) $record->id));
+                }
+
+                $errors = self::validate_answer_set($record->qtype, $candidateanswers);
+                if (!empty($errors)) {
+                    throw new \moodle_exception('error:qtypechangeanswers', 'local_casospracticos',
+                            '', $record->qtype);
+                }
+            }
+
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
+
+        self::touch_case_by_question((int) $record->id);
+
+        return $result;
     }
 
     /**
@@ -239,11 +330,18 @@ class question_manager {
      */
     public static function delete(int $id): bool {
         global $DB;
+        $question = self::get($id);
+        if (!$question) {
+            return false;
+        }
 
         // Delete answers first.
         $DB->delete_records(self::ANSWERS_TABLE, ['questionid' => $id]);
 
-        return $DB->delete_records(self::TABLE, ['id' => $id]);
+        $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+        self::touch_case((int) $question->caseid);
+
+        return $result;
     }
 
     /**
@@ -311,6 +409,7 @@ class question_manager {
             $DB->set_field(self::TABLE, 'sortorder', $sortorder, ['id' => $id]);
         }
 
+        self::touch_case((int) $question->caseid);
         return true;
     }
 
@@ -389,7 +488,10 @@ class question_manager {
         $record->feedbackformat = $data->feedbackformat ?? FORMAT_HTML;
         $record->sortorder = $data->sortorder ?? self::get_next_answer_sortorder($data->questionid);
 
-        return $DB->insert_record(self::ANSWERS_TABLE, $record);
+        $answerid = $DB->insert_record(self::ANSWERS_TABLE, $record);
+        self::touch_case_by_question((int) $record->questionid);
+
+        return $answerid;
     }
 
     /**
@@ -400,6 +502,7 @@ class question_manager {
      */
     public static function update_answer(object $data): bool {
         global $DB;
+        $questionid = $DB->get_field(self::ANSWERS_TABLE, 'questionid', ['id' => $data->id]);
 
         $record = new \stdClass();
         $record->id = $data->id;
@@ -419,7 +522,12 @@ class question_manager {
             $record->sortorder = $data->sortorder;
         }
 
-        return $DB->update_record(self::ANSWERS_TABLE, $record);
+        $result = $DB->update_record(self::ANSWERS_TABLE, $record);
+        if ($questionid) {
+            self::touch_case_by_question((int) $questionid);
+        }
+
+        return $result;
     }
 
     /**
@@ -430,7 +538,13 @@ class question_manager {
      */
     public static function delete_answer(int $id): bool {
         global $DB;
-        return $DB->delete_records(self::ANSWERS_TABLE, ['id' => $id]);
+        $questionid = $DB->get_field(self::ANSWERS_TABLE, 'questionid', ['id' => $id]);
+        $result = $DB->delete_records(self::ANSWERS_TABLE, ['id' => $id]);
+        if ($questionid) {
+            self::touch_case_by_question((int) $questionid);
+        }
+
+        return $result;
     }
 
     /**
@@ -510,9 +624,25 @@ class question_manager {
         }
 
         $answers = self::get_answers($questionid);
+
+        return self::validate_answer_set($question->qtype, $answers);
+    }
+
+    /**
+     * Validate an answer set against a question type's invariants.
+     *
+     * Pure helper so the same rules can be enforced both against stored answers
+     * (validate_answers) and against an in-memory set (e.g. when reconciling a
+     * qtype change before persisting).
+     *
+     * @param string $qtype Target question type (one of the QTYPE_* constants)
+     * @param array $answers Array of answer objects (need ->fraction)
+     * @return array Array of error strings (empty if valid)
+     */
+    public static function validate_answer_set(string $qtype, array $answers): array {
         $errors = [];
 
-        switch ($question->qtype) {
+        switch ($qtype) {
             case self::QTYPE_MULTICHOICE:
                 if (count($answers) < 2) {
                     $errors[] = 'Multichoice questions need at least 2 answers';
@@ -543,5 +673,88 @@ class question_manager {
         }
 
         return $errors;
+    }
+
+    /**
+     * Known question types accepted by this plugin.
+     *
+     * @return string[]
+     */
+    public static function valid_qtypes(): array {
+        return [
+            self::QTYPE_MULTICHOICE,
+            self::QTYPE_TRUEFALSE,
+            self::QTYPE_SHORTANSWER,
+            self::QTYPE_ESSAY,
+            self::QTYPE_MATCHING,
+        ];
+    }
+
+    /**
+     * Shuffle multichoice/truefalse answers in-place for rendering.
+     *
+     * Bank data has a strong "correct answer in sortorder=1" bias (~92%), so iterating
+     * by sortorder ASC made students see the correct option in position A almost always.
+     *
+     * If $sessionkeyprefix is provided, the shuffled order is cached in $SESSION per
+     * question so re-renders within the same attempt (e.g. autosave round-trips,
+     * submit redirects, page reloads) keep the same order. Without a prefix, every
+     * call reshuffles — appropriate for review pages where matching is by answer id.
+     *
+     * @param array $questions Questions with ->answers populated; modified in place.
+     * @param string|null $sessionkeyprefix If set, persist/restore order via $SESSION.
+     */
+    public static function shuffle_answers_for_render(array $questions,
+            ?string $sessionkeyprefix = null): void {
+        global $SESSION;
+        foreach ($questions as $question) {
+            if (empty($question->answers) || count($question->answers) < 2) {
+                continue;
+            }
+            if (!in_array($question->qtype, [self::QTYPE_MULTICHOICE, self::QTYPE_TRUEFALSE], true)) {
+                continue;
+            }
+            // Honour the per-question shuffle flag: if shuffling is disabled for
+            // this question, leave answers in their stored order (G2-12).
+            if (empty($question->shuffleanswers)) {
+                continue;
+            }
+
+            $sessionkey = $sessionkeyprefix
+                ? $sessionkeyprefix . '_q' . $question->id
+                : null;
+
+            $byid = [];
+            foreach ($question->answers as $a) {
+                $byid[$a->id] = $a;
+            }
+
+            if ($sessionkey && !empty($SESSION->$sessionkey)) {
+                $orderids = $SESSION->$sessionkey;
+                $reordered = [];
+                foreach ($orderids as $id) {
+                    if (isset($byid[$id])) {
+                        $reordered[$id] = $byid[$id];
+                        unset($byid[$id]);
+                    }
+                }
+                foreach ($byid as $a) {
+                    $reordered[$a->id] = $a;
+                }
+                $question->answers = $reordered;
+                continue;
+            }
+
+            $shuffled = array_values($byid);
+            shuffle($shuffled);
+            $question->answers = [];
+            foreach ($shuffled as $a) {
+                $question->answers[$a->id] = $a;
+            }
+
+            if ($sessionkey) {
+                $SESSION->$sessionkey = array_keys($question->answers);
+            }
+        }
     }
 }

@@ -92,9 +92,13 @@ if ($passed) {
 
 echo html_writer::end_div();
 
-// Time statistics.
-$minutes = floor($attempt->timespent / 60);
-$seconds = $attempt->timespent % 60;
+// Time statistics. The schema stores timestarted/timesubmitted (no timespent
+// column); derive the elapsed time from those timestamps, guarding nulls.
+$timestarted = (int) $attempt->timestarted;
+$timesubmitted = (int) ($attempt->timesubmitted ?? 0);
+$timespent = ($timesubmitted > 0 && $timestarted > 0) ? max(0, $timesubmitted - $timestarted) : 0;
+$minutes = floor($timespent / 60);
+$seconds = $timespent % 60;
 $timelimitmin = round($attempt->timelimit / 60);
 
 echo html_writer::start_div('card mb-4');
@@ -104,19 +108,28 @@ echo html_writer::tag('h5', get_string('timestatistics', 'local_casospracticos')
 echo html_writer::start_tag('ul');
 echo html_writer::tag('li', get_string('timelimit', 'local_casospracticos') . ': ' . $timelimitmin . ' ' . get_string('minutes'));
 echo html_writer::tag('li', get_string('timespent', 'local_casospracticos') . ': ' . $minutes . 'm ' . $seconds . 's');
-echo html_writer::tag('li', get_string('started', 'local_casospracticos') . ': ' . userdate($attempt->timestart));
-echo html_writer::tag('li', get_string('finished', 'local_casospracticos') . ': ' . userdate($attempt->timefinished));
+echo html_writer::tag('li', get_string('started', 'local_casospracticos') . ': ' . userdate($timestarted));
+if ($timesubmitted > 0) {
+    echo html_writer::tag('li', get_string('finished', 'local_casospracticos') . ': ' . userdate($timesubmitted));
+}
 echo html_writer::end_tag('ul');
 
 echo html_writer::end_div();
 echo html_writer::end_div();
 
-// Detailed results per question.
-$responsedata = json_decode($attempt->responsedata, true);
-$questions = question_manager::get_with_answers($attempt->caseid);
+// Detailed results per question. The schema column is 'responses' (not
+// 'responsedata'); decode it defensively.
+$responsedata = json_decode($attempt->responses ?? '', true);
+if (!is_array($responsedata)) {
+    $responsedata = [];
+}
+$questions = question_manager::get_by_case_with_answers($attempt->caseid);
 
-// Reorder according to attempt.
-$questionorder = json_decode($attempt->questionorder, true);
+// Reorder according to the order persisted on the attempt.
+$questionorder = json_decode($attempt->questionorder ?? '', true);
+if (!is_array($questionorder)) {
+    $questionorder = [];
+}
 $orderedquestions = [];
 foreach ($questionorder as $qid) {
     foreach ($questions as $q) {
@@ -126,11 +139,21 @@ foreach ($questionorder as $qid) {
         }
     }
 }
+if (empty($orderedquestions)) {
+    $orderedquestions = array_values($questions);
+}
+$questions = $orderedquestions;
+$allnormativa = local_casospracticos_get_normativa_links(array_column($questions, 'id'));
 
 echo html_writer::tag('h4', get_string('detailedresults', 'local_casospracticos'), ['class' => 'mt-4 mb-3']);
 
+echo html_writer::div(
+    format_text($case->statement, $case->statementformat),
+    'case-statement card card-body mb-4 bg-light'
+);
+
 $qnum = 0;
-foreach ($orderedquestions as $question) {
+foreach ($questions as $question) {
     $qnum++;
     $qresult = $responsedata[$question->id] ?? null;
 
@@ -166,10 +189,15 @@ foreach ($orderedquestions as $question) {
             foreach ($question->answers as $answer) {
                 if ($answer->id == $answerid) {
                     $style = $answer->fraction > 0 ? 'color: green;' : 'color: red;';
-                    echo html_writer::tag('li',
-                        format_text($answer->answer, $answer->answerformat),
-                        ['style' => $style]
-                    );
+                    $answercontent = format_text($answer->answer, $answer->answerformat);
+                    if (!empty($answer->feedback)) {
+                        $answercontent .= html_writer::div(
+                            $OUTPUT->pix_icon('i/info', '') . ' ' .
+                            format_text($answer->feedback, $answer->feedbackformat),
+                            'answer-feedback small text-muted mt-1'
+                        );
+                    }
+                    echo html_writer::tag('li', $answercontent, ['style' => $style]);
                 }
             }
         }
@@ -194,6 +222,19 @@ foreach ($orderedquestions as $question) {
         }
 
         echo html_writer::end_tag('ul');
+    }
+
+    if (!empty($question->generalfeedback)) {
+        echo html_writer::div(
+            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
+            format_text($question->generalfeedback, $question->generalfeedbackformat),
+            'alert alert-info mt-3'
+        );
+    }
+
+    $qnormativa = $allnormativa[$question->id] ?? [];
+    if (!empty($qnormativa)) {
+        echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
     }
 
     // Score for this question.

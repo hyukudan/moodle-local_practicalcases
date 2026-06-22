@@ -137,6 +137,16 @@ class filter_manager {
             $params['dateto'] = $filters['date_to'];
         }
 
+        // Question count filters — push into SQL WHERE to keep count/pagination consistent.
+        if (!empty($filters['question_count_min'])) {
+            $where[] = "COALESCE((SELECT COUNT(*) FROM {local_cp_questions} q WHERE q.caseid = c.id), 0) >= :qcountmin";
+            $params['qcountmin'] = (int) $filters['question_count_min'];
+        }
+        if (!empty($filters['question_count_max'])) {
+            $where[] = "COALESCE((SELECT COUNT(*) FROM {local_cp_questions} q WHERE q.caseid = c.id), 0) <= :qcountmax";
+            $params['qcountmax'] = (int) $filters['question_count_max'];
+        }
+
         $wheresql = implode(' AND ', $where);
 
         // Build ORDER BY clause.
@@ -152,7 +162,40 @@ class filter_manager {
             $ordersql = "c.timemodified DESC";
         }
 
-        // Main query with question count (optimized - uses LEFT JOIN instead of correlated subquery).
+        // Count total (lightweight, no JOINs).
+        $countsql = "SELECT COUNT(*)
+                       FROM {local_cp_cases} c
+                      WHERE $wheresql";
+        $total = $DB->count_records_sql($countsql, $params);
+
+        // Phase 1 (deferred join): Get only IDs for current page.
+        // For questioncount sort we need the subquery in the ID query.
+        if ($sort === 'questioncount') {
+            $idsql = "SELECT c.id,
+                             COALESCE((SELECT COUNT(*) FROM {local_cp_questions} q WHERE q.caseid = c.id), 0) AS questioncount
+                        FROM {local_cp_cases} c
+                       WHERE $wheresql
+                    ORDER BY $ordersql";
+        } else {
+            $idsql = "SELECT c.id
+                        FROM {local_cp_cases} c
+                       WHERE $wheresql
+                    ORDER BY $ordersql";
+        }
+        $ids = $DB->get_records_sql($idsql, $params, $page * $perpage, $perpage);
+
+        if (empty($ids)) {
+            return [
+                'cases' => [],
+                'total' => $total,
+                'pages' => ceil($total / max($perpage, 1)),
+                'page' => $page,
+                'perpage' => $perpage,
+            ];
+        }
+
+        // Phase 2: Full data for just those IDs (no OFFSET scanning).
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($ids), SQL_PARAMS_NAMED, 'cid');
         $sql = "SELECT c.*,
                        cat.name AS categoryname,
                        u.firstname, u.lastname,
@@ -163,30 +206,9 @@ class filter_manager {
              LEFT JOIN (SELECT caseid, COUNT(*) AS questioncount
                         FROM {local_cp_questions}
                         GROUP BY caseid) qc ON qc.caseid = c.id
-                 WHERE $wheresql
+                 WHERE c.id $insql
               ORDER BY $ordersql";
-
-        // Count total.
-        $countsql = "SELECT COUNT(*)
-                       FROM {local_cp_cases} c
-                      WHERE $wheresql";
-        $total = $DB->count_records_sql($countsql, $params);
-
-        // Get paginated results.
-        $cases = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
-
-        // Apply question count filters after query (subquery filter is complex).
-        if (!empty($filters['question_count_min']) || !empty($filters['question_count_max'])) {
-            $cases = array_filter($cases, function($case) use ($filters) {
-                if (!empty($filters['question_count_min']) && $case->questioncount < $filters['question_count_min']) {
-                    return false;
-                }
-                if (!empty($filters['question_count_max']) && $case->questioncount > $filters['question_count_max']) {
-                    return false;
-                }
-                return true;
-            });
-        }
+        $cases = $DB->get_records_sql($sql, $inparams);
 
         // Process tags for display.
         foreach ($cases as $case) {

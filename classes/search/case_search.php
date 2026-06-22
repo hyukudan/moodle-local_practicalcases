@@ -152,12 +152,18 @@ class case_search extends \core_search\base {
     public function get_document_recordset($modifiedfrom = 0, \context $context = null) {
         global $DB;
 
+        // Only index PUBLISHED cases. Draft/review/archived statements must
+        // never be copied into the global search backend, where they could
+        // leak through snippets, logs, backend access or a future access-check
+        // regression. Editors and reviewers manage unpublished cases through
+        // the plugin UI, not site search.
         $sql = "SELECT c.*
                   FROM {local_cp_cases} c
                  WHERE c.timemodified >= ?
+                   AND c.status = ?
               ORDER BY c.timemodified ASC";
 
-        return $DB->get_recordset_sql($sql, [$modifiedfrom]);
+        return $DB->get_recordset_sql($sql, [$modifiedfrom, \local_casospracticos\case_manager::STATUS_PUBLISHED]);
     }
 
     /**
@@ -166,7 +172,7 @@ class case_search extends \core_search\base {
      * @return string
      */
     public static function get_search_area_name() {
-        return get_string('search:case', 'local_casospracticos');
+        return get_string('search:case_search', 'local_casospracticos');
     }
 
     /**
@@ -185,6 +191,6 @@ class case_search extends \core_search\base {
      * @return string
      */
     public function get_visible_name($lazyload = false) {
-        return get_string('search:case', 'local_casospracticos');
+        return get_string('search:case_search', 'local_casospracticos');
     }
 }

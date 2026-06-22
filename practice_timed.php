@@ -29,11 +29,22 @@ use local_casospracticos\question_manager;
 use local_casospracticos\stats_manager;
 use local_casospracticos\practice_session_manager;
 use local_casospracticos\timed_attempt_manager;
+use local_casospracticos\practice_engine;
 
 $caseid = required_param('id', PARAM_INT);
 $attemptid = optional_param('attempt', 0, PARAM_INT);
 $submit = optional_param('submit', 0, PARAM_BOOL);
 $timelimit = optional_param('timelimit', 30, PARAM_INT); // Default 30 minutes.
+
+// The time limit is the assessment deadline, so it must be server-authoritative:
+// a client could otherwise post an arbitrarily large value and effectively
+// disable the timer. There is no per-case configured limit, so clamp the
+// request value to a sane minimum/maximum range (in minutes). The clamped
+// value is the only thing handed to start_attempt(); the persisted attempt
+// timelimit then drives every server-side deadline/expiry check below.
+$mintimelimit = 1;   // Minutes.
+$maxtimelimit = 180; // Minutes (3 hours).
+$timelimit = max($mintimelimit, min($maxtimelimit, $timelimit));
 
 $context = context_system::instance();
 require_login();
@@ -44,9 +55,8 @@ if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
-// Only published cases can be practiced.
-if ($case->status !== 'published') {
-    require_capability('local/casospracticos:edit', $context);
+if (!case_manager::is_visible_to_user($case, $context)) {
+    throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
 $PAGE->set_context($context);
@@ -94,11 +104,14 @@ if ($timeleft <= 0 && !$submit) {
     $submit = true;
 }
 
-// Get questions with answers.
-$questions = question_manager::get_with_answers($caseid);
+// Get all questions of this case with their answers (keyed by question id).
+$questions = question_manager::get_by_case_with_answers($caseid);
 
-// Restore question order from attempt.
-$questionorder = json_decode($attempt->questionorder, true);
+// Restore the shuffled question order persisted on the attempt.
+$questionorder = json_decode($attempt->questionorder ?? '', true);
+if (!is_array($questionorder)) {
+    $questionorder = [];
+}
 $orderedquestions = [];
 foreach ($questionorder as $qid) {
     foreach ($questions as $q) {
@@ -108,89 +121,48 @@ foreach ($questionorder as $qid) {
         }
     }
 }
+// Fallback: if the stored order is missing/stale, present all case questions.
+if (empty($orderedquestions)) {
+    $orderedquestions = array_values($questions);
+}
 $questions = $orderedquestions;
+
+// Shuffle answer order so students don't see the correct option always in
+// position A (the bank stores correct answers with sortorder=1 ~92% of the
+// time). Order is cached in $SESSION keyed by attemptid so reloads, autosave
+// round-trips and the submit redirect keep the same order the student picked.
+$answersorderkey = 'casospracticos_aorder_timed_' . $attemptid;
+question_manager::shuffle_answers_for_render($questions, $answersorderkey);
 
 // Process submitted answers.
 $results = [];
 $score = 0;
 $maxscore = 0;
 
-if ($submit && confirm_sesskey()) {
-    foreach ($questions as $question) {
-        $maxscore += $question->defaultmark;
-        $paramname = 'q' . $question->id;
+if ($submit) {
+    require_sesskey();
 
-        $result = new stdClass();
-        $result->questionid = $question->id;
-        $result->correct = false;
-        $result->feedback = '';
-        $result->selectedids = [];
-
-        if ($question->qtype === 'multichoice') {
-            if ($question->single) {
-                $selected = optional_param($paramname, 0, PARAM_INT);
-                $result->selectedids = $selected ? [$selected] : [];
-            } else {
-                $selected = optional_param_array($paramname, [], PARAM_INT);
-                $result->selectedids = $selected;
-            }
-
-            // Calculate score for this question.
-            $questionscore = 0;
-            foreach ($question->answers as $answer) {
-                $wasselected = in_array($answer->id, $result->selectedids);
-                if ($wasselected && $answer->fraction > 0) {
-                    $questionscore += $answer->fraction * $question->defaultmark;
-                } else if ($wasselected && $answer->fraction < 0) {
-                    $questionscore += $answer->fraction * $question->defaultmark;
-                }
-            }
-            $questionscore = max(0, $questionscore);
-            $result->score = $questionscore;
-            $result->correct = ($questionscore >= $question->defaultmark * 0.99);
-
-            // Get feedback from first selected answer.
-            foreach ($question->answers as $answer) {
-                if (in_array($answer->id, $result->selectedids) && !empty($answer->feedback)) {
-                    $result->feedback = format_text($answer->feedback, $answer->feedbackformat);
-                }
-            }
-
-        } else if ($question->qtype === 'shortanswer') {
-            $response = optional_param($paramname, '', PARAM_TEXT);
-            $result->response = $response;
-            $result->score = 0;
-            foreach ($question->answers as $answer) {
-                if (trim(strtolower($response)) === trim(strtolower($answer->answer))) {
-                    $result->score = $answer->fraction * $question->defaultmark;
-                    $result->correct = true;
-                    if (!empty($answer->feedback)) {
-                        $result->feedback = format_text($answer->feedback, $answer->feedbackformat);
-                    }
-                    break;
-                }
-            }
-        } else if ($question->qtype === 'truefalse') {
-            $selected = optional_param($paramname, -1, PARAM_INT);
-            if ($selected >= 0) {
-                $result->selectedids = [$selected];
-                foreach ($question->answers as $answer) {
-                    if ($answer->id == $selected && $answer->fraction > 0) {
-                        $result->score = $question->defaultmark;
-                        $result->correct = true;
-                    }
-                    if ($answer->id == $selected && !empty($answer->feedback)) {
-                        $result->feedback = format_text($answer->feedback, $answer->feedbackformat);
-                    }
-                }
-            }
-        }
-
-        $score += $result->score ?? 0;
-        $results[$question->id] = $result;
+    // Re-check the deadline server-side before accepting the submission. Never
+    // trust the client: an expired attempt must be finalized as the time-out
+    // submission, not graded as a fresh on-time submit. We re-read the attempt
+    // and compare timestarted + timelimit against the current time.
+    $freshattempt = timed_attempt_manager::get_attempt($attemptid);
+    if (!$freshattempt || $freshattempt->status !== timed_attempt_manager::STATUS_INPROGRESS) {
+        // Already finalized (submitted/expired) by another request or task.
+        redirect(new moodle_url('/local/casospracticos/timed_result.php', ['attempt' => $attemptid]));
     }
+    $deadline = (int) $freshattempt->timestarted + (int) $freshattempt->timelimit;
+    $expired = (time() > $deadline);
 
-    // Finish the timed attempt.
+    // Delegate scoring to the shared practice engine so timed and untimed
+    // scoring behave identically (fraction-aware marks, correct flag set only
+    // for fraction >= 0.99, partial credit, etc.).
+    $scored = practice_engine::score_submission($questions, $_POST);
+    $results = $scored['results'];
+    $score = $scored['score'];
+    $maxscore = $scored['maxscore'];
+
+    // Build the per-question response payload stored on the attempt.
     $responsedata = [];
     foreach ($results as $qid => $res) {
         $responsedata[$qid] = [
@@ -200,7 +172,13 @@ if ($submit && confirm_sesskey()) {
         ];
     }
 
-    $timespent = time() - $attempt->timestart;
+    // Finish the timed attempt. Compute time spent from the real timestamps;
+    // clamp to the time limit when the deadline was exceeded.
+    $timespent = time() - (int) $freshattempt->timestarted;
+    if ($expired) {
+        $timespent = min($timespent, (int) $freshattempt->timelimit);
+    }
+    $timespent = max(0, $timespent);
     timed_attempt_manager::finish_attempt($attemptid, $score, $maxscore, $responsedata, $timespent);
 
     // Redirect to results page.
@@ -212,6 +190,15 @@ $PAGE->requires->js_call_amd('local_casospracticos/timer', 'init', [
     'timeleft' => $timeleft,
     'autosubmit' => true
 ]);
+
+// Include auto-save JavaScript.
+$PAGE->requires->js_call_amd('local_casospracticos/practice_autosave', 'init', [
+    'attemptId' => $attemptid,
+    'formSelector' => '#timed-practice-form'
+]);
+
+// Load saved responses to restore form state.
+$savedresponses = timed_attempt_manager::get_saved_responses($attemptid);
 
 echo $OUTPUT->header();
 
@@ -232,6 +219,20 @@ if (!$submit) {
     echo html_writer::tag('strong', get_string('timedpracticewarning', 'local_casospracticos'));
     echo html_writer::tag('p', get_string('timedpracticewarning_desc', 'local_casospracticos'));
     echo html_writer::end_div();
+
+    // Auto-save notification.
+    echo html_writer::start_div('alert alert-info d-flex align-items-center');
+    echo html_writer::tag('i', '', ['class' => 'fa fa-save me-2', 'aria-hidden' => 'true']);
+    echo html_writer::tag('span', get_string('autosaveenabled', 'local_casospracticos'));
+    echo html_writer::end_div();
+
+    // Show notification if responses were restored.
+    if (!empty($savedresponses)) {
+        echo html_writer::start_div('alert alert-success d-flex align-items-center');
+        echo html_writer::tag('i', '', ['class' => 'fa fa-check-circle me-2', 'aria-hidden' => 'true']);
+        echo html_writer::tag('span', get_string('responsesrestored', 'local_casospracticos'));
+        echo html_writer::end_div();
+    }
 }
 
 // Start form.
@@ -256,6 +257,9 @@ foreach ($questions as $question) {
         'question-text mb-3'
     );
 
+    // Get saved response for this question if available.
+    $savedvalue = $savedresponses[$question->id] ?? null;
+
     if ($question->qtype === 'multichoice') {
         $paramname = 'q' . $question->id;
 
@@ -264,6 +268,10 @@ foreach ($questions as $question) {
             foreach ($question->answers as $answer) {
                 $id = 'answer_' . $answer->id;
                 $attrs = ['type' => 'radio', 'name' => $paramname, 'value' => $answer->id, 'id' => $id];
+                // Restore saved selection.
+                if ($savedvalue !== null && (string)$savedvalue === (string)$answer->id) {
+                    $attrs['checked'] = 'checked';
+                }
                 echo html_writer::start_div('form-check');
                 echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
                 echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),
@@ -272,9 +280,14 @@ foreach ($questions as $question) {
             }
         } else {
             // Multiple choice checkboxes.
+            $savedarray = is_array($savedvalue) ? $savedvalue : [];
             foreach ($question->answers as $answer) {
                 $id = 'answer_' . $answer->id;
                 $attrs = ['type' => 'checkbox', 'name' => $paramname . '[]', 'value' => $answer->id, 'id' => $id];
+                // Restore saved selections.
+                if (in_array((string)$answer->id, $savedarray)) {
+                    $attrs['checked'] = 'checked';
+                }
                 echo html_writer::start_div('form-check');
                 echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
                 echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),
@@ -289,7 +302,8 @@ foreach ($questions as $question) {
             'type' => 'text',
             'name' => $paramname,
             'class' => 'form-control',
-            'placeholder' => get_string('youranswer', 'local_casospracticos')
+            'placeholder' => get_string('youranswer', 'local_casospracticos'),
+            'value' => $savedvalue ?? ''  // Restore saved text.
         ]);
 
     } else if ($question->qtype === 'truefalse') {
@@ -297,6 +311,10 @@ foreach ($questions as $question) {
         foreach ($question->answers as $answer) {
             $id = 'answer_' . $answer->id;
             $attrs = ['type' => 'radio', 'name' => $paramname, 'value' => $answer->id, 'id' => $id];
+            // Restore saved selection.
+            if ($savedvalue !== null && (string)$savedvalue === (string)$answer->id) {
+                $attrs['checked'] = 'checked';
+            }
             echo html_writer::start_div('form-check');
             echo html_writer::empty_tag('input', $attrs + ['class' => 'form-check-input']);
             echo html_writer::tag('label', format_text($answer->answer, $answer->answerformat),

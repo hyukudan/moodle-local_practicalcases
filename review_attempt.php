@@ -72,6 +72,11 @@ $responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $at
 // Get questions with answers.
 $questions = question_manager::get_with_answers($attempt->caseid);
 
+// Shuffle answer order so the bank's "correct in sortorder=1" bias isn't visible
+// in review. Matching is by answer id, so a fresh shuffle (no session persistence)
+// is correct here.
+question_manager::shuffle_answers_for_render($questions);
+
 echo $OUTPUT->header();
 
 // Attempt header.

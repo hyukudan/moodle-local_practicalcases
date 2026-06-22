@@ -37,6 +37,7 @@ $string['casospracticos:export'] = 'Exportar casos prácticos';
 $string['casospracticos:import'] = 'Importar casos prácticos';
 $string['casospracticos:insertquiz'] = 'Insertar casos en cuestionarios';
 $string['casospracticos:review'] = 'Revisar casos prácticos';
+$string['casospracticos:viewanswers'] = 'Ver las claves de respuesta de las preguntas';
 $string['casospracticos:viewaudit'] = 'Ver registro de auditoría';
 $string['casospracticos:bulk'] = 'Realizar operaciones en lote';
 
@@ -76,6 +77,13 @@ $string['difficulty'] = 'Dificultad';
 $string['difficulty_help'] = 'Nivel de dificultad del 1 (fácil) al 5 (difícil)';
 $string['tags'] = 'Etiquetas';
 
+// Attachments.
+$string['attachments'] = 'Archivos adjuntos';
+$string['attachments_help'] = 'Adjunta materiales de apoyo como documentos de Word, hojas de cálculo de Excel, PDFs o imágenes. Los estudiantes pueden descargar estos archivos para trabajar en los ejercicios. Formatos soportados: Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF, imágenes y archivos ZIP.';
+$string['noattachments'] = 'Sin archivos adjuntos';
+$string['downloadattachment'] = 'Descargar archivo adjunto';
+$string['viewattachment'] = 'Ver archivo adjunto';
+
 // Status.
 $string['status'] = 'Estado';
 $string['status_draft'] = 'Borrador';
@@ -103,12 +111,6 @@ $string['shuffleanswers'] = 'Barajar respuestas';
 $string['singleanswer'] = 'Respuesta única';
 $string['multipleanswers'] = 'Respuestas múltiples';
 
-// Question types.
-$string['qtype_multichoice'] = 'Opción múltiple';
-$string['qtype_truefalse'] = 'Verdadero/Falso';
-$string['qtype_shortanswer'] = 'Respuesta corta';
-$string['qtype_matching'] = 'Emparejamiento';
-
 // Answers.
 $string['answers'] = 'Respuestas';
 $string['answer'] = 'Respuesta';
@@ -117,7 +119,6 @@ $string['answertext'] = 'Texto de la respuesta';
 $string['fraction'] = 'Calificación';
 $string['fraction_help'] = '1.0 = respuesta correcta, 0 = respuesta incorrecta. Use valores intermedios para crédito parcial.';
 $string['feedback'] = 'Retroalimentación';
-$string['correctanswer'] = 'Correcta';
 $string['incorrectanswer'] = 'Incorrecta';
 
 // Import/Export.
@@ -191,6 +192,7 @@ $string['casespublished'] = '{$a} casos publicados correctamente';
 $string['casesarchived'] = '{$a} casos archivados correctamente';
 $string['nocasesselected'] = 'No hay casos seleccionados';
 $string['selecttargetcategory'] = 'Seleccionar categoría de destino';
+$string['bulkactionfailed'] = 'No se pudo completar la operación. Inténtalo de nuevo.';
 
 // Workflow.
 $string['submitforreview'] = 'Enviar a revisión';
@@ -252,7 +254,7 @@ $string['eventcasepublished'] = 'Caso práctico publicado';
 $string['eventpracticeattemptcompleted'] = 'Intento de práctica completado';
 
 // Search.
-$string['search:case'] = 'Casos prácticos';
+$string['search:case_search'] = 'Casos prácticos';
 
 // Settings.
 $string['settings:general'] = 'Configuración general';
@@ -297,6 +299,10 @@ $string['error:questionnotfound'] = 'Pregunta no encontrada';
 $string['error:nopermission'] = 'No tiene permiso para realizar esta acción';
 $string['error:nopermissiontoexport'] = 'No tiene permiso para exportar los casos seleccionados. Solo puede exportar casos que haya creado o tener la capacidad editall.';
 $string['error:invaliddata'] = 'Datos proporcionados no válidos';
+$string['error:invalidstatus'] = 'Estado del caso no válido.';
+$string['error:invalidqtype'] = 'Tipo de pregunta no válido';
+$string['error:qtypechangeanswers'] = 'Las respuestas existentes no son compatibles con el nuevo tipo de pregunta ({$a}). Proporcione un conjunto de respuestas compatible antes de cambiar el tipo.';
+$string['error:categorycycle'] = 'Una categoría no puede ser su propio padre ni moverse bajo uno de sus propios descendientes';
 $string['error:nocases'] = 'No hay casos seleccionados';
 $string['error:ratelimitexceeded'] = 'Límite de velocidad excedido. Por favor espera un momento antes de intentarlo de nuevo.';
 $string['error:sessionexpired'] = 'Tu sesión de práctica ha expirado. Por favor inicia un nuevo intento.';
@@ -310,6 +316,7 @@ $string['privacy:metadata:local_cp_cases:timemodified'] = 'La fecha de última m
 $string['privacy:metadata:local_cp_audit_log'] = 'Registro de auditoría de todas las acciones realizadas';
 $string['privacy:metadata:local_cp_audit_log:userid'] = 'El ID del usuario que realizó la acción';
 $string['privacy:metadata:local_cp_audit_log:action'] = 'La acción realizada por el usuario';
+$string['privacy:metadata:local_cp_audit_log:changes'] = 'Los cambios de campos registrados (valores antiguos y nuevos) de la acción';
 $string['privacy:metadata:local_cp_audit_log:ipaddress'] = 'La dirección IP del usuario';
 $string['privacy:metadata:local_cp_audit_log:timecreated'] = 'Cuándo se realizó la acción';
 $string['privacy:metadata:local_cp_reviews'] = 'Revisiones de casos para el flujo de trabajo';
@@ -328,6 +335,29 @@ $string['privacy:metadata:local_cp_practice_responses'] = 'Almacena las respuest
 $string['privacy:metadata:local_cp_practice_responses:response'] = 'La respuesta del usuario a la pregunta';
 $string['privacy:metadata:local_cp_practice_responses:score'] = 'La puntuación de esta respuesta';
 $string['privacy:metadata:local_cp_practice_responses:iscorrect'] = 'Si la respuesta fue correcta';
+$string['privacy:metadata:local_cp_achievements'] = 'Almacena los logros de gamificación obtenidos por los usuarios';
+$string['privacy:metadata:local_cp_achievements:userid'] = 'El ID del usuario que obtuvo el logro';
+$string['privacy:metadata:local_cp_achievements:achievementtype'] = 'El tipo de logro obtenido';
+$string['privacy:metadata:local_cp_achievements:caseid'] = 'El caso relacionado, si procede';
+$string['privacy:metadata:local_cp_achievements:timecreated'] = 'Cuándo se obtuvo el logro';
+$string['privacy:metadata:local_cp_practice_sessions'] = 'Almacena las sesiones de práctica seguras basadas en token iniciadas por los usuarios';
+$string['privacy:metadata:local_cp_practice_sessions:userid'] = 'El ID del usuario que inició la sesión';
+$string['privacy:metadata:local_cp_practice_sessions:caseid'] = 'El caso que se está practicando';
+$string['privacy:metadata:local_cp_practice_sessions:timecreated'] = 'Cuándo se creó la sesión';
+$string['privacy:metadata:local_cp_practice_sessions:timeexpiry'] = 'Cuándo caduca la sesión';
+$string['privacy:metadata:local_cp_timed_attempts'] = 'Almacena los intentos del modo de práctica cronometrada realizados por los usuarios';
+$string['privacy:metadata:local_cp_timed_attempts:userid'] = 'El ID del usuario que realizó el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:caseid'] = 'El caso que se está practicando';
+$string['privacy:metadata:local_cp_timed_attempts:score'] = 'La puntuación obtenida en el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:maxscore'] = 'La puntuación máxima posible';
+$string['privacy:metadata:local_cp_timed_attempts:percentage'] = 'El porcentaje de puntuación';
+$string['privacy:metadata:local_cp_timed_attempts:status'] = 'El estado del intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:responses'] = 'Las respuestas registradas del intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:timestarted'] = 'Cuándo se inició el intento cronometrado';
+$string['privacy:metadata:local_cp_timed_attempts:timesubmitted'] = 'Cuándo se envió el intento cronometrado';
+$string['privacy:achievements'] = 'Logros';
+$string['privacy:practicesessions'] = 'Sesiones de práctica';
+$string['privacy:timedattempts'] = 'Intentos cronometrados';
 
 // Default category.
 $string['defaultcategory'] = 'Casos importados';
@@ -381,7 +411,6 @@ $string['youranswer'] = 'Tu respuesta';
 $string['yourmark'] = 'Tu puntuación';
 $string['tryagain'] = 'Intentar de nuevo';
 $string['practicenow'] = 'Practicar ahora';
-$string['started'] = 'Iniciado';
 $string['completed'] = 'Completado';
 $string['correct'] = 'Correcto';
 $string['incorrect'] = 'Incorrecto';
@@ -415,6 +444,14 @@ $string['questionscore'] = 'Puntuación de la Pregunta';
 $string['submitanswers'] = 'Enviar Respuestas';
 $string['error:attemptnotfound'] = 'Intento cronometrado no encontrado';
 $string['eventtimedattemptsubmitted'] = 'Intento cronometrado enviado';
+
+// Auto-guardado.
+$string['autosave'] = 'Auto-guardado';
+$string['autosaveenabled'] = 'El auto-guardado está activado. Tus respuestas se guardan automáticamente cada 30 segundos.';
+$string['autosavesuccess'] = 'Respuestas guardadas';
+$string['autosavefailed'] = 'Error en el auto-guardado';
+$string['responsesrestored'] = 'Tus respuestas anteriores han sido restauradas.';
+
 $string['congratspassed'] = '¡Felicitaciones! ¡Has aprobado!';
 $string['notpassedyet'] = 'No has aprobado aún. El umbral de aprobación es {$a}%. ¡Inténtalo de nuevo!';
 $string['yourscore'] = 'Tu puntuación';
@@ -468,6 +505,21 @@ $string['achievement:category_complete_desc'] = 'Completa todos los casos de una
 $string['achievement:high_achiever'] = 'Alto Rendimiento';
 $string['achievement:high_achiever_desc'] = 'Mantén un promedio superior al 90% después de 10 intentos';
 
+// PDF Library.
+$string['pdflibrary'] = 'Biblioteca de PDFs';
+$string['pdfstatus'] = 'Estado del PDF';
+$string['pdfgenerated'] = 'PDF generado';
+$string['pdfmissing'] = 'PDF no generado';
+$string['pdfoutdated'] = 'PDF desactualizado';
+$string['regenerate'] = 'Regenerar';
+$string['regenerateall'] = 'Regenerar todos';
+$string['downloadpdf'] = 'Descargar PDF';
+$string['lastgenerated'] = 'Última generación';
+$string['pdfsize'] = 'Tamaño';
+$string['regenerating'] = 'Regenerando...';
+$string['regeneratesuccess'] = 'PDF regenerado correctamente';
+$string['regenerateerror'] = 'Error al regenerar el PDF';
+
 // Accessibility strings.
 $string['caselist'] = 'Lista de casos prácticos';
 $string['caseactions'] = 'Acciones del caso';
@@ -479,3 +531,88 @@ $string['defaultmark_help'] = 'Puntos otorgados por una respuesta completamente 
 $string['generalfeedback_help'] = 'Retroalimentación mostrada después de responder la pregunta';
 $string['categoryoptions'] = 'Opciones para la categoría';
 $string['removeanswer'] = 'Eliminar esta respuesta';
+
+// JavaScript user-facing strings (AMD modules).
+$string['js:truevalue'] = 'Verdadero';
+$string['js:falsevalue'] = 'Falso';
+$string['js:savequestionfailed'] = 'No se pudo guardar la pregunta. Inténtalo de nuevo.';
+$string['js:questiontextrequired'] = 'El texto de la pregunta es obligatorio';
+$string['js:minanswers'] = 'Se necesitan al menos 2 respuestas';
+$string['js:mincorrectanswer'] = 'Se necesita al menos una respuesta correcta';
+$string['js:reorderfailed'] = 'No se pudo reordenar la pregunta. Recarga la página.';
+$string['js:questionupdated'] = 'Pregunta actualizada';
+$string['js:updatequestionfailed'] = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.';
+$string['js:deletequestionfailed'] = 'No se pudo eliminar la pregunta. Inténtalo de nuevo.';
+
+// Timer (timed practice mode) JavaScript strings.
+$string['timer:leavewarning'] = 'Tu intento cronometrado sigue en curso. ¿Seguro que quieres salir?';
+$string['timer:warning5min'] = '¡Quedan 5 minutos!';
+$string['timer:warning1min'] = '¡Queda 1 minuto!';
+$string['timer:timeup'] = '¡TIEMPO AGOTADO!';
+$string['timer:autosubmitting'] = '¡Se acabó el tiempo! Enviando tus respuestas...';
+$string['timer:submityouranswers'] = '¡Se acabó el tiempo! Por favor envía tus respuestas.';
+
+// Claves añadidas para paridad EN/ES.
+
+// Capabilities (additional).
+$string['casospracticos:editall'] = 'Editar cualquier caso práctico';
+$string['casospracticos:deleteall'] = 'Eliminar cualquier caso práctico';
+
+// Events (additional).
+$string['eventratelimitexceeded'] = 'Límite de velocidad de la API excedido';
+
+// Settings — Security.
+$string['settings:security'] = 'Configuración de seguridad';
+$string['settings:enableratelimiting'] = 'Habilitar limitación de velocidad';
+$string['settings:enableratelimiting_desc'] = 'Limitar el número de peticiones a la API por usuario para prevenir abusos (los administradores del sitio quedan exentos)';
+$string['settings:ratelimitread'] = 'Límite de operaciones de lectura';
+$string['settings:ratelimitread_desc'] = 'Máximo de peticiones de lectura a la API por minuto y usuario';
+$string['settings:ratelimitwrite'] = 'Límite de operaciones de escritura';
+$string['settings:ratelimitwrite_desc'] = 'Máximo de peticiones de escritura a la API por minuto y usuario';
+
+// Message providers.
+$string['messageprovider:casepublished'] = 'Caso práctico publicado';
+$string['messageprovider:reviewassigned'] = 'Revisión asignada';
+$string['messageprovider:reviewcompleted'] = 'Revisión completada';
+$string['messageprovider:achievementearned'] = 'Logro conseguido';
+
+// Notification strings.
+$string['notification:casepublished_subject'] = 'Nuevo caso práctico publicado: {$a}';
+$string['notification:casepublished_body'] = 'Se ha publicado un nuevo caso práctico "{$a->casename}" por {$a->author}.
+
+Ver el caso: {$a->url}';
+$string['notification:casepublished_body_html'] = '<p>Se ha publicado un nuevo caso práctico "<strong>{$a->casename}</strong>" por {$a->author}.</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:casepublished_small'] = 'Nuevo caso: {$a}';
+
+$string['notification:reviewassigned_subject'] = 'Revisión asignada: {$a}';
+$string['notification:reviewassigned_body'] = 'Se te ha asignado revisar el caso "{$a->casename}" de {$a->author}.
+
+Ver el caso: {$a->url}';
+$string['notification:reviewassigned_body_html'] = '<p>Se te ha asignado revisar el caso "<strong>{$a->casename}</strong>" de {$a->author}.</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:reviewassigned_small'] = 'Revisión asignada: {$a}';
+
+$string['notification:reviewcompleted_subject'] = 'Revisión completada: {$a->casename} - {$a->status}';
+$string['notification:reviewcompleted_body'] = 'Tu caso "{$a->casename}" ha sido revisado por {$a->reviewer}.
+
+Estado: {$a->status}
+
+Comentarios: {$a->comments}
+
+Ver el caso: {$a->url}';
+$string['notification:reviewcompleted_body_html'] = '<p>Tu caso "<strong>{$a->casename}</strong>" ha sido revisado por {$a->reviewer}.</p><p><strong>Estado:</strong> {$a->status}</p><p><strong>Comentarios:</strong> {$a->comments}</p><p><a href="{$a->url}">Ver el caso</a></p>';
+$string['notification:reviewcompleted_small'] = 'Revisión: {$a->casename} - {$a->status}';
+
+$string['notification:achievementearned_subject'] = 'Logro desbloqueado: {$a}';
+$string['notification:achievementearned_body'] = '¡Felicidades! Has conseguido el logro "{$a->achievement}".
+
+{$a->description}
+
+Ver tus logros: {$a->url}';
+$string['notification:achievementearned_body_html'] = '<p>¡Felicidades! Has conseguido el logro "<strong>{$a->achievement}</strong>".</p><p>{$a->description}</p><p><a href="{$a->url}">Ver tus logros</a></p>';
+$string['notification:achievementearned_small'] = 'Logro: {$a}';
+
+// Review status strings.
+$string['review_status_pending'] = 'Pendiente';
+$string['review_status_approved'] = 'Aprobado';
+$string['review_status_rejected'] = 'Rechazado';
+$string['review_status_revision_requested'] = 'Revisión solicitada';

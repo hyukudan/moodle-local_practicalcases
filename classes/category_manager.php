@@ -38,9 +38,9 @@ class category_manager {
      * Get a category by ID.
      *
      * @param int $id Category ID
-     * @return object|false Category object or false if not found
+     * @return \stdClass|false Category object or false if not found
      */
-    public static function get(int $id) {
+    public static function get(int $id): \stdClass|false {
         global $DB;
         return $DB->get_record(self::TABLE, ['id' => $id]);
     }
@@ -149,8 +149,21 @@ class category_manager {
         $categories = self::get_flat_tree();
         $menu = [0 => get_string('toplevel', 'local_casospracticos')];
 
+        // Build the set of ids to exclude: the category itself plus all of its
+        // descendants, so a category cannot be offered as a parent of itself or
+        // of any of its children (G2-03).
+        $excluded = [];
+        if ($excludeid !== null) {
+            $excluded[$excludeid] = true;
+            $descendants = [];
+            self::collect_descendant_ids($excludeid, $descendants);
+            foreach ($descendants as $id) {
+                $excluded[$id] = true;
+            }
+        }
+
         foreach ($categories as $category) {
-            if ($excludeid !== null && $category->id == $excludeid) {
+            if (isset($excluded[$category->id])) {
                 continue;
             }
             $indent = str_repeat('— ', $category->depth);
@@ -199,6 +212,25 @@ class category_manager {
         $record->description = $data->description ?? '';
         $record->descriptionformat = $data->descriptionformat ?? FORMAT_HTML;
         $record->parent = $data->parent ?? 0;
+
+        // Guard against parent cycles / invalid parents (G2-02). A category
+        // must not become its own parent, its own descendant, or point at a
+        // parent that does not exist.
+        if ($record->parent != 0) {
+            if ($record->parent == $record->id) {
+                throw new \moodle_exception('error:categorycycle', 'local_casospracticos');
+            }
+            if (!self::get($record->parent)) {
+                throw new \moodle_exception('error:categorynotfound', 'local_casospracticos');
+            }
+            // is_descendant($newparent, $thiscategory): true if the proposed
+            // parent is itself a descendant of this category, which would
+            // create a cycle.
+            if (self::is_descendant((int) $record->parent, (int) $record->id)) {
+                throw new \moodle_exception('error:categorycycle', 'local_casospracticos');
+            }
+        }
+
         if (isset($data->sortorder)) {
             $record->sortorder = $data->sortorder;
         }
@@ -249,23 +281,80 @@ class category_manager {
     /**
      * Count cases in a category.
      *
+     * When $recursive is true, uses a single batch query instead of N+1 queries per tree node.
+     *
      * @param int $categoryid Category ID
      * @param bool $recursive Include subcategories
      * @return int Number of cases
      */
-    public static function count_cases(int $categoryid, bool $recursive = false): int {
+    public static function count_cases(int $categoryid, bool $recursive = false, ?string $status = null): int {
         global $DB;
 
-        $count = $DB->count_records('local_cp_cases', ['categoryid' => $categoryid]);
-
-        if ($recursive) {
-            $children = self::get_all($categoryid);
-            foreach ($children as $child) {
-                $count += self::count_cases($child->id, true);
+        if (!$recursive) {
+            $params = ['categoryid' => $categoryid];
+            if ($status !== null) {
+                $params['status'] = $status;
             }
+            return $DB->count_records('local_cp_cases', $params);
         }
 
-        return $count;
+        // Collect all descendant category IDs in PHP (categories are already cached in get_all).
+        $allids = [$categoryid];
+        self::collect_descendant_ids($categoryid, $allids);
+
+        // Single query for all categories at once.
+        list($insql, $params) = $DB->get_in_or_equal($allids, SQL_PARAMS_NAMED);
+        if ($status !== null) {
+            $params['status'] = $status;
+            return $DB->count_records_select('local_cp_cases', "categoryid $insql AND status = :status", $params);
+        }
+
+        return $DB->count_records_select('local_cp_cases', "categoryid $insql", $params);
+    }
+
+    /**
+     * Recursively collect all descendant category IDs.
+     *
+     * Loads every category once and walks an in-memory parent-to-children map,
+     * avoiding one query per tree node (G2-10).
+     *
+     * @param int $parentid Parent category ID
+     * @param array &$ids Accumulated IDs (passed by reference)
+     */
+    private static function collect_descendant_ids(int $parentid, array &$ids): void {
+        // Single load of all categories, then walk in memory.
+        $bychildren = self::build_children_map();
+        self::walk_descendants($parentid, $bychildren, $ids);
+    }
+
+    /**
+     * Build a parent-id => [child category objects] map from a single query.
+     *
+     * @return array Map of parent id to array of child category objects.
+     */
+    private static function build_children_map(): array {
+        $bychildren = [];
+        foreach (self::get_all() as $category) {
+            $bychildren[$category->parent][] = $category;
+        }
+        return $bychildren;
+    }
+
+    /**
+     * Walk a pre-built children map collecting all descendant ids.
+     *
+     * @param int $parentid Parent category ID
+     * @param array $bychildren Map of parent id => child category objects
+     * @param array &$ids Accumulated IDs (passed by reference)
+     */
+    private static function walk_descendants(int $parentid, array $bychildren, array &$ids): void {
+        if (empty($bychildren[$parentid])) {
+            return;
+        }
+        foreach ($bychildren[$parentid] as $child) {
+            $ids[] = $child->id;
+            self::walk_descendants((int) $child->id, $bychildren, $ids);
+        }
     }
 
     /**
@@ -273,13 +362,20 @@ class category_manager {
      *
      * @return array Associative array [categoryid => count]
      */
-    public static function count_cases_all(): array {
+    public static function count_cases_all(?string $status = null): array {
         global $DB;
 
         $sql = "SELECT categoryid, COUNT(*) AS casecount
-                  FROM {local_cp_cases}
-              GROUP BY categoryid";
-        $counts = $DB->get_records_sql($sql);
+                  FROM {local_cp_cases}";
+        $params = [];
+
+        if ($status !== null) {
+            $sql .= " WHERE status = :status";
+            $params['status'] = $status;
+        }
+
+        $sql .= " GROUP BY categoryid";
+        $counts = $DB->get_records_sql($sql, $params);
 
         $result = [];
         foreach ($counts as $row) {
@@ -294,9 +390,9 @@ class category_manager {
      *
      * @return array Array of categories with depth and casecount
      */
-    public static function get_flat_tree_with_counts(): array {
+    public static function get_flat_tree_with_counts(?string $status = null): array {
         $categories = self::get_flat_tree();
-        $counts = self::count_cases_all();
+        $counts = self::count_cases_all($status);
 
         foreach ($categories as $category) {
             $category->casecount = $counts[$category->id] ?? 0;

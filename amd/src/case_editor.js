@@ -32,6 +32,13 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
     var CaseEditor = function(caseId) {
         this.caseId = caseId;
         this.container = $('.local-casospracticos-case-view[data-caseid="' + caseId + '"]');
+        // Pre-loaded localised strings, with English fallbacks until they resolve.
+        this.strings = {
+            reorderFailed: 'The question could not be reordered. Please reload the page.',
+            questionUpdated: 'Question updated',
+            updateQuestionFailed: 'The question could not be updated. Please try again.',
+            deleteQuestionFailed: 'The question could not be deleted. Please try again.'
+        };
         this.init();
     };
 
@@ -39,6 +46,29 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * Initialize the editor.
      */
     CaseEditor.prototype.init = function() {
+        var self = this;
+
+        // Pre-load strings (bulk_actions pattern). They are only used after a
+        // user interaction (reorder, inline save, delete) so binding events
+        // immediately is safe; the fallbacks above cover the brief load window.
+        Str.get_strings([
+            {key: 'js:reorderfailed', component: 'local_casospracticos'},
+            {key: 'js:questionupdated', component: 'local_casospracticos'},
+            {key: 'js:updatequestionfailed', component: 'local_casospracticos'},
+            {key: 'js:deletequestionfailed', component: 'local_casospracticos'}
+        ]).then(function(strings) {
+            self.strings = {
+                reorderFailed: strings[0],
+                questionUpdated: strings[1],
+                updateQuestionFailed: strings[2],
+                deleteQuestionFailed: strings[3]
+            };
+            return self.strings;
+        }).catch(function() {
+            // Keep English defaults on failure.
+            return self.strings;
+        });
+
         this.bindEvents();
     };
 
@@ -80,6 +110,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {jQuery} item The moved item.
      */
     CaseEditor.prototype.handleQuestionReorder = function(item) {
+        var self = this;
         var questionId = item.data('questionid');
         var newPosition = item.index() + 1;
 
@@ -94,6 +125,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 // Update question numbers.
                 $('.question-item').each(function(index) {
                     $(this).find('.badge.bg-primary').text('#' + (index + 1));
+                });
+            } else {
+                Notification.addNotification({
+                    message: self.strings.reorderFailed,
+                    type: 'error'
                 });
             }
         }).fail(Notification.exception);
@@ -173,15 +209,19 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                 // Use the escaped text for display.
                 element.html(htmlText);
                 Notification.addNotification({
-                    message: 'Pregunta actualizada',
+                    message: self.strings.questionUpdated,
                     type: 'success'
                 });
             } else {
                 element.html(originalText);
+                Notification.addNotification({
+                    message: self.strings.updateQuestionFailed,
+                    type: 'error'
+                });
             }
-        }).fail(function() {
+        }).fail(function(error) {
             element.html(originalText);
-            Notification.exception();
+            Notification.exception(error);
         });
     };
 
@@ -195,23 +235,27 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
         var questionItem = link.closest('.question-item');
         var questionId = questionItem.data('questionid');
 
+        var yesLabel;
         Str.get_strings([
             {key: 'deletequestion', component: 'local_casospracticos'},
             {key: 'confirm'},
             {key: 'yes'},
             {key: 'no'}
         ]).then(function(strings) {
+            yesLabel = strings[2];
             return ModalFactory.create({
                 type: ModalFactory.types.SAVE_CANCEL,
                 title: strings[1],
                 body: strings[0] + '?'
             });
         }).then(function(modal) {
-            modal.setSaveButtonText(Str.get_string('yes'));
+            // Use the already-resolved 'yes' string, not the unresolved Str.get_string() Promise.
+            modal.setSaveButtonText(yesLabel);
             modal.getRoot().on(ModalEvents.save, function() {
                 self.deleteQuestion(questionId, questionItem);
             });
             modal.show();
+            return modal;
         }).catch(Notification.exception);
     };
 
@@ -222,6 +266,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
      * @param {jQuery} questionItem The question item element.
      */
     CaseEditor.prototype.deleteQuestion = function(questionId, questionItem) {
+        var self = this;
         Ajax.call([{
             methodname: 'local_casospracticos_delete_question',
             args: {id: questionId}
@@ -236,6 +281,11 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
                     // Update count.
                     var count = $('.question-item').length;
                     $('.case-questions h4 .badge').text(count);
+                });
+            } else {
+                Notification.addNotification({
+                    message: self.strings.deleteQuestionFailed,
+                    type: 'error'
                 });
             }
         }).fail(Notification.exception);

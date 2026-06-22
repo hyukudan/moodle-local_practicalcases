@@ -33,6 +33,7 @@ $capabilities = [
             'manager' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'teacher' => CAP_ALLOW,
+            'student' => CAP_ALLOW,
         ],
     ],
 
@@ -134,6 +135,16 @@ $capabilities = [
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
             'manager' => CAP_ALLOW,
+        ],
+    ],
+
+    // View question answer keys (correct-answer fraction / feedback).
+    'local/casospracticos:viewanswers' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
         ],
     ],
 

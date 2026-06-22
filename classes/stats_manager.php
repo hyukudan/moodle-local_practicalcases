@@ -206,17 +206,20 @@ class stats_manager {
             return $distribution;
         }
 
-        $sql = "SELECT
-                    CASE
-                        WHEN percentage <= 20 THEN '0-20'
-                        WHEN percentage <= 40 THEN '21-40'
-                        WHEN percentage <= 60 THEN '41-60'
-                        WHEN percentage <= 80 THEN '61-80'
-                        ELSE '81-100'
-                    END as score_range,
-                    COUNT(*) as count
-                FROM {local_cp_practice_attempts}
-                WHERE caseid = :caseid AND status = 'finished'
+        // Use subquery to avoid GROUP BY column alias (not valid in PostgreSQL).
+        $sql = "SELECT score_range, COUNT(*) as count
+                FROM (
+                    SELECT
+                        CASE
+                            WHEN percentage <= 20 THEN '0-20'
+                            WHEN percentage <= 40 THEN '21-40'
+                            WHEN percentage <= 60 THEN '41-60'
+                            WHEN percentage <= 80 THEN '61-80'
+                            ELSE '81-100'
+                        END as score_range
+                    FROM {local_cp_practice_attempts}
+                    WHERE caseid = :caseid AND status = 'finished'
+                ) sub
                 GROUP BY score_range";
 
         $results = $DB->get_records_sql($sql, ['caseid' => $caseid]);
@@ -231,34 +234,41 @@ class stats_manager {
     }
 
     /**
-     * Record a case view.
+     * Record a case view (race-condition safe using a transaction).
      *
      * @param int $caseid Case ID.
      */
     public static function record_view(int $caseid): void {
         global $DB;
 
-        $record = $DB->get_record('local_cp_usage', ['caseid' => $caseid, 'quizid' => null]);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $record = $DB->get_record('local_cp_usage', ['caseid' => $caseid, 'quizid' => null]);
 
-        if ($record) {
-            $record->views++;
-            $record->lastused = time();
-            $DB->update_record('local_cp_usage', $record);
-        } else {
-            $record = new \stdClass();
-            $record->caseid = $caseid;
-            $record->quizid = null;
-            $record->courseid = null;
-            $record->views = 1;
-            $record->insertions = 0;
-            $record->lastused = time();
-            $record->timecreated = time();
-            $DB->insert_record('local_cp_usage', $record);
+            if ($record) {
+                $record->views++;
+                $record->lastused = time();
+                $DB->update_record('local_cp_usage', $record);
+            } else {
+                $record = new \stdClass();
+                $record->caseid = $caseid;
+                $record->quizid = null;
+                $record->courseid = null;
+                $record->views = 1;
+                $record->insertions = 0;
+                $record->lastused = time();
+                $record->timecreated = time();
+                $DB->insert_record('local_cp_usage', $record);
+            }
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
         }
     }
 
     /**
-     * Record a quiz insertion.
+     * Record a quiz insertion (race-condition safe using a transaction).
      *
      * @param int $caseid Case ID.
      * @param int $quizid Quiz ID.
@@ -267,22 +277,29 @@ class stats_manager {
     public static function record_insertion(int $caseid, int $quizid, int $courseid): void {
         global $DB;
 
-        $record = $DB->get_record('local_cp_usage', ['caseid' => $caseid, 'quizid' => $quizid]);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $record = $DB->get_record('local_cp_usage', ['caseid' => $caseid, 'quizid' => $quizid]);
 
-        if ($record) {
-            $record->insertions++;
-            $record->lastused = time();
-            $DB->update_record('local_cp_usage', $record);
-        } else {
-            $record = new \stdClass();
-            $record->caseid = $caseid;
-            $record->quizid = $quizid;
-            $record->courseid = $courseid;
-            $record->views = 0;
-            $record->insertions = 1;
-            $record->lastused = time();
-            $record->timecreated = time();
-            $DB->insert_record('local_cp_usage', $record);
+            if ($record) {
+                $record->insertions++;
+                $record->lastused = time();
+                $DB->update_record('local_cp_usage', $record);
+            } else {
+                $record = new \stdClass();
+                $record->caseid = $caseid;
+                $record->quizid = $quizid;
+                $record->courseid = $courseid;
+                $record->views = 0;
+                $record->insertions = 1;
+                $record->lastused = time();
+                $record->timecreated = time();
+                $DB->insert_record('local_cp_usage', $record);
+            }
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
         }
     }
 
@@ -320,8 +337,9 @@ class stats_manager {
 
         $attemptid = $DB->insert_record('local_cp_practice_attempts', $attempt);
 
-        // Record individual responses.
+        // Record individual responses using batch insert.
         if ($DB->get_manager()->table_exists('local_cp_practice_responses')) {
+            $records = [];
             foreach ($responses as $questionid => $response) {
                 $resp = new \stdClass();
                 $resp->attemptid = $attemptid;
@@ -331,7 +349,10 @@ class stats_manager {
                 $resp->score = $response['score'] ?? 0;
                 $resp->iscorrect = ($response['correct'] ?? false) ? 1 : 0;
                 $resp->timecreated = time();
-                $DB->insert_record('local_cp_practice_responses', $resp);
+                $records[] = $resp;
+            }
+            if (!empty($records)) {
+                $DB->insert_records('local_cp_practice_responses', $records);
             }
         }
 
