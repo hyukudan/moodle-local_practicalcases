@@ -154,6 +154,7 @@ echo html_writer::div(
     format_text($case->statement, $case->statementformat),
     'case-statement card card-body mb-4 bg-light'
 );
+echo local_casospracticos_render_attachments_block($caseid);
 
 // Results summary if submitted.
 if ($submit) {
@@ -310,6 +311,18 @@ foreach ($questions as $question) {
 
             echo html_writer::end_div();
         }
+
+    } else if ($question->qtype === 'essay') {
+        $value = $result->response ?? '';
+        $attrs = [
+            'name' => $paramname,
+            'class' => 'form-control',
+            'rows' => 8,
+        ];
+        if ($submit) {
+            $attrs['disabled'] = 'disabled';
+        }
+        echo html_writer::tag('textarea', s($value), $attrs);
 
     } else if ($question->qtype === 'shortanswer') {
         $value = $result->response ?? '';

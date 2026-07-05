@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
@@ -212,6 +213,7 @@ echo html_writer::end_div();
 echo html_writer::start_div('case-practice');
 echo html_writer::tag('h3', format_string($case->name));
 echo html_writer::div(format_text($case->statement, $case->statementformat), 'case-statement mb-4');
+echo local_casospracticos_render_attachments_block($caseid);
 
 // Instructions.
 if (!$submit) {
@@ -295,6 +297,15 @@ foreach ($questions as $question) {
                 echo html_writer::end_div();
             }
         }
+
+    } else if ($question->qtype === 'essay') {
+        $paramname = 'q' . $question->id;
+        echo html_writer::tag('textarea', s($savedvalue ?? ''), [
+            'name' => $paramname,
+            'class' => 'form-control',
+            'rows' => 8,
+            'placeholder' => get_string('youranswer', 'local_casospracticos'),
+        ]);
 
     } else if ($question->qtype === 'shortanswer') {
         $paramname = 'q' . $question->id;
