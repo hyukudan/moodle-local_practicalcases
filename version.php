@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026060101;  // Add dedicated local/casospracticos:viewanswers capability for answer-key gating.
+$plugin->version   = 2026061500;  // Stage 2a: add optional per-case document deliverable (local_cp_case_deliverable + deliverable filearea).
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.3.2';

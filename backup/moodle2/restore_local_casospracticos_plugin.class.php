@@ -72,6 +72,10 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_usages/cp_usage');
         $paths[] = new restore_path_element('casospracticos_usage', $elepath);
 
+        // Optional document deliverable definition (structural config).
+        $elepath = $this->get_pathfor('/cp_cases/cp_case/cp_deliverables/cp_deliverable');
+        $paths[] = new restore_path_element('casospracticos_deliverable', $elepath);
+
         // Add user-attempt paths if user data is being restored.
         $userinfo = $this->get_setting_value('users');
         if ($userinfo) {
@@ -369,6 +373,33 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
     }
 
     /**
+     * Process a deliverable definition element.
+     *
+     * @param array $data The data from backup.
+     */
+    public function process_casospracticos_deliverable($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $caseid = $this->get_new_parentid('casospracticos_case');
+        if (!$caseid) {
+            return;
+        }
+
+        $data->caseid = $caseid;
+        $data->timecreated = $data->timecreated ?? time();
+        $data->timemodified = time();
+
+        unset($data->id);
+
+        // The caseid key is unique; skip if a deliverable already exists for it.
+        if (!$DB->record_exists('local_cp_case_deliverable', ['caseid' => $caseid])) {
+            $DB->insert_record('local_cp_case_deliverable', $data);
+        }
+    }
+
+    /**
      * Process a timed attempt element.
      *
      * @param array $data The data from backup.
@@ -466,6 +497,8 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
     public function after_restore_course() {
         // Restore files for statements. Itemnames MUST match the set_mapping names.
         $this->add_related_files('local_casospracticos', 'statement', 'casospracticos_case');
+        // Deliverable start file (itemid = caseid).
+        $this->add_related_files('local_casospracticos', 'deliverable', 'casospracticos_case');
         $this->add_related_files('local_casospracticos', 'questiontext', 'casospracticos_question');
         $this->add_related_files('local_casospracticos', 'answer', 'casospracticos_answer');
         $this->add_related_files('local_casospracticos', 'feedback', 'casospracticos_answer');

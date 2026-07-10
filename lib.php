@@ -108,15 +108,15 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
     }
 
     // Validate allowed file areas.
-    $allowedfileareas = ['case_attachments', 'statement'];
+    $allowedfileareas = ['case_attachments', 'statement', 'deliverable'];
     if (!in_array($filearea, $allowedfileareas)) {
         return false;
     }
 
     $fs = get_file_storage();
 
-    // For case_attachments, the first arg is the case ID (itemid).
-    if ($filearea === 'case_attachments') {
+    // For case_attachments and deliverable, the first arg is the case ID (itemid).
+    if ($filearea === 'case_attachments' || $filearea === 'deliverable') {
         $itemid = array_shift($args);
         $relativepath = implode('/', $args);
 
@@ -217,6 +217,52 @@ function local_casospracticos_get_file_icon(string $filename): array {
     ];
 
     return $types[$extension] ?? ['icon' => 'fa-file text-secondary', 'type' => 'File'];
+}
+
+/**
+ * Get the optional document deliverable definition for a case.
+ *
+ * Returns the {local_cp_case_deliverable} row only when it exists AND is
+ * enabled. Cases with no row, or a disabled row, return false — callers must
+ * treat that as "no deliverable" and render nothing new (default-off).
+ *
+ * @param int $caseid Case ID.
+ * @return \stdClass|false Enabled deliverable row, or false.
+ */
+function local_casospracticos_get_case_deliverable(int $caseid) {
+    global $DB;
+
+    // Defensive: if the table is not yet present (mid-upgrade), behave as none.
+    if (!$DB->get_manager()->table_exists('local_cp_case_deliverable')) {
+        return false;
+    }
+
+    $row = $DB->get_record('local_cp_case_deliverable', ['caseid' => $caseid]);
+    if (!$row || empty($row->enabled)) {
+        return false;
+    }
+
+    return $row;
+}
+
+/**
+ * Get a moodle_url to download the start file of a case's deliverable.
+ *
+ * @param int $caseid Case ID.
+ * @param string $filename Stored start filename.
+ * @return \moodle_url URL served by local_casospracticos_pluginfile (deliverable area).
+ */
+function local_casospracticos_deliverable_startfile_url(int $caseid, string $filename): \moodle_url {
+    $systemcontext = context_system::instance();
+    return \moodle_url::make_pluginfile_url(
+        $systemcontext->id,
+        'local_casospracticos',
+        'deliverable',
+        $caseid,
+        '/',
+        $filename,
+        true
+    );
 }
 
 /**

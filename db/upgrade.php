@@ -435,5 +435,29 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026060100, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026061500) {
+        // Stage 2a: optional per-case document deliverable definition. Additive,
+        // default-off: a case with no row here behaves exactly as today.
+        $table = new xmldb_table('local_cp_case_deliverable');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('caseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('filetype', XMLDB_TYPE_CHAR, '10', null, null, null, null);
+            $table->add_field('startfilename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $table->add_field('rubrica', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('maxscore', XMLDB_TYPE_NUMBER, '10, 4', null, XMLDB_NOTNULL, null, '100');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('caseid', XMLDB_KEY_FOREIGN_UNIQUE, ['caseid'], 'local_cp_cases', ['id']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026061500, 'local', 'casospracticos');
+    }
+
     return true;
 }

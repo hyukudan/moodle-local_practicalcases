@@ -99,6 +99,13 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
             'quizid', 'courseid', 'views', 'insertions', 'lastused', 'timecreated'
         ]);
 
+        // Optional document deliverable definition (structural config of the case).
+        $deliverables = new backup_nested_element('cp_deliverables');
+        $deliverable = new backup_nested_element('cp_deliverable', ['id'], [
+            'enabled', 'filetype', 'startfilename', 'rubrica', 'maxscore',
+            'timecreated', 'timemodified'
+        ]);
+
         // Build the tree.
         $pluginwrapper->add_child($categories);
         $categories->add_child($category);
@@ -115,6 +122,9 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
 
         $case->add_child($usages);
         $usages->add_child($usage);
+
+        $case->add_child($deliverables);
+        $deliverables->add_child($deliverable);
 
         // Add user-attempt data (practice attempts, timed attempts, sessions,
         // achievements) only when including user data.
@@ -180,6 +190,9 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $review->set_source_table('local_cp_reviews', ['caseid' => backup::VAR_PARENTID]);
         $usage->set_source_table('local_cp_usage', ['caseid' => backup::VAR_PARENTID]);
 
+        // Deliverable definition source (structural, always present if any).
+        $deliverable->set_source_table('local_cp_case_deliverable', ['caseid' => backup::VAR_PARENTID]);
+
         // Annotate reviewer user id only when including user data.
         if ($userinfo) {
             $review->annotate_ids('user', 'reviewerid');
@@ -209,6 +222,8 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
 
         // Define file annotations.
         $case->annotate_files('local_casospracticos', 'statement', 'id');
+        // Deliverable start file (itemid = caseid, so annotated on the case element).
+        $case->annotate_files('local_casospracticos', 'deliverable', 'id');
         $question->annotate_files('local_casospracticos', 'questiontext', 'id');
         $answer->annotate_files('local_casospracticos', 'answer', 'id');
         $answer->annotate_files('local_casospracticos', 'feedback', 'id');
