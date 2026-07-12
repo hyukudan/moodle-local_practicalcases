@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026061500" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026071200" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -318,6 +318,26 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="caseid" TYPE="foreign-unique" FIELDS="caseid" REFTABLE="local_cp_cases" REFFIELDS="id"/>
       </KEYS>
+    </TABLE>
+
+    <!-- CP question to normativa article link. Populated by local_normativa tooling;
+         registered here so the schema is versioned with the plugin that owns the data. -->
+    <TABLE NAME="local_cp_question_normativa" COMMENT="Links a practical-case question to a normativa article (local_normativa_articulos).">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID in local_cp_questions"/>
+        <FIELD NAME="articulo_id" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID in local_normativa_articulos"/>
+        <FIELD NAME="relevancia" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="100" COMMENT="Relevance weight of the link"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="queart" UNIQUE="true" FIELDS="questionid, articulo_id"/>
+        <INDEX NAME="que" UNIQUE="false" FIELDS="questionid"/>
+        <INDEX NAME="art" UNIQUE="false" FIELDS="articulo_id"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>

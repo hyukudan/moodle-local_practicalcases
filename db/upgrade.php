@@ -459,5 +459,28 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026061500, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071200) {
+        // Register the pre-existing ad-hoc table local_cp_question_normativa
+        // (CP question -> normativa article link, populated by local_normativa
+        // tooling) so the schema is versioned. No-op where it already exists.
+        $table = new xmldb_table('local_cp_question_normativa');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('articulo_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('relevancia', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '100');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('queart', XMLDB_INDEX_UNIQUE, ['questionid', 'articulo_id']);
+            $table->add_index('que', XMLDB_INDEX_NOTUNIQUE, ['questionid']);
+            $table->add_index('art', XMLDB_INDEX_NOTUNIQUE, ['articulo_id']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071200, 'local', 'casospracticos');
+    }
+
     return true;
 }
