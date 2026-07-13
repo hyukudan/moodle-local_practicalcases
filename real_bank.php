@@ -4240,14 +4240,17 @@ if (!$cases) {
 } else {
     echo html_writer::start_div('cp-real-grid');
     foreach ($cases as $case) {
-        $viewurl = new moodle_url('/local/casospracticos/case_view.php', ['id' => $case->id]);
+        $previewurl = new moodle_url('/local/casospracticos/case_view.php', [
+            'id' => $case->id,
+            'preview' => 1,
+        ]);
         $practiceurl = new moodle_url('/local/casospracticos/practice.php', ['id' => $case->id]);
         $timedurl = new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $case->id]);
 
         echo html_writer::start_div('cp-real-card');
         $badge = local_cp_real_bank_card_badge($case->tags);
         echo html_writer::start_div('cp-real-card-head');
-        echo html_writer::tag('h4', html_writer::link($viewurl, format_string($case->name)));
+        echo html_writer::tag('h4', html_writer::link($previewurl, format_string($case->name)));
         if ($badge !== '') {
             echo html_writer::span(s($badge), 'cp-real-card-badge');
         }
@@ -4265,7 +4268,7 @@ if (!$cases) {
         echo html_writer::start_div('cp-real-actions');
         echo html_writer::link($practiceurl, 'Practicar', ['class' => 'cp-real-primary']);
         echo html_writer::link($timedurl, 'Cronometrado', ['class' => 'cp-real-secondary']);
-        echo html_writer::link($viewurl, 'Ver supuesto', ['class' => 'cp-real-secondary']);
+        echo html_writer::link($previewurl, 'Ver supuesto', ['class' => 'cp-real-secondary']);
         echo html_writer::end_div();
         echo html_writer::end_div();
     }

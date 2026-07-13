@@ -33,6 +33,7 @@ $id = required_param('id', PARAM_INT);
 $action = optional_param('action', '', PARAM_ALPHA);
 $questionid = optional_param('questionid', 0, PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_BOOL);
+$preview = optional_param('preview', 0, PARAM_BOOL);
 
 // Context and access.
 $context = context_system::instance();
@@ -52,7 +53,11 @@ $category = category_manager::get($case->categoryid);
 
 // Page setup.
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/casospracticos/case_view.php', ['id' => $id]));
+$pageurlparams = ['id' => $id];
+if ($preview) {
+    $pageurlparams['preview'] = 1;
+}
+$PAGE->set_url(new moodle_url('/local/casospracticos/case_view.php', $pageurlparams));
 $PAGE->set_title(format_string($case->name));
 $PAGE->set_heading(get_string('pluginname', 'local_casospracticos'));
 $PAGE->set_pagelayout('admin');
@@ -260,6 +265,12 @@ if (!empty($attachments)) {
     echo html_writer::end_tag('ul');
     echo html_writer::end_div(); // card-body
     echo html_writer::end_div(); // card
+}
+
+if ($preview) {
+    // The real bank's "Ver supuesto" route must never expose answer keys or feedback.
+    echo $OUTPUT->footer();
+    exit;
 }
 
 // Questions.
