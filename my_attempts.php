@@ -32,7 +32,6 @@ $perpage = 20;
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
 
 $case = null;
 if ($caseid) {

@@ -38,7 +38,6 @@ $sessiontoken = optional_param('token', '', PARAM_ALPHANUM);
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
 
 $case = case_manager::get($caseid);
 if (!$case) {

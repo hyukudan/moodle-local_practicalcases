@@ -38,7 +38,6 @@ $preview = optional_param('preview', 0, PARAM_BOOL);
 // Context and access.
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
 
 // Load case.
 $case = case_manager::get_with_questions($id);

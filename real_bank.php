@@ -28,7 +28,6 @@ require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 require_login();
 
 $context = context_system::instance();
-require_capability('local/casospracticos:view', $context);
 
 $territory = optional_param('territory', '', PARAM_ALPHANUMEXT);
 $area = optional_param('area', '', PARAM_ALPHANUMEXT);

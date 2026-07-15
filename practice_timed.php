@@ -48,7 +48,6 @@ $timelimit = max($mintimelimit, min($maxtimelimit, $timelimit));
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
 
 $case = case_manager::get($caseid);
 if (!$case) {
