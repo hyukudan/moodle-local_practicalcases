@@ -188,6 +188,7 @@
                     {{{questiontext}}}
                 </div>
 
+                {{#canviewanswers}}
                 {{#hasanswers}}
                 <ul class="list-group" role="list" aria-label="{{#str}}answers, local_casospracticos{{/str}}">
                     {{#answers}}
@@ -220,6 +221,7 @@
 
                 {{! Canonical solution feedback + normativa links, pre-rendered in PHP }}
                 {{{solutionhtml}}}
+                {{/canviewanswers}}
             </div>
         </article>
         {{/questions}}

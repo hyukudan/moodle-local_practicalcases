@@ -142,6 +142,8 @@ $statusclassmap = [
 ];
 
 $canedit = has_capability('local/casospracticos:edit', $context);
+$canviewanswers = has_capability('local/casospracticos:viewanswers', $context)
+    || case_manager::can_view_unpublished($context);
 $hasquestions = !empty($case->questions);
 $numquestions = count($case->questions);
 
@@ -249,13 +251,19 @@ if ($showquestions && $hasquestions) {
 
     // Performance: pre-load all answers and normativa links to avoid N+1 queries.
     $questionids = array_column($case->questions, 'id');
-    $allanswers = question_manager::get_answers_for_questions($questionids);
-    $allnormativa = local_casospracticos_get_normativa_links($questionids);
+    // Answer keys, feedback and legal-basis links are privileged editorial data.
+    // Do not even load them for an ordinary learner opening the case statement.
+    $allanswers = $canviewanswers
+        ? question_manager::get_answers_for_questions($questionids)
+        : [];
+    $allnormativa = $canviewanswers
+        ? local_casospracticos_get_normativa_links($questionids)
+        : [];
 
     foreach ($case->questions as $index => $question) {
         // Answers.
         $answersdata = [];
-        $answers = $allanswers[$question->id] ?? [];
+        $answers = $canviewanswers ? ($allanswers[$question->id] ?? []) : [];
         foreach ($answers as $answer) {
             $answersdata[] = [
                 'id' => $answer->id,
@@ -269,8 +277,10 @@ if ($showquestions && $hasquestions) {
         }
 
         // Canonical solution feedback + normativa panel (pre-rendered HTML).
-        $qnormativa = $allnormativa[$question->id] ?? [];
-        $solutionhtml = local_casospracticos_render_solution_feedback($question, $qnormativa);
+        $qnormativa = $canviewanswers ? ($allnormativa[$question->id] ?? []) : [];
+        $solutionhtml = $canviewanswers
+            ? local_casospracticos_render_solution_feedback($question, $qnormativa)
+            : '';
 
         $qdata = [
             'id' => $question->id,
@@ -281,6 +291,7 @@ if ($showquestions && $hasquestions) {
             'answers' => $answersdata,
             'hasanswers' => !empty($answersdata),
             'solutionhtml' => $solutionhtml,
+            'canviewanswers' => $canviewanswers,
             'canedit' => $canedit,
         ];
 
