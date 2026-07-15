@@ -535,7 +535,9 @@ function local_casospracticos_render_upgrade_cta(): string {
     $buyurl = new moodle_url('/enrol/index.php', ['id' => $courseid]);
     $body = html_writer::tag('h5', get_string('cta:solutionlocked_title', 'local_casospracticos'));
     $body .= html_writer::tag('p', get_string('cta:solutionlocked_body', 'local_casospracticos'));
-    $body .= $OUTPUT->single_button($buyurl, get_string('cta:unlock', 'local_casospracticos'), 'get',
-        ['class' => 'btn-primary']);
+    $body .= html_writer::link($buyurl,
+        $OUTPUT->pix_icon('t/unlock', '', 'moodle', ['aria-hidden' => 'true']) . ' '
+            . get_string('cta:unlock', 'local_casospracticos'),
+        ['class' => 'btn btn-primary']);
     return html_writer::div($body, 'alert alert-warning cp-upgrade-cta mt-4');
 }

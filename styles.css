@@ -405,3 +405,11 @@ pre.bg-light {
         grid-template-columns: 1fr;
     }
 }
+
+/* ====== Action toolbar (index.php) ====== */
+
+.cp-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* ====== Access / purchase CTA (access.php) ====== */
+
+.cp-access-cta { max-width: 640px; }

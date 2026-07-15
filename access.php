@@ -50,7 +50,7 @@ $buyurl = new moodle_url('/enrol/index.php', ['id' => $courseid]);
 
 echo $OUTPUT->header();
 
-echo html_writer::start_div('cp-access-cta card mx-auto', ['style' => 'max-width: 640px;']);
+echo html_writer::start_div('cp-access-cta card mx-auto');
 echo html_writer::start_div('card-body text-center p-5');
 echo html_writer::tag('div',
     $OUTPUT->pix_icon('i/lock', '', 'moodle', ['class' => 'fa-3x text-warning']),
@@ -59,8 +59,10 @@ echo $OUTPUT->heading(get_string('access:required_title', 'local_casospracticos'
 echo html_writer::tag('p',
     get_string('access:required_body', 'local_casospracticos', $totalcases),
     ['class' => 'lead']);
-echo $OUTPUT->single_button($buyurl, get_string('access:goto', 'local_casospracticos'), 'get',
-    ['class' => 'btn-primary btn-lg']);
+echo html_writer::link($buyurl,
+    $OUTPUT->pix_icon('i/lock', '', 'moodle', ['aria-hidden' => 'true']) . ' '
+        . get_string('access:goto', 'local_casospracticos'),
+    ['class' => 'btn btn-primary btn-lg']);
 echo html_writer::end_div();
 echo html_writer::end_div();
 
