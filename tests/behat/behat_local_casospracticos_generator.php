@@ -135,6 +135,7 @@ class behat_local_casospracticos_generator extends behat_generator_base {
         $record->single = $data['single'] ?? 1;
         $record->shuffleanswers = $data['shuffleanswers'] ?? 1;
         $record->generalfeedback = $data['generalfeedback'] ?? '';
+        $record->feedbackstatus = $data['feedbackstatus'] ?? 'legacy';
 
         // Add default answers for multichoice.
         if ($record->qtype === 'multichoice' && empty($data['answers'])) {

@@ -65,3 +65,47 @@ Feature: Practice mode for practical cases
     And I press "Submit"
     When I click on "Try again" "button"
     Then I should see "What is 2 + 2?"
+
+  @javascript
+  Scenario: Ordinary case view never reveals answer keys
+    Given the following "local_casospracticos > answers" exist:
+      | question       | answer                  | fraction |
+      | What is 2 + 2? | SECRET CASE ANSWER KEY  | 1        |
+    And I log in as "student1"
+    When I navigate to "Plugins > Local plugins > Manage practical cases" in site administration
+    And I click on "Test Case" "link"
+    Then I should see "What is 2 + 2?"
+    And I should not see "SECRET CASE ANSWER KEY"
+    And I should see "Practice" in the ".case-actions" "css_element"
+
+  @javascript
+  Scenario: Essay submission is pending manual grading instead of failed
+    Given the following "local_casospracticos > cases" exist:
+      | name       | category      | statement              | status    |
+      | Essay Case | Test Category | Explain your reasoning | published |
+    And the following "local_casospracticos > questions" exist:
+      | case       | questiontext        | qtype |
+      | Essay Case | Give a reasoned view | essay |
+    And I log in as "student1"
+    When I navigate to "Plugins > Local plugins > Manage practical cases" in site administration
+    And I click on "Essay Case" "link"
+    And I click on "Practice" "link"
+    And I set the field "Your answer" to "My reasoned response"
+    And I press "Submit"
+    Then I should see "pending manual grading"
+    And I should not see "0%"
+
+  @javascript
+  Scenario: Blocked questions are absent from learner practice
+    Given the following "local_casospracticos > cases" exist:
+      | name         | category      | statement         | status    |
+      | Blocked Case | Test Category | Safe statement    | published |
+    And the following "local_casospracticos > questions" exist:
+      | case         | questiontext              | qtype       | feedbackstatus |
+      | Blocked Case | UNSAFE BLOCKED QUESTION   | multichoice | blocked        |
+      | Blocked Case | Safe visible question     | multichoice | verified       |
+    And I log in as "student1"
+    When I navigate to "Plugins > Local plugins > Manage practical cases" in site administration
+    And I click on "Blocked Case" "link"
+    Then I should see "Safe visible question"
+    And I should not see "UNSAFE BLOCKED QUESTION"
