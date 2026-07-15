@@ -521,5 +521,37 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071500, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071600) {
+        // Persist manual-grading state instead of representing essays as failed 0/0 attempts.
+        $attempttable = new xmldb_table('local_cp_practice_attempts');
+        $gradingstatus = new xmldb_field('gradingstatus', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'auto', 'percentage');
+        if (!$dbman->field_exists($attempttable, $gradingstatus)) {
+            $dbman->add_field($attempttable, $gradingstatus);
+        }
+        $percentage = new xmldb_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null,
+            null, null, null, 'maxscore');
+        $dbman->change_field_notnull($attempttable, $percentage);
+
+        $responsetable = new xmldb_table('local_cp_practice_responses');
+        $requiresgrading = new xmldb_field('requiresgrading', XMLDB_TYPE_INTEGER, '1', null,
+            XMLDB_NOTNULL, null, '0', 'iscorrect');
+        if (!$dbman->field_exists($responsetable, $requiresgrading)) {
+            $dbman->add_field($responsetable, $requiresgrading);
+        }
+
+        $timedtable = new xmldb_table('local_cp_timed_attempts');
+        $timedgradingstatus = new xmldb_field('gradingstatus', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'auto', 'percentage');
+        if (!$dbman->field_exists($timedtable, $timedgradingstatus)) {
+            $dbman->add_field($timedtable, $timedgradingstatus);
+        }
+        $timedpercentage = new xmldb_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null,
+            null, null, null, 'maxscore');
+        $dbman->change_field_notnull($timedtable, $timedpercentage);
+
+        upgrade_plugin_savepoint(true, 2026071600, 'local', 'casospracticos');
+    }
+
     return true;
 }

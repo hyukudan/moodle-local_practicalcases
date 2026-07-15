@@ -64,7 +64,14 @@ $PAGE->navbar->add(format_string($case->name),
 $PAGE->navbar->add(get_string('practice', 'local_casospracticos'));
 
 // Get questions with answers.
-$questions = question_manager::get_by_case_with_answers($caseid);
+$questions = question_manager::filter_practice_questions(
+    question_manager::get_by_case_with_answers($caseid)
+);
+$unsupportedqtypes = question_manager::unsupported_practice_qtypes($questions);
+if ($unsupportedqtypes) {
+    throw new moodle_exception('error:unsupportedpracticeqtype', 'local_casospracticos', '',
+        implode(', ', $unsupportedqtypes));
+}
 
 // Handle session-based question order (secure implementation).
 if ($shuffle && !$submit && empty($sessiontoken)) {
@@ -136,9 +143,11 @@ if ($submit) {
             'selected' => $res->selectedids ?? ($res->response ?? ''),
             'score' => $res->score ?? 0,
             'correct' => $res->correct ?? false,
+            'requiresgrading' => $res->requiresgrading ?? false,
         ];
     }
-    stats_manager::record_practice_attempt($caseid, $USER->id, $score, $maxscore, $responsedata);
+    stats_manager::record_practice_attempt($caseid, $USER->id, $score, $maxscore, $responsedata,
+        $submission['gradingstatus']);
 
     // Clean up session after attempt is completed.
     if (!empty($sessiontoken)) {
@@ -160,17 +169,23 @@ echo html_writer::div(
 // Results summary if submitted.
 if ($submit) {
     $percentage = $submission['percentage'];
-    $alertclass = $percentage >= 70 ? 'alert-success' : ($percentage >= 50 ? 'alert-warning' : 'alert-danger');
+    $needsgrading = $submission['gradingstatus'] === 'needsgrading';
+    $alertclass = $needsgrading
+        ? 'alert-info'
+        : ($percentage >= 70 ? 'alert-success' : ($percentage >= 50 ? 'alert-warning' : 'alert-danger'));
 
     echo html_writer::start_div('alert ' . $alertclass);
     echo html_writer::tag('h4', get_string('results', 'local_casospracticos'));
-    echo html_writer::tag('p',
-        get_string('yourscoreis', 'local_casospracticos', [
+    if ($needsgrading) {
+        echo html_writer::tag('strong', get_string('pendingmanualgrading', 'local_casospracticos'));
+        echo html_writer::tag('p', get_string('pendingmanualgrading_desc', 'local_casospracticos'), ['class' => 'mb-0']);
+    } else {
+        echo html_writer::tag('p', get_string('yourscoreis', 'local_casospracticos', [
             'score' => round($score, 2),
             'max' => round($maxscore, 2),
             'percentage' => $percentage
-        ])
-    );
+        ]));
+    }
     echo html_writer::end_div();
 }
 
@@ -191,7 +206,9 @@ foreach ($questions as $question) {
     $result = $results[$question->id] ?? null;
 
     $cardclass = 'card mb-3';
-    if ($result) {
+    if ($result && !empty($result->requiresgrading)) {
+        $cardclass .= ' border-info';
+    } else if ($result) {
         $cardclass .= $result->correct ? ' border-success' : ' border-danger';
     }
 
@@ -199,7 +216,9 @@ foreach ($questions as $question) {
 
     // Question header.
     $headerclass = 'card-header';
-    if ($result) {
+    if ($result && !empty($result->requiresgrading)) {
+        $headerclass .= ' bg-info text-dark';
+    } else if ($result) {
         $headerclass .= $result->correct ? ' bg-success text-white' : ' bg-danger text-white';
     }
     echo html_writer::start_div($headerclass);
@@ -351,6 +370,23 @@ foreach ($questions as $question) {
                 }
             }
         }
+    } else if ($question->qtype === 'essay') {
+        $value = $result->response ?? '';
+        echo html_writer::tag('label', get_string('youranswer', 'local_casospracticos'), [
+            'for' => $paramname,
+            'class' => 'form-label',
+        ]);
+        $essayattrs = [
+            'id' => $paramname,
+            'name' => $paramname,
+            'class' => 'form-control',
+            'rows' => 8,
+        ];
+        if ($submit) {
+            $essayattrs['disabled'] = 'disabled';
+        }
+        echo html_writer::tag('textarea', s($value), $essayattrs);
+        echo html_writer::div(get_string('essaymanualgrading', 'local_casospracticos'), 'form-text');
     }
 
     if ($result) {
@@ -412,14 +448,17 @@ if ($DB->get_manager()->table_exists('local_cp_practice_attempts')) {
 
         $attemptnum = count($myattempts);
         foreach ($myattempts as $attempt) {
-            $scoreclass = $attempt->percentage >= 70 ? 'text-success' :
-                         ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger');
+            $needsgrading = ($attempt->gradingstatus ?? 'auto') === 'needsgrading';
+            $scoreclass = $needsgrading ? 'text-info' : ($attempt->percentage >= 70 ? 'text-success' :
+                         ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger'));
             $reviewurl = new moodle_url('/local/casospracticos/review_attempt.php', ['id' => $attempt->id]);
 
             $table->data[] = [
                 $attemptnum--,
                 userdate($attempt->timefinished, get_string('strftimedatetime', 'langconfig')),
-                html_writer::tag('span', round($attempt->percentage) . '%', ['class' => $scoreclass]),
+                html_writer::tag('span', $needsgrading
+                    ? get_string('pendingmanualgrading', 'local_casospracticos')
+                    : round($attempt->percentage) . '%', ['class' => $scoreclass]),
                 html_writer::link($reviewurl, get_string('review', 'local_casospracticos'), ['class' => 'btn btn-sm btn-outline-primary']),
             ];
         }

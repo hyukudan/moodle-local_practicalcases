@@ -58,7 +58,9 @@ class timed_attempt_manager {
         self::cleanup_unfinished_attempts($caseid, $userid);
 
         // Get questions and shuffle them.
-        $questions = array_values(question_manager::get_by_case($caseid));
+        $questions = array_values(question_manager::filter_practice_questions(
+            question_manager::get_by_case($caseid)
+        ));
         shuffle($questions);
         $questionids = array_map(function($q) {
             return (int) $q->id;
@@ -107,6 +109,72 @@ class timed_attempt_manager {
     }
 
     /**
+     * Finalize an expired attempt from its last autosaved responses.
+     *
+     * This transition is server-authoritative and intentionally does not need
+     * a browser sesskey: ownership, current status and deadline are all checked
+     * here, and finish_attempt() performs an idempotent conditional update.
+     *
+     * @param int $attemptid Attempt ID.
+     * @param int $userid Expected owner.
+     * @return bool True when the attempt is finalized (including a lost race).
+     */
+    public static function finalize_expired_attempt(int $attemptid, int $userid): bool {
+        $attempt = self::get_attempt($attemptid);
+        if (!$attempt || (int) $attempt->userid !== $userid) {
+            return false;
+        }
+        if ($attempt->status !== self::STATUS_INPROGRESS) {
+            return $attempt->status === self::STATUS_FINISHED;
+        }
+        if ((int) $attempt->timestarted + (int) $attempt->timelimit > time()) {
+            return false;
+        }
+
+        $questions = array_values(question_manager::filter_practice_questions(
+            question_manager::get_by_case_with_answers((int) $attempt->caseid)
+        ));
+        $questionorder = json_decode($attempt->questionorder ?? '', true);
+        if (is_array($questionorder) && $questionorder) {
+            $byid = [];
+            foreach ($questions as $question) {
+                $byid[(int) $question->id] = $question;
+            }
+            $ordered = [];
+            foreach ($questionorder as $questionid) {
+                if (isset($byid[(int) $questionid])) {
+                    $ordered[] = $byid[(int) $questionid];
+                }
+            }
+            $questions = $ordered;
+        }
+
+        $saved = self::get_saved_responses($attemptid);
+        $submissiondata = [];
+        foreach ($questions as $question) {
+            if (array_key_exists((string) $question->id, $saved)
+                    || array_key_exists((int) $question->id, $saved)) {
+                $submissiondata['q' . $question->id] = $saved[$question->id];
+            }
+        }
+        $scored = practice_engine::score_submission($questions, $submissiondata);
+        $responsedata = [];
+        foreach ($scored['results'] as $questionid => $result) {
+            $responsedata[$questionid] = [
+                'selected' => $result->selectedids ?? ($result->response ?? ''),
+                'score' => $result->score ?? 0,
+                'correct' => $result->correct ?? false,
+                'requiresgrading' => $result->requiresgrading ?? false,
+            ];
+        }
+
+        self::finish_attempt($attemptid, $scored['score'], $scored['maxscore'], $responsedata,
+            (int) $attempt->timelimit, $scored['gradingstatus']);
+        $final = self::get_attempt($attemptid);
+        return $final && $final->status === self::STATUS_FINISHED;
+    }
+
+    /**
      * Finish an attempt.
      *
      * @param int $attemptid Attempt ID
@@ -114,8 +182,10 @@ class timed_attempt_manager {
      * @param float $maxscore Maximum possible score
      * @param array $responsedata Response data
      * @param int $timespent Time spent in seconds
+     * @param string $gradingstatus auto, needsgrading or graded.
      */
-    public static function finish_attempt(int $attemptid, float $score, float $maxscore, array $responsedata, int $timespent): void {
+    public static function finish_attempt(int $attemptid, float $score, float $maxscore, array $responsedata,
+            int $timespent, string $gradingstatus = 'auto'): void {
         global $DB;
 
         $attempt = self::get_attempt($attemptid);
@@ -130,7 +200,12 @@ class timed_attempt_manager {
             return;
         }
 
-        $percentage = $maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0;
+        if (!in_array($gradingstatus, ['auto', 'needsgrading', 'graded'], true)) {
+            throw new \coding_exception('Invalid timed attempt grading status');
+        }
+        $percentage = $gradingstatus === 'needsgrading'
+            ? null
+            : ($maxscore > 0 ? round(($score / $maxscore) * 100, 2) : 0);
 
         // Conditional update: only the request that finds the row still in
         // progress wins the transition. We pre-count, run a status-guarded
@@ -153,6 +228,7 @@ class timed_attempt_manager {
                     score = :score,
                     maxscore = :maxscore,
                     percentage = :percentage,
+                    gradingstatus = :gradingstatus,
                     responses = :responses,
                     timesubmitted = :timesubmitted
               WHERE id = :id AND status = :oldstatus',
@@ -161,6 +237,7 @@ class timed_attempt_manager {
                 'score' => $score,
                 'maxscore' => $maxscore,
                 'percentage' => $percentage,
+                'gradingstatus' => $gradingstatus,
                 'responses' => json_encode($responsedata),
                 'timesubmitted' => $now,
                 'id' => $attemptid,
@@ -181,11 +258,13 @@ class timed_attempt_manager {
             $attempt->userid,
             $score,
             $maxscore,
-            $responsedata
+            $responsedata,
+            $gradingstatus
         );
 
         // Trigger event.
-        $event = \local_casospracticos\event\timed_attempt_submitted::create([
+        if ($gradingstatus !== 'needsgrading') {
+            $event = \local_casospracticos\event\timed_attempt_submitted::create([
             'context' => \context_system::instance(),
             'objectid' => $attemptid,
             'userid' => $attempt->userid,
@@ -196,8 +275,9 @@ class timed_attempt_manager {
                 'percentage' => $percentage,
                 'timespent' => $timespent,
             ],
-        ]);
-        $event->trigger();
+            ]);
+            $event->trigger();
+        }
     }
 
     /**
@@ -271,16 +351,13 @@ class timed_attempt_manager {
         $sql = 'status = :status AND (timestarted + timelimit) < :now';
         $params = ['status' => self::STATUS_INPROGRESS, 'now' => time()];
 
-        $count = $DB->count_records_select(self::TABLE, $sql, $params);
-
-        $DB->set_field_select(
-            self::TABLE,
-            'status',
-            self::STATUS_EXPIRED,
-            $sql,
-            $params
-        );
-
+        $attempts = $DB->get_records_select(self::TABLE, $sql, $params, '', 'id, userid');
+        $count = 0;
+        foreach ($attempts as $attempt) {
+            if (self::finalize_expired_attempt((int) $attempt->id, (int) $attempt->userid)) {
+                $count++;
+            }
+        }
         return $count;
     }
 

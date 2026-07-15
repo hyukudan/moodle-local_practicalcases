@@ -72,20 +72,28 @@ echo html_writer::tag('h2', get_string('timedresults', 'local_casospracticos'));
 echo html_writer::tag('h4', format_string($case->name), ['class' => 'mb-3']);
 
 // Score summary.
-$percentage = round($attempt->percentage, 1);
+$needsgrading = ($attempt->gradingstatus ?? 'auto') === 'needsgrading';
+$percentage = $needsgrading ? null : round($attempt->percentage, 1);
 $passthreshold = get_config('local_casospracticos', 'passthreshold') ?: 70;
-$passed = $percentage >= $passthreshold;
+$passed = !$needsgrading && $percentage >= $passthreshold;
 
-$alertclass = $passed ? 'alert-success' : 'alert-danger';
+$alertclass = $needsgrading ? 'alert-info' : ($passed ? 'alert-success' : 'alert-danger');
 echo html_writer::start_div('alert ' . $alertclass);
 
-echo html_writer::tag('h3', get_string('yourscore', 'local_casospracticos') . ': ' . $percentage . '%');
-echo html_writer::tag('p', get_string('scoredetail', 'local_casospracticos', [
-    'score' => round($attempt->score, 2),
-    'maxscore' => round($attempt->maxscore, 2)
-]));
+if ($needsgrading) {
+    echo html_writer::tag('h3', get_string('pendingmanualgrading', 'local_casospracticos'));
+    echo html_writer::tag('p', get_string('pendingmanualgrading_desc', 'local_casospracticos'));
+} else {
+    echo html_writer::tag('h3', get_string('yourscore', 'local_casospracticos') . ': ' . $percentage . '%');
+    echo html_writer::tag('p', get_string('scoredetail', 'local_casospracticos', [
+        'score' => round($attempt->score, 2),
+        'maxscore' => round($attempt->maxscore, 2)
+    ]));
+}
 
-if ($passed) {
+if ($needsgrading) {
+    // Pending status above is the complete result until a teacher grades it.
+} else if ($passed) {
     echo html_writer::tag('p', get_string('congratspassed', 'local_casospracticos'), ['class' => 'mb-0']);
 } else {
     echo html_writer::tag('p', get_string('notpassedyet', 'local_casospracticos', $passthreshold), ['class' => 'mb-0']);
@@ -125,6 +133,10 @@ if (!is_array($responsedata)) {
     $responsedata = [];
 }
 $questions = question_manager::get_by_case_with_answers($attempt->caseid);
+if (!has_capability('local/casospracticos:review', $context)
+        && !has_capability('local/casospracticos:edit', $context)) {
+    $questions = question_manager::filter_practice_questions($questions);
+}
 
 // Reorder according to the order persisted on the attempt.
 $questionorder = json_decode($attempt->questionorder ?? '', true);
@@ -162,14 +174,15 @@ foreach ($questions as $question) {
         continue;
     }
 
+    $requiresgrading = !empty($qresult['requiresgrading']);
     $correct = $qresult['correct'] ?? false;
-    $cardclass = $correct ? 'border-success' : 'border-danger';
+    $cardclass = $requiresgrading ? 'border-info' : ($correct ? 'border-success' : 'border-danger');
 
     echo html_writer::start_div('card mb-3 ' . $cardclass);
     echo html_writer::start_div('card-body');
 
-    $icon = $correct ? '✓' : '✗';
-    $iconclass = $correct ? 'text-success' : 'text-danger';
+    $icon = $requiresgrading ? '⏳' : ($correct ? '✓' : '✗');
+    $iconclass = $requiresgrading ? 'text-info' : ($correct ? 'text-success' : 'text-danger');
     echo html_writer::tag('h5',
         html_writer::tag('span', $icon, ['class' => $iconclass . ' me-2']) .
         get_string('questionx', 'local_casospracticos', $qnum),
@@ -185,7 +198,10 @@ foreach ($questions as $question) {
     echo html_writer::tag('strong', get_string('youranswer', 'local_casospracticos') . ':');
     echo html_writer::start_tag('ul', ['class' => 'mb-2']);
 
-    if (is_array($qresult['selected'])) {
+    if ($question->qtype === 'essay') {
+        echo html_writer::tag('li', nl2br(s((string) ($qresult['selected'] ?? ''))),
+            ['style' => 'white-space: pre-wrap;']);
+    } else if (is_array($qresult['selected'])) {
         foreach ($qresult['selected'] as $answerid) {
             foreach ($question->answers as $answer) {
                 if ($answer->id == $answerid) {
@@ -209,7 +225,7 @@ foreach ($questions as $question) {
     echo html_writer::end_tag('ul');
 
     // Show correct answers if wrong.
-    if (!$correct) {
+    if (!$correct && !$requiresgrading) {
         echo html_writer::tag('strong', get_string('correctanswer', 'local_casospracticos') . ':');
         echo html_writer::start_tag('ul');
 
@@ -229,11 +245,11 @@ foreach ($questions as $question) {
     echo local_casospracticos_render_solution_feedback($question, $qnormativa);
 
     // Score for this question.
-    echo html_writer::tag('p',
-        get_string('questionscore', 'local_casospracticos') . ': ' .
-        round($qresult['score'], 2) . ' / ' . $question->defaultmark,
-        ['class' => 'mb-0 text-muted']
-    );
+    echo html_writer::tag('p', $requiresgrading
+        ? get_string('pendingmanualgrading', 'local_casospracticos')
+        : get_string('questionscore', 'local_casospracticos') . ': ' .
+            round($qresult['score'], 2) . ' / ' . $question->defaultmark,
+        ['class' => 'mb-0 text-muted']);
 
     echo html_writer::end_div();
     echo html_writer::end_div();

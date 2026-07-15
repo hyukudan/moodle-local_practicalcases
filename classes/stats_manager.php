@@ -50,7 +50,8 @@ class stats_manager {
             $sql = "SELECT COUNT(*) as attempts,
                            COALESCE(AVG(percentage), 0) as avg_score
                     FROM {local_cp_practice_attempts}
-                    WHERE caseid = :caseid AND status = 'finished'";
+                    WHERE caseid = :caseid AND status = 'finished'
+                      AND gradingstatus <> 'needsgrading'";
             $practice = $DB->get_record_sql($sql, ['caseid' => $caseid]);
             $stats->practice_attempts = $practice->attempts ?? 0;
             $stats->avg_score = $practice->avg_score ?? 0;
@@ -180,6 +181,7 @@ class stats_manager {
                 FROM {local_cp_practice_attempts} a
                 JOIN {user} u ON u.id = a.userid
                 WHERE a.caseid = :caseid AND a.status = 'finished'
+                  AND a.gradingstatus <> 'needsgrading'
                 ORDER BY a.timefinished DESC";
 
         return $DB->get_records_sql($sql, ['caseid' => $caseid], 0, $limit);
@@ -219,6 +221,7 @@ class stats_manager {
                         END as score_range
                     FROM {local_cp_practice_attempts}
                     WHERE caseid = :caseid AND status = 'finished'
+                      AND gradingstatus <> 'needsgrading'
                 ) sub
                 GROUP BY score_range";
 
@@ -311,10 +314,11 @@ class stats_manager {
      * @param float $score Score obtained.
      * @param float $maxscore Maximum score.
      * @param array $responses Question responses.
+     * @param string $gradingstatus auto, needsgrading or graded.
      * @return int Attempt ID.
      */
     public static function record_practice_attempt(int $caseid, int $userid, float $score,
-            float $maxscore, array $responses): int {
+            float $maxscore, array $responses, string $gradingstatus = 'auto'): int {
         global $DB;
 
         // Check if table exists.
@@ -322,7 +326,12 @@ class stats_manager {
             return 0;
         }
 
-        $percentage = $maxscore > 0 ? ($score / $maxscore) * 100 : 0;
+        if (!in_array($gradingstatus, ['auto', 'needsgrading', 'graded'], true)) {
+            throw new \coding_exception('Invalid practice grading status');
+        }
+        $percentage = $gradingstatus === 'needsgrading'
+            ? null
+            : ($maxscore > 0 ? ($score / $maxscore) * 100 : 0);
 
         $attempt = new \stdClass();
         $attempt->caseid = $caseid;
@@ -330,6 +339,7 @@ class stats_manager {
         $attempt->score = $score;
         $attempt->maxscore = $maxscore;
         $attempt->percentage = $percentage;
+        $attempt->gradingstatus = $gradingstatus;
         $attempt->status = 'finished';
         $attempt->timestarted = time() - 60; // Approximate.
         $attempt->timefinished = time();
@@ -348,6 +358,7 @@ class stats_manager {
                     json_encode($response['selected']) : $response['selected'];
                 $resp->score = $response['score'] ?? 0;
                 $resp->iscorrect = ($response['correct'] ?? false) ? 1 : 0;
+                $resp->requiresgrading = !empty($response['requiresgrading']) ? 1 : 0;
                 $resp->timecreated = time();
                 $records[] = $resp;
             }
@@ -356,14 +367,15 @@ class stats_manager {
             }
         }
 
-        // Trigger event.
-        $event = \local_casospracticos\event\practice_attempt_completed::create_from_attempt(
-            $attemptid, $caseid, $score, $maxscore, $percentage
-        );
-        $event->trigger();
-
-        // Check for achievements (optional gamification).
-        achievements_manager::check_achievements($userid, $caseid, $percentage);
+        // A submission awaiting a teacher is not a completed graded attempt:
+        // exclude it from completion events, achievements and score statistics.
+        if ($gradingstatus !== 'needsgrading') {
+            $event = \local_casospracticos\event\practice_attempt_completed::create_from_attempt(
+                $attemptid, $caseid, $score, $maxscore, $percentage
+            );
+            $event->trigger();
+            achievements_manager::check_achievements($userid, $caseid, $percentage);
+        }
 
         return $attemptid;
     }

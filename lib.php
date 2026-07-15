@@ -68,6 +68,7 @@ function local_casospracticos_get_supported_qtypes(): array {
         'multichoice' => get_string('qtype_multichoice', 'local_casospracticos'),
         'truefalse' => get_string('qtype_truefalse', 'local_casospracticos'),
         'shortanswer' => get_string('qtype_shortanswer', 'local_casospracticos'),
+        'essay' => get_string('qtype_essay', 'local_casospracticos'),
     ];
 }
 

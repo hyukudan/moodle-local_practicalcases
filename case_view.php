@@ -144,6 +144,10 @@ $statusclassmap = [
 $canedit = has_capability('local/casospracticos:edit', $context);
 $canviewanswers = has_capability('local/casospracticos:viewanswers', $context)
     || case_manager::can_view_unpublished($context);
+$canreviewblocked = $canedit || has_capability('local/casospracticos:review', $context);
+if (!$canreviewblocked) {
+    $case->questions = question_manager::filter_practice_questions($case->questions);
+}
 $hasquestions = !empty($case->questions);
 $numquestions = count($case->questions);
 

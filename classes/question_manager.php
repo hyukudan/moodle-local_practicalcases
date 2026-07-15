@@ -208,6 +208,9 @@ class question_manager {
         $record->questiontext = $data->questiontext;
         $record->questiontextformat = $data->questiontextformat ?? FORMAT_HTML;
         $record->qtype = $data->qtype ?? self::QTYPE_MULTICHOICE;
+        if (!in_array($record->qtype, self::valid_qtypes(), true)) {
+            throw new \moodle_exception('error:invalidqtype', 'local_casospracticos');
+        }
         $record->defaultmark = $data->defaultmark ?? 1.0;
         $record->sortorder = $data->sortorder ?? self::get_next_sortorder($data->caseid);
         $record->generalfeedback = $data->generalfeedback ?? '';
@@ -786,8 +789,50 @@ class question_manager {
             self::QTYPE_TRUEFALSE,
             self::QTYPE_SHORTANSWER,
             self::QTYPE_ESSAY,
-            self::QTYPE_MATCHING,
         ];
+    }
+
+    /**
+     * Question types that have a complete render/submit/review contract.
+     *
+     * Matching is deliberately excluded until the plugin has a persisted
+     * subquestion model and matching controls in every practice surface.
+     *
+     * @return string[]
+     */
+    public static function practice_qtypes(): array {
+        return self::valid_qtypes();
+    }
+
+    /**
+     * Return unsupported types present in a practice question set.
+     *
+     * @param array $questions Question records.
+     * @return string[] Unique unsupported qtypes.
+     */
+    public static function unsupported_practice_qtypes(array $questions): array {
+        $unsupported = [];
+        foreach ($questions as $question) {
+            if (!in_array($question->qtype, self::practice_qtypes(), true)) {
+                $unsupported[$question->qtype] = $question->qtype;
+            }
+        }
+        return array_values($unsupported);
+    }
+
+    /**
+     * Remove editorially blocked items from every learner practice surface.
+     *
+     * A blocked question has no safe, unambiguous answer and therefore must not
+     * be rendered, submitted, or included in a score denominator.
+     *
+     * @param array $questions Question records.
+     * @return array Questions safe to present to learners, preserving keys.
+     */
+    public static function filter_practice_questions(array $questions): array {
+        return array_filter($questions, static function($question): bool {
+            return ($question->feedbackstatus ?? 'legacy') !== 'blocked';
+        });
     }
 
     /**

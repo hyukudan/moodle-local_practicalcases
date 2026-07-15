@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026071500" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026071600" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -190,7 +190,8 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
         <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Score obtained"/>
         <FIELD NAME="maxscore" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Maximum possible score"/>
-        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="true" DEFAULT="0" DECIMALS="2" COMMENT="Score percentage"/>
+        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="false" DECIMALS="2" COMMENT="Score percentage; null while manual grading is pending"/>
+        <FIELD NAME="gradingstatus" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="auto" COMMENT="auto, needsgrading, graded"/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="in_progress" COMMENT="in_progress, finished, abandoned"/>
         <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timefinished" TYPE="int" LENGTH="10" NOTNULL="false"/>
@@ -221,6 +222,7 @@
         <FIELD NAME="response" TYPE="text" NOTNULL="false" COMMENT="User response (JSON for multichoice)"/>
         <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5"/>
         <FIELD NAME="iscorrect" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="requiresgrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
       <KEYS>
@@ -286,7 +288,8 @@
         <FIELD NAME="timelimit" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1800" COMMENT="Time limit in seconds (default 30 min)"/>
         <FIELD NAME="score" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Score obtained"/>
         <FIELD NAME="maxscore" TYPE="number" LENGTH="12" NOTNULL="true" DEFAULT="0" DECIMALS="5" COMMENT="Maximum possible score"/>
-        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="true" DEFAULT="0" DECIMALS="2" COMMENT="Score percentage"/>
+        <FIELD NAME="percentage" TYPE="number" LENGTH="5" NOTNULL="false" DECIMALS="2" COMMENT="Score percentage; null while manual grading is pending"/>
+        <FIELD NAME="gradingstatus" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="auto" COMMENT="auto, needsgrading, graded"/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="inprogress" COMMENT="inprogress, finished, expired, abandoned"/>
         <FIELD NAME="responses" TYPE="text" NOTNULL="false" COMMENT="JSON of all question responses"/>
         <FIELD NAME="questionorder" TYPE="text" NOTNULL="false" COMMENT="JSON array of question IDs in shuffled presentation order"/>

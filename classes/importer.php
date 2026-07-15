@@ -50,7 +50,7 @@ class importer {
     const VALID_STATUSES = ['draft', 'pending_review', 'in_review', 'approved', 'published', 'archived'];
 
     /** @var array Valid question types. */
-    const VALID_QTYPES = ['multichoice', 'truefalse', 'shortanswer', 'essay', 'matching'];
+    const VALID_QTYPES = ['multichoice', 'truefalse', 'shortanswer', 'essay'];
 
     /** @var int Number of cases imported */
     private $casesimported = 0;
