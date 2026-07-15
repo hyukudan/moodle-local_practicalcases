@@ -616,3 +616,19 @@ $string['review_status_pending'] = 'Pendiente';
 $string['review_status_approved'] = 'Aprobado';
 $string['review_status_rejected'] = 'Rechazado';
 $string['review_status_revision_requested'] = 'Revisión solicitada';
+
+// Access control / paywall (central case bank).
+$string['cta:solutionlocked_title'] = 'Desbloquea la solución completa';
+$string['cta:solutionlocked_body'] = 'Con la versión de prueba puedes leer el enunciado de los casos. Para ver la solución razonada, el método y las claves de todas las preguntas, accede al curso completo de Casos Prácticos.';
+$string['cta:unlock'] = 'Ver el curso y desbloquear';
+$string['access:required_title'] = 'Contenido reservado a alumnos';
+$string['access:required_body'] = 'El banco de casos prácticos resueltos está disponible para los alumnos del curso de Casos Prácticos. Accede al curso para desbloquear los {$a} casos con sus soluciones.';
+$string['access:goto'] = 'Ir al curso de Casos Prácticos';
+$string['access:pagetitle'] = 'Acceso a Casos Prácticos';
+$string['settings:productcourseid'] = 'Curso del producto (gating)';
+$string['settings:productcourseid_desc'] = 'ID del curso cuya matrícula da acceso al banco central de casos prácticos. Por defecto 103.';
+$string['settings:trialaccess'] = 'Acceso de la versión de prueba';
+$string['settings:trialaccess_desc'] = 'Qué ve un alumno en prueba (matrícula self con customint6=1): solo el enunciado, la solución completa, o nada.';
+$string['settings:trialaccess_statement'] = 'Solo enunciado (recomendado)';
+$string['settings:trialaccess_full'] = 'Solución completa';
+$string['settings:trialaccess_none'] = 'Sin acceso';

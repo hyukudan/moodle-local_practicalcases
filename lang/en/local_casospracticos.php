@@ -607,3 +607,19 @@ $string['timer:warning1min'] = '1 minute remaining!';
 $string['timer:timeup'] = 'TIME UP!';
 $string['timer:autosubmitting'] = 'Time is up! Submitting your answers...';
 $string['timer:submityouranswers'] = 'Time is up! Please submit your answers.';
+
+// Access control / paywall (central case bank).
+$string['cta:solutionlocked_title'] = 'Unlock the full solution';
+$string['cta:solutionlocked_body'] = 'The trial lets you read the case statements. To see the reasoned solution, method and answer keys for every question, join the full Practical Cases course.';
+$string['cta:unlock'] = 'View the course and unlock';
+$string['access:required_title'] = 'Content reserved for students';
+$string['access:required_body'] = 'The bank of solved practical cases is available to students of the Practical Cases course. Enrol to unlock {$a} cases with their solutions.';
+$string['access:goto'] = 'Go to the Practical Cases course';
+$string['access:pagetitle'] = 'Practical Cases access';
+$string['settings:productcourseid'] = 'Product course (gating)';
+$string['settings:productcourseid_desc'] = 'ID of the course whose enrolment grants access to the central practical-case bank. Defaults to 103.';
+$string['settings:trialaccess'] = 'Trial access level';
+$string['settings:trialaccess_desc'] = 'What a trial student (self enrol with customint6=1) sees: statement only, full solution, or nothing.';
+$string['settings:trialaccess_statement'] = 'Statement only (recommended)';
+$string['settings:trialaccess_full'] = 'Full solution';
+$string['settings:trialaccess_none'] = 'No access';

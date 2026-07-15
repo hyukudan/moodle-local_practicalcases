@@ -39,6 +39,9 @@ $sessiontoken = optional_param('token', '', PARAM_ALPHANUM);
 $context = context_system::instance();
 require_login();
 
+// Practising reveals answer keys and feedback, so it requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
+
 $case = case_manager::get($caseid);
 if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');

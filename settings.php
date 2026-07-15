@@ -234,6 +234,35 @@ if ($hassiteconfig) {
         1
     ));
 
+    // Access control / paywall header.
+    $settings->add(new admin_setting_heading(
+        'local_casospracticos/accessheader',
+        get_string('access:pagetitle', 'local_casospracticos'),
+        ''
+    ));
+
+    // Product course whose enrolment gates the central bank.
+    $settings->add(new admin_setting_configtext(
+        'local_casospracticos/productcourseid',
+        get_string('settings:productcourseid', 'local_casospracticos'),
+        get_string('settings:productcourseid_desc', 'local_casospracticos'),
+        103,
+        PARAM_INT
+    ));
+
+    // Trial access level.
+    $settings->add(new admin_setting_configselect(
+        'local_casospracticos/trialaccess',
+        get_string('settings:trialaccess', 'local_casospracticos'),
+        get_string('settings:trialaccess_desc', 'local_casospracticos'),
+        'statement',
+        [
+            'statement' => get_string('settings:trialaccess_statement', 'local_casospracticos'),
+            'full' => get_string('settings:trialaccess_full', 'local_casospracticos'),
+            'none' => get_string('settings:trialaccess_none', 'local_casospracticos'),
+        ]
+    ));
+
     // Add link to manage cases.
     $ADMIN->add('localplugins', new admin_externalpage(
         'local_casospracticos_manage',
