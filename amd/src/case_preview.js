@@ -27,6 +27,9 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
 
     /**
      * Fetch case data via AJAX.
+     *
+     * @param {number} caseId Practical case ID.
+     * @return {Promise} Case data.
      */
     function fetchCase(caseId) {
         if (cache[caseId]) {
@@ -149,6 +152,8 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
 
     /**
      * Toggle preview for a case row.
+     *
+     * @param {HTMLElement} btn Preview toggle button.
      */
     function togglePreview(btn) {
         var caseId = parseInt(btn.getAttribute('data-caseid'), 10);

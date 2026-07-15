@@ -71,6 +71,78 @@ class question_manager_test extends advanced_testcase {
     }
 
     /**
+     * Structured feedback survives create and partial update.
+     */
+    public function test_structured_feedback_persistence(): void {
+        $this->setAdminUser();
+        $case = $this->get_generator()->create_case();
+
+        $questionid = question_manager::create((object) [
+            'caseid' => $case->id,
+            'questiontext' => 'Structured feedback question',
+            'reasoning' => '<p>Norma más hecho igual a consecuencia.</p>',
+            'modelanswer' => '<p>Esta es la respuesta que redactaría el alumno.</p>',
+            'feedbackstatus' => 'verified',
+            'feedbackverifiedat' => 123456789,
+        ]);
+
+        $question = question_manager::get($questionid);
+        $this->assertStringContainsString('Norma más hecho', $question->reasoning);
+        $this->assertStringContainsString('respuesta que redactaría', $question->modelanswer);
+        $this->assertEquals('verified', $question->feedbackstatus);
+        $this->assertEquals(123456789, $question->feedbackverifiedat);
+
+        question_manager::update((object) ['id' => $questionid, 'defaultmark' => 2]);
+        $updated = question_manager::get($questionid);
+        $this->assertEquals($question->reasoning, $updated->reasoning);
+        $this->assertEquals($question->modelanswer, $updated->modelanswer);
+        $this->assertEquals('verified', $updated->feedbackstatus);
+    }
+
+    /**
+     * A substantive edit invalidates verification, while a scoring-only edit does not.
+     */
+    public function test_substantive_question_edit_invalidates_verification(): void {
+        $this->setAdminUser();
+        $case = $this->get_generator()->create_case();
+        $questionid = question_manager::create((object) [
+            'caseid' => $case->id,
+            'questiontext' => 'Original facts',
+            'feedbackstatus' => 'verified',
+            'feedbackverifiedat' => 123456789,
+        ]);
+
+        question_manager::update((object) ['id' => $questionid, 'questiontext' => 'Changed facts']);
+        $updated = question_manager::get($questionid);
+        $this->assertEquals('needs_review', $updated->feedbackstatus);
+        $this->assertNull($updated->feedbackverifiedat);
+    }
+
+    /**
+     * Changing an option or its key invalidates verification.
+     */
+    public function test_answer_edit_invalidates_verification(): void {
+        $this->setAdminUser();
+        $case = $this->get_generator()->create_case();
+        $questionid = question_manager::create((object) [
+            'caseid' => $case->id,
+            'questiontext' => 'Choose',
+            'feedbackstatus' => 'verified',
+            'feedbackverifiedat' => 123456789,
+            'answers' => [
+                ['answer' => 'A', 'fraction' => 1.0],
+                ['answer' => 'B', 'fraction' => 0.0],
+            ],
+        ]);
+        $answer = reset(question_manager::get_answers($questionid));
+
+        question_manager::update_answer((object) ['id' => $answer->id, 'feedback' => '<p>Changed.</p>']);
+        $updated = question_manager::get($questionid);
+        $this->assertEquals('needs_review', $updated->feedbackstatus);
+        $this->assertNull($updated->feedbackverifiedat);
+    }
+
+    /**
      * Test creating a question with answers.
      */
     public function test_create_question_with_answers(): void {

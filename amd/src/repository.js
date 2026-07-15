@@ -144,7 +144,10 @@ define(['core/ajax'], function(Ajax) {
                     questiontext: data.questiontext,
                     qtype: data.qtype,
                     defaultmark: data.defaultmark || 1.0,
-                    answers: data.answers || []
+                    answers: data.answers || [],
+                    generalfeedback: data.generalfeedback || '',
+                    reasoning: data.reasoning || '',
+                    modelanswer: data.modelanswer || ''
                 }
             }])[0];
         },
@@ -161,7 +164,10 @@ define(['core/ajax'], function(Ajax) {
                 args: {
                     id: data.id,
                     questiontext: data.questiontext || '',
-                    defaultmark: data.defaultmark || 0
+                    defaultmark: data.defaultmark || 0,
+                    generalfeedback: data.generalfeedback || '',
+                    reasoning: data.reasoning || '',
+                    modelanswer: data.modelanswer || ''
                 }
             }])[0];
         },

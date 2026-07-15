@@ -48,7 +48,7 @@ class exporter {
         $cases = self::get_cases_for_export($caseids, $categoryid);
 
         $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><casospracticos/>');
-        $xml->addAttribute('version', '1.0');
+        $xml->addAttribute('version', '1.1');
         $xml->addAttribute('exported', date('Y-m-d H:i:s'));
 
         // Group by category.
@@ -96,7 +96,7 @@ class exporter {
         $cases = self::get_cases_for_export($caseids, $categoryid);
 
         $export = [
-            'version' => '1.0',
+            'version' => '1.1',
             'exported' => date('Y-m-d H:i:s'),
             'categories' => [],
         ];
@@ -255,6 +255,21 @@ class exporter {
         if (!empty($question->generalfeedback)) {
             $feedback = $qxml->addChild('generalfeedback');
             self::add_cdata($feedback, $question->generalfeedback);
+            $qxml->addChild('generalfeedbackformat', $question->generalfeedbackformat ?? FORMAT_HTML);
+        }
+        if (!empty($question->reasoning)) {
+            $reasoning = $qxml->addChild('reasoning');
+            self::add_cdata($reasoning, $question->reasoning);
+            $qxml->addChild('reasoningformat', $question->reasoningformat ?? FORMAT_HTML);
+        }
+        if (!empty($question->modelanswer)) {
+            $modelanswer = $qxml->addChild('modelanswer');
+            self::add_cdata($modelanswer, $question->modelanswer);
+            $qxml->addChild('modelanswerformat', $question->modelanswerformat ?? FORMAT_HTML);
+        }
+        $qxml->addChild('feedbackstatus', $question->feedbackstatus ?? 'legacy');
+        if (!empty($question->feedbackverifiedat)) {
+            $qxml->addChild('feedbackverifiedat', (int) $question->feedbackverifiedat);
         }
 
         // Answers.
@@ -312,6 +327,13 @@ class exporter {
                 'single' => (int) $question->single,
                 'shuffleanswers' => (int) $question->shuffleanswers,
                 'generalfeedback' => $question->generalfeedback ?? '',
+                'generalfeedbackformat' => $question->generalfeedbackformat ?? FORMAT_HTML,
+                'reasoning' => $question->reasoning ?? '',
+                'reasoningformat' => $question->reasoningformat ?? FORMAT_HTML,
+                'modelanswer' => $question->modelanswer ?? '',
+                'modelanswerformat' => $question->modelanswerformat ?? FORMAT_HTML,
+                'feedbackstatus' => $question->feedbackstatus ?? 'legacy',
+                'feedbackverifiedat' => $question->feedbackverifiedat ?? null,
                 'answers' => [],
             ];
 

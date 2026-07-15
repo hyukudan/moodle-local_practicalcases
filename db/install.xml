@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026071200" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026071400" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -71,6 +71,12 @@
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="generalfeedback" TYPE="text" NOTNULL="false" COMMENT="Feedback shown after answering"/>
         <FIELD NAME="generalfeedbackformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="reasoning" TYPE="text" NOTNULL="false" COMMENT="Structured reasoning applied to the case; falls back to generalfeedback when empty"/>
+        <FIELD NAME="reasoningformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="modelanswer" TYPE="text" NOTNULL="false" COMMENT="Student-facing model answer following the practical-case method"/>
+        <FIELD NAME="modelanswerformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="feedbackstatus" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="legacy" COMMENT="Editorial state: legacy, needs_review, verified, blocked"/>
+        <FIELD NAME="feedbackverifiedat" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Timestamp of the last substantive verification"/>
         <FIELD NAME="single" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" COMMENT="For multichoice: 1=single answer, 0=multiple"/>
         <FIELD NAME="shuffleanswers" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" COMMENT="Whether to shuffle answers"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
@@ -83,6 +89,7 @@
       <INDEXES>
         <INDEX NAME="caseid_sortorder" UNIQUE="false" FIELDS="caseid, sortorder"/>
         <INDEX NAME="qtype" UNIQUE="false" FIELDS="qtype"/>
+        <INDEX NAME="feedbackstatus" UNIQUE="false" FIELDS="feedbackstatus"/>
       </INDEXES>
     </TABLE>
 

@@ -190,7 +190,7 @@ foreach ($questions as $question) {
                 if ($answer->id == $answerid) {
                     $style = $answer->fraction > 0 ? 'color: green;' : 'color: red;';
                     $answercontent = format_text($answer->answer, $answer->answerformat);
-                    if (!empty($answer->feedback)) {
+                    if (($question->feedbackstatus ?? 'legacy') !== 'blocked' && !empty($answer->feedback)) {
                         $answercontent .= html_writer::div(
                             $OUTPUT->pix_icon('i/info', '') . ' ' .
                             format_text($answer->feedback, $answer->feedbackformat),
@@ -224,18 +224,8 @@ foreach ($questions as $question) {
         echo html_writer::end_tag('ul');
     }
 
-    if (!empty($question->generalfeedback)) {
-        echo html_writer::div(
-            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
-            format_text($question->generalfeedback, $question->generalfeedbackformat),
-            'alert alert-info mt-3'
-        );
-    }
-
     $qnormativa = $allnormativa[$question->id] ?? [];
-    if (!empty($qnormativa)) {
-        echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
-    }
+    echo local_casospracticos_render_solution_feedback($question, $qnormativa);
 
     // Score for this question.
     echo html_writer::tag('p',

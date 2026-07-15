@@ -50,7 +50,7 @@ class importer {
     const VALID_STATUSES = ['draft', 'pending_review', 'in_review', 'approved', 'published', 'archived'];
 
     /** @var array Valid question types. */
-    const VALID_QTYPES = ['multichoice', 'truefalse', 'shortanswer', 'matching'];
+    const VALID_QTYPES = ['multichoice', 'truefalse', 'shortanswer', 'essay', 'matching'];
 
     /** @var int Number of cases imported */
     private $casesimported = 0;
@@ -219,6 +219,17 @@ class importer {
             return 'draft';
         }
         return $status;
+    }
+
+    /**
+     * Validate structured feedback editorial state.
+     *
+     * @param string $status Candidate state.
+     * @return string Safe state.
+     */
+    private function validate_feedback_status(string $status): string {
+        $valid = ['legacy', 'needs_review', 'verified', 'blocked'];
+        return in_array($status, $valid, true) ? $status : 'needs_review';
     }
 
     /**
@@ -422,6 +433,16 @@ class importer {
         $qdata->single = (int) ($questionxml->single ?? 1) ? 1 : 0;
         $qdata->shuffleanswers = (int) ($questionxml->shuffleanswers ?? 1) ? 1 : 0;
         $qdata->generalfeedback = (string) ($questionxml->generalfeedback ?? '');
+        $qdata->generalfeedbackformat = (int) ($questionxml->generalfeedbackformat ?? FORMAT_HTML);
+        $qdata->reasoning = (string) ($questionxml->reasoning ?? '');
+        $qdata->reasoningformat = (int) ($questionxml->reasoningformat ?? FORMAT_HTML);
+        $qdata->modelanswer = (string) ($questionxml->modelanswer ?? '');
+        $qdata->modelanswerformat = (int) ($questionxml->modelanswerformat ?? FORMAT_HTML);
+        $qdata->feedbackstatus = $this->validate_feedback_status((string) ($questionxml->feedbackstatus ?? 'legacy'));
+        if ($qdata->feedbackstatus === 'verified') {
+            $qdata->feedbackstatus = 'needs_review';
+        }
+        $qdata->feedbackverifiedat = null;
 
         // Validate question text is not empty.
         if (empty(trim(strip_tags($qdata->questiontext)))) {
@@ -513,6 +534,16 @@ class importer {
         $question->single = (int) ($qdata['single'] ?? 1) ? 1 : 0;
         $question->shuffleanswers = (int) ($qdata['shuffleanswers'] ?? 1) ? 1 : 0;
         $question->generalfeedback = $qdata['generalfeedback'] ?? '';
+        $question->generalfeedbackformat = $qdata['generalfeedbackformat'] ?? FORMAT_HTML;
+        $question->reasoning = $qdata['reasoning'] ?? '';
+        $question->reasoningformat = $qdata['reasoningformat'] ?? FORMAT_HTML;
+        $question->modelanswer = $qdata['modelanswer'] ?? '';
+        $question->modelanswerformat = $qdata['modelanswerformat'] ?? FORMAT_HTML;
+        $question->feedbackstatus = $this->validate_feedback_status($qdata['feedbackstatus'] ?? 'legacy');
+        if ($question->feedbackstatus === 'verified') {
+            $question->feedbackstatus = 'needs_review';
+        }
+        $question->feedbackverifiedat = null;
 
         // Validate question text is not empty.
         if (empty(trim(strip_tags($question->questiontext)))) {

@@ -241,6 +241,11 @@ class case_manager {
     public static function update(object $data): bool {
         global $DB;
 
+        $existing = self::get((int) $data->id);
+        if (!$existing) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+
         $record = new \stdClass();
         $record->id = $data->id;
 
@@ -265,8 +270,32 @@ class case_manager {
         }
 
         $record->timemodified = time();
+        $statementchanged = isset($record->statement)
+            && ((string) $record->statement !== (string) $existing->statement
+                || (int) $record->statementformat !== (int) $existing->statementformat);
 
-        return $DB->update_record(self::TABLE, $record);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $result = $DB->update_record(self::TABLE, $record);
+            if ($statementchanged) {
+                $DB->execute("UPDATE {local_cp_questions}
+                                 SET feedbackstatus = :needsreview,
+                                     feedbackverifiedat = NULL,
+                                     timemodified = :timemodified
+                               WHERE caseid = :caseid
+                                 AND feedbackstatus = :verified", [
+                    'needsreview' => 'needs_review',
+                    'timemodified' => time(),
+                    'caseid' => (int) $record->id,
+                    'verified' => 'verified',
+                ]);
+            }
+            $transaction->allow_commit();
+            return $result;
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
     }
 
     /**

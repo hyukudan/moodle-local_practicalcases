@@ -200,6 +200,12 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         }
 
         $data->caseid = $caseid;
+        // Normativa links are not portable in a course backup because article
+        // IDs belong to the target site's legislation catalogue.
+        if (($data->feedbackstatus ?? 'legacy') === 'verified') {
+            $data->feedbackstatus = 'needs_review';
+            $data->feedbackverifiedat = null;
+        }
         $data->timecreated = time();
         $data->timemodified = time();
 

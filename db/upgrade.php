@@ -482,5 +482,30 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071200, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071400) {
+        $table = new xmldb_table('local_cp_questions');
+
+        $fields = [
+            new xmldb_field('reasoning', XMLDB_TYPE_TEXT, null, null, null, null, null, 'generalfeedbackformat'),
+            new xmldb_field('reasoningformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1', 'reasoning'),
+            new xmldb_field('modelanswer', XMLDB_TYPE_TEXT, null, null, null, null, null, 'reasoningformat'),
+            new xmldb_field('modelanswerformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1', 'modelanswer'),
+            new xmldb_field('feedbackstatus', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'legacy', 'modelanswerformat'),
+            new xmldb_field('feedbackverifiedat', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'feedbackstatus'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        $index = new xmldb_index('feedbackstatus', XMLDB_INDEX_NOTUNIQUE, ['feedbackstatus']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071400, 'local', 'casospracticos');
+    }
+
     return true;
 }

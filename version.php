@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026071200;  // Register pre-existing local_cp_question_normativa table in versioned schema.
+$plugin->version   = 2026071400;  // Structured reasoning/model answers and editorial verification state.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.3.3';
+$plugin->release   = '1.4.0';

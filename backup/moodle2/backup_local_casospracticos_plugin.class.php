@@ -75,6 +75,8 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $question = new backup_nested_element('cp_question', ['id'], [
             'questiontext', 'questiontextformat', 'qtype', 'defaultmark',
             'sortorder', 'generalfeedback', 'generalfeedbackformat',
+            'reasoning', 'reasoningformat', 'modelanswer', 'modelanswerformat',
+            'feedbackstatus', 'feedbackverifiedat',
             'single', 'shuffleanswers', 'timecreated', 'timemodified'
         ]);
 

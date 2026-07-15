@@ -84,6 +84,21 @@ class question_manager {
     }
 
     /**
+     * Invalidate an explicit verification after an input to the solution changes.
+     *
+     * @param int $questionid Question ID.
+     * @return void
+     */
+    private static function invalidate_verification(int $questionid): void {
+        global $DB;
+
+        if ($DB->get_field(self::TABLE, 'feedbackstatus', ['id' => $questionid]) === 'verified') {
+            $DB->set_field(self::TABLE, 'feedbackstatus', 'needs_review', ['id' => $questionid]);
+            $DB->set_field(self::TABLE, 'feedbackverifiedat', null, ['id' => $questionid]);
+        }
+    }
+
+    /**
      * Get a question by ID.
      *
      * @param int $id Question ID
@@ -197,6 +212,17 @@ class question_manager {
         $record->sortorder = $data->sortorder ?? self::get_next_sortorder($data->caseid);
         $record->generalfeedback = $data->generalfeedback ?? '';
         $record->generalfeedbackformat = $data->generalfeedbackformat ?? FORMAT_HTML;
+        $record->reasoning = $data->reasoning ?? '';
+        $record->reasoningformat = $data->reasoningformat ?? FORMAT_HTML;
+        $record->modelanswer = $data->modelanswer ?? '';
+        $record->modelanswerformat = $data->modelanswerformat ?? FORMAT_HTML;
+        $validstatuses = ['legacy', 'needs_review', 'verified', 'blocked'];
+        $record->feedbackstatus = $data->feedbackstatus ?? 'legacy';
+        if (!in_array($record->feedbackstatus, $validstatuses, true)) {
+            throw new \moodle_exception('error:invalidfeedbackstatus', 'local_casospracticos');
+        }
+        $record->feedbackverifiedat = $record->feedbackstatus === 'verified'
+            ? ($data->feedbackverifiedat ?? time()) : null;
         $record->single = $data->single ?? 1;
         $record->shuffleanswers = $data->shuffleanswers ?? 1;
         $record->timecreated = time();
@@ -221,6 +247,14 @@ class question_manager {
             // For truefalse, create default answers if not provided.
             if ($record->qtype === self::QTYPE_TRUEFALSE && empty($data->answers)) {
                 self::create_truefalse_answers($questionid, $data->correctanswer ?? true);
+            }
+
+            // Answer creation invalidates verified rows; restore the explicit
+            // state requested for this newly-created, fully-populated question.
+            if ($record->feedbackstatus === 'verified') {
+                $DB->set_field(self::TABLE, 'feedbackstatus', 'verified', ['id' => $questionid]);
+                $DB->set_field(self::TABLE, 'feedbackverifiedat', $record->feedbackverifiedat,
+                    ['id' => $questionid]);
             }
 
             $transaction->allow_commit();
@@ -271,11 +305,44 @@ class question_manager {
             $record->generalfeedback = $data->generalfeedback;
             $record->generalfeedbackformat = $data->generalfeedbackformat ?? FORMAT_HTML;
         }
+        if (isset($data->reasoning)) {
+            $record->reasoning = $data->reasoning;
+            $record->reasoningformat = $data->reasoningformat ?? FORMAT_HTML;
+        }
+        if (isset($data->modelanswer)) {
+            $record->modelanswer = $data->modelanswer;
+            $record->modelanswerformat = $data->modelanswerformat ?? FORMAT_HTML;
+        }
+        if (isset($data->feedbackstatus)) {
+            $validstatuses = ['legacy', 'needs_review', 'verified', 'blocked'];
+            if (!in_array($data->feedbackstatus, $validstatuses, true)) {
+                throw new \moodle_exception('error:invalidfeedbackstatus', 'local_casospracticos');
+            }
+            $record->feedbackstatus = $data->feedbackstatus;
+            $record->feedbackverifiedat = $data->feedbackstatus === 'verified'
+                ? ($data->feedbackverifiedat ?? time()) : null;
+        }
+        if (!isset($data->feedbackstatus) && property_exists($data, 'feedbackverifiedat')) {
+            $record->feedbackverifiedat = $data->feedbackverifiedat;
+        }
         if (isset($data->single)) {
             $record->single = $data->single;
         }
         if (isset($data->shuffleanswers)) {
             $record->shuffleanswers = $data->shuffleanswers;
+        }
+
+        $materialfields = ['questiontext', 'qtype', 'generalfeedback', 'reasoning', 'modelanswer'];
+        $materialchange = false;
+        foreach ($materialfields as $field) {
+            if (property_exists($record, $field) && (string) $record->{$field} !== (string) ($existing->{$field} ?? '')) {
+                $materialchange = true;
+                break;
+            }
+        }
+        if ($materialchange && !isset($data->feedbackstatus) && $existing->feedbackstatus === 'verified') {
+            $record->feedbackstatus = 'needs_review';
+            $record->feedbackverifiedat = null;
         }
 
         $record->timemodified = time();
@@ -335,10 +402,18 @@ class question_manager {
             return false;
         }
 
-        // Delete answers first.
-        $DB->delete_records(self::ANSWERS_TABLE, ['questionid' => $id]);
-
-        $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            if ($DB->get_manager()->table_exists('local_cp_question_normativa')) {
+                $DB->delete_records('local_cp_question_normativa', ['questionid' => $id]);
+            }
+            $DB->delete_records(self::ANSWERS_TABLE, ['questionid' => $id]);
+            $result = $DB->delete_records(self::TABLE, ['id' => $id]);
+            $transaction->allow_commit();
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
         self::touch_case((int) $question->caseid);
 
         return $result;
@@ -352,6 +427,7 @@ class question_manager {
      * @return int New question ID
      */
     public static function duplicate(int $id, int $newcaseid): int {
+        global $DB;
         $question = self::get_with_answers($id);
         if (!$question) {
             throw new \moodle_exception('error:questionnotfound', 'local_casospracticos');
@@ -361,6 +437,10 @@ class question_manager {
         unset($newquestion->id);
         $newquestion->caseid = $newcaseid;
         $newquestion->sortorder = self::get_next_sortorder($newcaseid);
+        if (($newquestion->feedbackstatus ?? 'legacy') === 'verified') {
+            $newquestion->feedbackstatus = 'needs_review';
+            $newquestion->feedbackverifiedat = null;
+        }
 
         // Prepare answers for creation.
         $answers = [];
@@ -371,7 +451,24 @@ class question_manager {
         }
         $newquestion->answers = $answers;
 
-        return self::create($newquestion);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $newquestionid = self::create($newquestion);
+            if ($DB->get_manager()->table_exists('local_cp_question_normativa')) {
+                $links = $DB->get_records('local_cp_question_normativa', ['questionid' => $id]);
+                foreach ($links as $link) {
+                    unset($link->id);
+                    $link->questionid = $newquestionid;
+                    $link->timecreated = time();
+                    $DB->insert_record('local_cp_question_normativa', $link);
+                }
+            }
+            $transaction->allow_commit();
+            return $newquestionid;
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
     }
 
     /**
@@ -489,6 +586,7 @@ class question_manager {
         $record->sortorder = $data->sortorder ?? self::get_next_answer_sortorder($data->questionid);
 
         $answerid = $DB->insert_record(self::ANSWERS_TABLE, $record);
+        self::invalidate_verification((int) $record->questionid);
         self::touch_case_by_question((int) $record->questionid);
 
         return $answerid;
@@ -524,6 +622,7 @@ class question_manager {
 
         $result = $DB->update_record(self::ANSWERS_TABLE, $record);
         if ($questionid) {
+            self::invalidate_verification((int) $questionid);
             self::touch_case_by_question((int) $questionid);
         }
 
@@ -541,6 +640,7 @@ class question_manager {
         $questionid = $DB->get_field(self::ANSWERS_TABLE, 'questionid', ['id' => $id]);
         $result = $DB->delete_records(self::ANSWERS_TABLE, ['id' => $id]);
         if ($questionid) {
+            self::invalidate_verification((int) $questionid);
             self::touch_case_by_question((int) $questionid);
         }
 
