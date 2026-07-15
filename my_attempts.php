@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\case_manager;
 
@@ -32,7 +33,9 @@ $perpage = 20;
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
+
+// Attempt history exposes scoring/solutions, so it requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
 
 $case = null;
 if ($caseid) {

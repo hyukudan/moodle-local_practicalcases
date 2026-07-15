@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\category_manager;
 use local_casospracticos\case_manager;
@@ -38,7 +39,10 @@ $preview = optional_param('preview', 0, PARAM_BOOL);
 // Context and access.
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
+
+// Paywall: NONE is redirected to the CTA; trial (STATEMENT) sees the enunciado only.
+$viewaccess = local_casospracticos_require_view_access(LOCAL_CP_ACCESS_STATEMENT);
+$statementonly = ($viewaccess !== LOCAL_CP_ACCESS_FULL);
 
 // Load case.
 $case = case_manager::get_with_questions($id);
@@ -149,7 +153,7 @@ if (has_capability('local/casospracticos:edit', $context)) {
         'get'
     );
 }
-if (!empty($case->questions)) {
+if (!empty($case->questions) && !$statementonly) {
     // Practice button - available to all viewers.
     $buttons[] = $OUTPUT->single_button(
         new moodle_url('/local/casospracticos/practice.php', ['id' => $id]),
@@ -267,8 +271,12 @@ if (!empty($attachments)) {
     echo html_writer::end_div(); // card
 }
 
-if ($preview) {
-    // The real bank's "Ver supuesto" route must never expose answer keys or feedback.
+if ($preview || $statementonly) {
+    // The real bank's "Ver supuesto" route and trial (statement-only) users must
+    // never see answer keys or solutions: stop before rendering the questions.
+    if ($statementonly) {
+        echo local_casospracticos_render_upgrade_cta();
+    }
     echo $OUTPUT->footer();
     exit;
 }
@@ -384,19 +392,8 @@ if (empty($case->questions)) {
             echo html_writer::end_tag('ul');
         }
 
-        // General feedback.
-        if (!empty($question->generalfeedback)) {
-            echo html_writer::start_div('mt-3 alert alert-info');
-            echo html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ');
-            echo format_text($question->generalfeedback, $question->generalfeedbackformat);
-            echo html_writer::end_div();
-        }
-
-        // Normativa article links (like quiz review).
         $qnormativa = $allnormativa[$question->id] ?? [];
-        if (!empty($qnormativa)) {
-            echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
-        }
+        echo local_casospracticos_render_solution_feedback($question, $qnormativa);
 
         echo html_writer::end_div(); // card-body
         echo html_writer::end_div(); // card

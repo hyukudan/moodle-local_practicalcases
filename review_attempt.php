@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
@@ -69,8 +70,12 @@ $PAGE->navbar->add(get_string('reviewattempt', 'local_casospracticos'));
 // Get user responses for this attempt.
 $responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $attemptid], '', 'questionid, response, score, iscorrect');
 
-// Get questions with answers.
-$questions = question_manager::get_with_answers($attempt->caseid);
+// Get every question in the case with its answers. get_with_answers() accepts
+// a question ID, not a case ID.
+$questions = question_manager::get_by_case_with_answers($attempt->caseid);
+
+// Use the same solution contract as immediate and timed practice review.
+$allnormativa = local_casospracticos_get_normativa_links(array_column($questions, 'id'));
 
 // Shuffle answer order so the bank's "correct in sortorder=1" bias isn't visible
 // in review. Matching is by answer id, so a fresh shuffle (no session persistence)
@@ -197,7 +202,8 @@ foreach ($questions as $question) {
             }
 
             // Show feedback for this answer if user selected it.
-            if ($isselected && !empty($answer->feedback)) {
+            if ($isselected && ($question->feedbackstatus ?? 'legacy') !== 'blocked'
+                    && !empty($answer->feedback)) {
                 echo html_writer::div(
                     $OUTPUT->pix_icon('i/info', '') . ' ' . format_text($answer->feedback, $answer->feedbackformat),
                     'mt-2 small'
@@ -228,14 +234,8 @@ foreach ($questions as $question) {
         }
     }
 
-    // General feedback.
-    if (!empty($question->generalfeedback)) {
-        echo html_writer::div(
-            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
-            format_text($question->generalfeedback, $question->generalfeedbackformat),
-            'alert alert-info mt-3'
-        );
-    }
+    $qnormativa = $allnormativa[$question->id] ?? [];
+    echo local_casospracticos_render_solution_feedback($question, $qnormativa);
 
     echo html_writer::end_div(); // card-body
     echo html_writer::end_div(); // card

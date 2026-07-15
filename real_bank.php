@@ -27,8 +27,10 @@ require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 require_login();
 
+// Entry point to the paid bank: enrolled (incl. trial) may browse; others get the CTA.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_STATEMENT);
+
 $context = context_system::instance();
-require_capability('local/casospracticos:view', $context);
 
 $territory = optional_param('territory', '', PARAM_ALPHANUMEXT);
 $area = optional_param('area', '', PARAM_ALPHANUMEXT);

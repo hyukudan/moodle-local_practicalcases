@@ -38,7 +38,9 @@ $sessiontoken = optional_param('token', '', PARAM_ALPHANUM);
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
+
+// Practising reveals answer keys and feedback, so it requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
 
 $case = case_manager::get($caseid);
 if (!$case) {
@@ -258,7 +260,8 @@ foreach ($questions as $question) {
             echo html_writer::tag('label', $labeltext, ['for' => 'a' . $answer->id, 'class' => 'form-check-label']);
 
             // Show feedback if submitted and this answer was selected.
-            if ($result && $isselected && !empty($answer->feedback)) {
+            if ($result && $isselected && ($question->feedbackstatus ?? 'legacy') !== 'blocked'
+                    && !empty($answer->feedback)) {
                 echo html_writer::div(
                     $OUTPUT->pix_icon('i/info', '') . ' ' . format_text($answer->feedback, $answer->feedbackformat),
                     'answer-feedback small text-muted mt-1 ms-4'
@@ -308,6 +311,13 @@ foreach ($questions as $question) {
             }
             echo html_writer::tag('label', $labeltext, ['for' => 'a' . $answer->id, 'class' => 'form-check-label']);
 
+            if ($result && $isselected && !empty($answer->feedback)) {
+                echo html_writer::div(
+                    $OUTPUT->pix_icon('i/info', '') . ' ' . format_text($answer->feedback, $answer->feedbackformat),
+                    'answer-feedback small text-muted mt-1 ms-4'
+                );
+            }
+
             echo html_writer::end_div();
         }
 
@@ -343,25 +353,9 @@ foreach ($questions as $question) {
         }
     }
 
-    // Show general feedback if submitted.
-    if ($result && !empty($question->generalfeedback)) {
-        echo html_writer::div(
-            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
-            format_text($question->generalfeedback, $question->generalfeedbackformat),
-            'alert alert-info mt-3'
-        );
-    }
-
-    // Show specific feedback from result.
-    if ($result && !empty($result->feedback)) {
-        echo html_writer::div($result->feedback, 'text-info mt-2');
-    }
-
     if ($result) {
         $qnormativa = $allnormativa[$question->id] ?? [];
-        if (!empty($qnormativa)) {
-            echo local_casospracticos_render_normativa_panel($question->id, $qnormativa);
-        }
+        echo local_casospracticos_render_solution_feedback($question, $qnormativa);
     }
 
     echo html_writer::end_div(); // card-body
