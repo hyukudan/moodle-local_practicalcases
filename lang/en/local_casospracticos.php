@@ -65,6 +65,7 @@ $string['cases'] = 'Cases';
 $string['case'] = 'Case';
 $string['newcase'] = 'New case';
 $string['editcase'] = 'Edit case';
+$string['editdeliverable'] = 'Edit deliverable';
 $string['deletecase'] = 'Delete case';
 $string['viewcase'] = 'View case';
 $string['casename'] = 'Case name';
@@ -636,3 +637,39 @@ $string['settings:trialaccess_desc'] = 'What a trial student (self enrol with cu
 $string['settings:trialaccess_statement'] = 'Statement only (recommended)';
 $string['settings:trialaccess_full'] = 'Full solution';
 $string['settings:trialaccess_none'] = 'No access';
+
+// Deliverable editor (deliverable_edit.php).
+$string['deliverable:editheading'] = 'Configure document deliverable';
+$string['deliverable:enabled'] = 'Enable deliverable';
+$string['deliverable:enabled_help'] = 'When enabled, students can download a start file, complete it and upload their version on the practice page. When disabled, the case behaves as if it had no deliverable.';
+$string['deliverable:filetype'] = 'Expected file type';
+$string['deliverable:startfile'] = 'Start file';
+$string['deliverable:startfile_help'] = 'Optional office document (docx/xlsx) that students download as the starting point for the exercise.';
+$string['deliverable:correctionmode'] = 'Correction mode';
+$string['deliverable:correctionmode_help'] = 'Auto: the uploaded file is graded automatically by the built-in corrector using the rubric. Manual: a teacher grades each submission by hand (score + comment); no automatic grading runs.';
+$string['deliverable:correctionmode_auto'] = 'Automatic (corrector)';
+$string['deliverable:correctionmode_manual'] = 'Manual (teacher-graded)';
+$string['deliverable:rubrica'] = 'Rubric (JSON)';
+$string['deliverable:rubrica_help'] = 'The rubrica.json content used by the automatic corrector. Only relevant in automatic correction mode.';
+$string['deliverable:maxscore'] = 'Maximum score';
+$string['deliverable:err_maxscore'] = 'Enter a maximum score greater than zero.';
+$string['deliverable:saved'] = 'Deliverable configuration saved.';
+$string['error:invalidcorrectionmode'] = 'Invalid correction mode: {$a}';
+
+// Deliverable notifications.
+$string['notification:deliverablesubmitted_subject'] = 'Deliverable submitted for review: {$a}';
+$string['notification:deliverablesubmitted_body'] = 'The student {$a->student} has submitted a document deliverable for the case "{$a->casename}" and it is awaiting your review.
+
+Review and grade it here: {$a->url}';
+$string['notification:deliverablesubmitted_body_html'] = '<p>The student {$a->student} has submitted a document deliverable for the case "<strong>{$a->casename}</strong>" and it is awaiting your review.</p><p><a href="{$a->url}">Review and grade it</a></p>';
+$string['notification:deliverablesubmitted_small'] = 'Deliverable to review: {$a}';
+$string['notification:deliverablegraded_subject'] = 'Your deliverable has been graded: {$a}';
+$string['notification:deliverablegraded_body'] = 'Your document deliverable for the case "{$a->casename}" has been graded: {$a->score}.
+
+See the feedback here: {$a->url}';
+$string['notification:deliverablegraded_body_html'] = '<p>Your document deliverable for the case "<strong>{$a->casename}</strong>" has been graded: <strong>{$a->score}</strong>.</p><p><a href="{$a->url}">See the feedback</a></p>';
+$string['notification:deliverablegraded_small'] = 'Deliverable graded: {$a}';
+
+// Message provider names (Preferences > Notifications).
+$string['messageprovider:deliverablesubmitted'] = 'A student submitted a deliverable for manual review';
+$string['messageprovider:deliverablegraded'] = 'Your deliverable has been graded';

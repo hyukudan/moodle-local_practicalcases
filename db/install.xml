@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/casospracticos/db" VERSION="2026071400" COMMENT="local_casospracticos database tables"
+<XMLDB PATH="local/casospracticos/db" VERSION="2026071500" COMMENT="local_casospracticos database tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -318,6 +318,7 @@
         <FIELD NAME="startfilename" TYPE="char" LENGTH="255" NOTNULL="false" COMMENT="Filename of the start file stored in the deliverable filearea"/>
         <FIELD NAME="rubrica" TYPE="text" NOTNULL="false" COMMENT="The rubrica.json content used by the corrector"/>
         <FIELD NAME="maxscore" TYPE="number" LENGTH="10" NOTNULL="true" DEFAULT="100" DECIMALS="4" COMMENT="Maximum deliverable score"/>
+        <FIELD NAME="correctionmode" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="auto" SEQUENCE="false" COMMENT="auto=python autograder, manual=teacher-graded"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>

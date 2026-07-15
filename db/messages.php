@@ -56,4 +56,20 @@ $messageproviders = [
             'email' => MESSAGE_PERMITTED,
         ],
     ],
+
+    // Notification to graders when a student submits a manual-mode deliverable.
+    'deliverablesubmitted' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
+
+    // Notification to a student when their deliverable has been graded manually.
+    'deliverablegraded' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
 ];

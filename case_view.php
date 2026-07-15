@@ -124,128 +124,96 @@ if ($action && confirm_sesskey()) {
 
 echo $OUTPUT->header();
 
-// Case header.
-echo html_writer::start_div('case-header mb-4');
-echo $OUTPUT->heading(format_string($case->name));
+// -------------------------------------------------------------------------
+// Build the template context (full migration to local_casospracticos/case_view).
+//
+// Every region the page historically rendered with html_writer is reproduced
+// here. PHP-only regions that are impractical to express in Mustache
+// (attachments block, per-question canonical solution feedback + normativa
+// panels, the trial upgrade CTA and the teacher/editorial action_menu) are
+// pre-rendered in PHP and injected as trusted HTML via triple-mustache.
+// -------------------------------------------------------------------------
 
-// Status badge.
 $statuses = local_casospracticos_get_status_options();
-$statusclass = [
-    'draft' => 'badge bg-secondary',
-    'published' => 'badge bg-success',
-    'archived' => 'badge bg-warning',
+$statusclassmap = [
+    'draft' => 'bg-secondary',
+    'published' => 'bg-success',
+    'archived' => 'bg-warning',
 ];
-echo html_writer::tag('span', $statuses[$case->status], [
-    'class' => $statusclass[$case->status] ?? 'badge bg-secondary',
-]);
 
-// Action buttons.
-$buttons = [];
-if (has_capability('local/casospracticos:edit', $context)) {
-    $buttons[] = $OUTPUT->single_button(
+$canedit = has_capability('local/casospracticos:edit', $context);
+$hasquestions = !empty($case->questions);
+$numquestions = count($case->questions);
+
+// Practice / timed / my-attempts buttons: only for full-access viewers with questions.
+$showpractice = $hasquestions && !$statementonly;
+// Questions + summary block: statement-only trial users and the "Ver supuesto"
+// preview route must never see the questions or their answer keys.
+$showquestions = !$preview && !$statementonly;
+
+// Teacher / editorial action menu (edit case / new question / insert into quiz),
+// built as a core action_menu. Each item is gated by its own capability.
+$teachermenuhtml = '';
+$menu = new action_menu();
+$hasmenuitems = false;
+if ($canedit) {
+    $menu->add(new action_menu_link_secondary(
         new moodle_url('/local/casospracticos/case_edit.php', ['id' => $id]),
-        get_string('editcase', 'local_casospracticos'),
-        'get'
-    );
-    $buttons[] = $OUTPUT->single_button(
+        new pix_icon('t/edit', ''),
+        get_string('editcase', 'local_casospracticos')
+    ));
+    $menu->add(new action_menu_link_secondary(
         new moodle_url('/local/casospracticos/question_edit.php', ['caseid' => $id]),
-        get_string('newquestion', 'local_casospracticos'),
-        'get'
-    );
+        new pix_icon('t/add', ''),
+        get_string('newquestion', 'local_casospracticos')
+    ));
+    $menu->add(new action_menu_link_secondary(
+        new moodle_url('/local/casospracticos/deliverable_edit.php', ['caseid' => $id]),
+        new pix_icon('i/upload', ''),
+        get_string('editdeliverable', 'local_casospracticos')
+    ));
+    $hasmenuitems = true;
 }
-if (!empty($case->questions) && !$statementonly) {
-    // Practice button - available to all viewers.
-    $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/practice.php', ['id' => $id]),
-        get_string('practice', 'local_casospracticos'),
-        'get',
-        ['class' => 'btn-info']
-    );
-
-    // Timed practice button - available to all viewers.
-    $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $id]),
-        get_string('timedpractice', 'local_casospracticos'),
-        'get',
-        ['class' => 'btn-warning']
-    );
-
-    // My attempts button - available to all viewers.
-    $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/my_attempts.php', ['caseid' => $id]),
-        get_string('viewmyattempts', 'local_casospracticos'),
-        'get',
-        ['class' => 'btn-outline-info']
-    );
-
-    if (has_capability('local/casospracticos:insertquiz', $context)) {
-        $buttons[] = $OUTPUT->single_button(
-            new moodle_url('/local/casospracticos/insert_quiz.php', ['caseid' => $id]),
-            get_string('insertintoquiz', 'local_casospracticos'),
-            'get',
-            ['class' => 'btn-success']
-        );
-    }
+if ($showpractice && has_capability('local/casospracticos:insertquiz', $context)) {
+    $menu->add(new action_menu_link_secondary(
+        new moodle_url('/local/casospracticos/insert_quiz.php', ['caseid' => $id]),
+        new pix_icon('i/import', ''),
+        get_string('insertintoquiz', 'local_casospracticos')
+    ));
+    $hasmenuitems = true;
 }
-if (has_capability('local/casospracticos:export', $context)) {
-    $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/export.php', ['caseids[]' => $id]),
-        get_string('export', 'local_casospracticos'),
-        'get'
-    );
+if ($hasmenuitems) {
+    $menu->set_menu_trigger(get_string('actions', 'local_casospracticos'), 'btn btn-outline-secondary');
+    $teachermenuhtml = $OUTPUT->render($menu);
 }
-// Stats button (for managers/teachers).
-if (has_capability('local/casospracticos:viewaudit', $context)) {
-    $buttons[] = $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/case_stats.php', ['id' => $id]),
-        get_string('statistics', 'local_casospracticos'),
-        'get',
-        ['class' => 'btn-info']
-    );
-}
-// Print button.
-$buttons[] = html_writer::tag('button', get_string('print', 'local_casospracticos'), [
-    'class' => 'btn btn-secondary',
-    'onclick' => 'window.print(); return false;',
-]);
-if (!empty($buttons)) {
-    echo html_writer::div(implode(' ', $buttons), 'mt-3');
-}
-echo html_writer::end_div();
 
-// Statement.
-echo html_writer::start_div('case-statement card mb-4');
-echo html_writer::start_div('card-header');
-echo html_writer::tag('h5', get_string('casestatement', 'local_casospracticos'), ['class' => 'mb-0']);
-echo html_writer::end_div();
-echo html_writer::div(format_text($case->statement, $case->statementformat), 'card-body');
-echo html_writer::end_div();
-
-// Attachments.
+// Attachments block (shown before the paywall gate, so trial users see it too).
+$attachmentshtml = '';
 $attachments = case_manager::get_attachments($id);
 if (!empty($attachments)) {
-    echo html_writer::start_div('case-attachments card mb-4');
-    echo html_writer::start_div('card-header bg-light');
-    echo html_writer::tag('h5', get_string('attachments', 'local_casospracticos') .
+    $attachmentshtml .= html_writer::start_div('case-attachments card mb-4');
+    $attachmentshtml .= html_writer::start_div('card-header bg-light');
+    $attachmentshtml .= html_writer::tag('h5', get_string('attachments', 'local_casospracticos') .
         ' <span class="badge bg-secondary">' . count($attachments) . '</span>', ['class' => 'mb-0']);
-    echo html_writer::end_div();
-    echo html_writer::start_div('card-body');
-    echo html_writer::start_tag('ul', ['class' => 'list-group list-group-flush']);
+    $attachmentshtml .= html_writer::end_div();
+    $attachmentshtml .= html_writer::start_div('card-body');
+    $attachmentshtml .= html_writer::start_tag('ul', ['class' => 'list-group list-group-flush']);
 
     foreach ($attachments as $attachment) {
-        echo html_writer::start_tag('li', ['class' => 'list-group-item d-flex justify-content-between align-items-center']);
+        $attachmentshtml .= html_writer::start_tag('li',
+            ['class' => 'list-group-item d-flex justify-content-between align-items-center']);
 
         // File info with icon.
         $fileinfo = html_writer::tag('i', '', ['class' => 'fa ' . $attachment->icon . ' me-2', 'aria-hidden' => 'true']);
-        $fileinfo .= html_writer::tag('span', $attachment->filename, ['class' => 'fw-medium']);
+        $fileinfo .= html_writer::tag('span', s($attachment->filename), ['class' => 'fw-medium']);
         $fileinfo .= html_writer::tag('span', ' (' . $attachment->filesizeformatted . ')', ['class' => 'text-muted small']);
-        echo html_writer::div($fileinfo);
+        $attachmentshtml .= html_writer::div($fileinfo);
 
         // Action buttons.
-        echo html_writer::start_div('btn-group btn-group-sm');
+        $attachmentshtml .= html_writer::start_div('btn-group btn-group-sm');
 
         // Download button.
-        echo html_writer::link(
+        $attachmentshtml .= html_writer::link(
             $attachment->downloadurl,
             html_writer::tag('i', '', ['class' => 'fa fa-download', 'aria-hidden' => 'true']) . ' ' .
             get_string('download', 'moodle'),
@@ -254,7 +222,7 @@ if (!empty($attachments)) {
 
         // View button for embeddable files.
         if ($attachment->isembeddable) {
-            echo html_writer::link(
+            $attachmentshtml .= html_writer::link(
                 $attachment->viewurl,
                 html_writer::tag('i', '', ['class' => 'fa fa-eye', 'aria-hidden' => 'true']) . ' ' .
                 get_string('view'),
@@ -262,161 +230,113 @@ if (!empty($attachments)) {
             );
         }
 
-        echo html_writer::end_div(); // btn-group
-        echo html_writer::end_tag('li');
+        $attachmentshtml .= html_writer::end_div(); // btn-group
+        $attachmentshtml .= html_writer::end_tag('li');
     }
 
-    echo html_writer::end_tag('ul');
-    echo html_writer::end_div(); // card-body
-    echo html_writer::end_div(); // card
+    $attachmentshtml .= html_writer::end_tag('ul');
+    $attachmentshtml .= html_writer::end_div(); // card-body
+    $attachmentshtml .= html_writer::end_div(); // card
 }
 
-if ($preview || $statementonly) {
-    // The real bank's "Ver supuesto" route and trial (statement-only) users must
-    // never see answer keys or solutions: stop before rendering the questions.
-    if ($statementonly) {
-        echo local_casospracticos_render_upgrade_cta();
-    }
-    echo $OUTPUT->footer();
-    exit;
-}
+// Upgrade CTA: only for statement-only trial users (empty for full access and preview).
+$upgradectahtml = $statementonly ? local_casospracticos_render_upgrade_cta() : '';
 
-// Questions.
-echo html_writer::tag('h4', get_string('questions', 'local_casospracticos') .
-    ' (' . count($case->questions) . ')');
-
-if (empty($case->questions)) {
-    echo html_writer::tag('p', get_string('noquestions', 'local_casospracticos'), ['class' => 'text-muted']);
-} else {
+// Questions (pre-built only when they will actually be shown to this viewer).
+$questionsdata = [];
+if ($showquestions && $hasquestions) {
     $qtypes = local_casospracticos_get_supported_qtypes();
 
-    // Performance: Pre-load all answers in a single query to avoid N+1.
+    // Performance: pre-load all answers and normativa links to avoid N+1 queries.
     $questionids = array_column($case->questions, 'id');
     $allanswers = question_manager::get_answers_for_questions($questionids);
-
-    // Pre-load normativa links for all questions (single query).
     $allnormativa = local_casospracticos_get_normativa_links($questionids);
 
     foreach ($case->questions as $index => $question) {
-        echo html_writer::start_div('question-item card mb-3');
-        echo html_writer::start_div('card-header d-flex justify-content-between align-items-center');
-
-        // Question number and type.
-        $qnumber = $index + 1;
-        echo html_writer::tag('span', "#{$qnumber} - " . ($qtypes[$question->qtype] ?? $question->qtype), [
-            'class' => 'badge bg-primary me-2',
-        ]);
-        echo html_writer::tag('span', get_string('defaultmark', 'local_casospracticos') . ': ' . $question->defaultmark, [
-            'class' => 'badge bg-info',
-        ]);
-
-        // Actions.
-        if (has_capability('local/casospracticos:edit', $context)) {
-            echo html_writer::start_div('question-actions');
-
-            // Move up/down.
-            if ($question->sortorder > 1) {
-                $upurl = new moodle_url('/local/casospracticos/case_view.php', [
-                    'id' => $id,
-                    'action' => 'moveup',
-                    'questionid' => $question->id,
-                    'sesskey' => sesskey(),
-                ]);
-                echo html_writer::link($upurl, $OUTPUT->pix_icon('t/up', get_string('moveup')));
-            }
-            if ($question->sortorder < count($case->questions)) {
-                $downurl = new moodle_url('/local/casospracticos/case_view.php', [
-                    'id' => $id,
-                    'action' => 'movedown',
-                    'questionid' => $question->id,
-                    'sesskey' => sesskey(),
-                ]);
-                echo html_writer::link($downurl, $OUTPUT->pix_icon('t/down', get_string('movedown')));
-            }
-
-            // Edit.
-            $editurl = new moodle_url('/local/casospracticos/question_edit.php', ['id' => $question->id]);
-            echo html_writer::link($editurl, $OUTPUT->pix_icon('t/edit', get_string('edit')));
-
-            // Delete.
-            $deleteurl = new moodle_url('/local/casospracticos/case_view.php', [
-                'id' => $id,
-                'action' => 'deletequestion',
-                'questionid' => $question->id,
-                'sesskey' => sesskey(),
-            ]);
-            echo html_writer::link($deleteurl, $OUTPUT->pix_icon('t/delete', get_string('delete')));
-
-            echo html_writer::end_div();
-        }
-
-        echo html_writer::end_div(); // card-header
-
-        echo html_writer::start_div('card-body');
-
-        // Question text.
-        echo html_writer::div(format_text($question->questiontext, $question->questiontextformat), 'question-text mb-3');
-
-        // Answers (using pre-loaded data to avoid N+1 queries).
+        // Answers.
+        $answersdata = [];
         $answers = $allanswers[$question->id] ?? [];
-        if (!empty($answers)) {
-            echo html_writer::start_tag('ul', ['class' => 'list-group']);
-            foreach ($answers as $answer) {
-                $class = 'list-group-item';
-                $icon = '';
-                if ($answer->fraction > 0) {
-                    $class .= ' list-group-item-success';
-                    $icon = $OUTPUT->pix_icon('i/valid', get_string('correctanswer', 'local_casospracticos'));
-                } else {
-                    $icon = $OUTPUT->pix_icon('i/invalid', get_string('incorrectanswer', 'local_casospracticos'));
-                }
-
-                $answertext = format_text($answer->answer, $answer->answerformat);
-                if ($answer->fraction > 0 && $answer->fraction < 1) {
-                    $answertext .= ' <span class="badge bg-info">' . round($answer->fraction * 100) . '%</span>';
-                }
-
-                $content = html_writer::div($icon . ' ' . $answertext);
-
-                // Show answer feedback if available.
-                if (!empty($answer->feedback)) {
-                    $content .= html_writer::div(
-                        $OUTPUT->pix_icon('i/info', '') . ' ' .
-                        html_writer::tag('em', format_text($answer->feedback, $answer->feedbackformat)),
-                        'answer-feedback small text-muted mt-1 ps-4'
-                    );
-                }
-
-                echo html_writer::tag('li', $content, ['class' => $class]);
-            }
-            echo html_writer::end_tag('ul');
+        foreach ($answers as $answer) {
+            $answersdata[] = [
+                'id' => $answer->id,
+                'answer' => format_text($answer->answer, $answer->answerformat),
+                'iscorrect' => ($answer->fraction > 0),
+                'showfraction' => ($answer->fraction > 0 && $answer->fraction < 1),
+                'fraction' => round($answer->fraction * 100),
+                'feedback' => !empty($answer->feedback)
+                    ? format_text($answer->feedback, $answer->feedbackformat) : '',
+            ];
         }
 
+        // Canonical solution feedback + normativa panel (pre-rendered HTML).
         $qnormativa = $allnormativa[$question->id] ?? [];
-        echo local_casospracticos_render_solution_feedback($question, $qnormativa);
+        $solutionhtml = local_casospracticos_render_solution_feedback($question, $qnormativa);
 
-        echo html_writer::end_div(); // card-body
-        echo html_writer::end_div(); // card
+        $qdata = [
+            'id' => $question->id,
+            'number' => $index + 1,
+            'questiontext' => format_text($question->questiontext, $question->questiontextformat),
+            'qtypelabel' => $qtypes[$question->qtype] ?? $question->qtype,
+            'defaultmark' => $question->defaultmark,
+            'answers' => $answersdata,
+            'hasanswers' => !empty($answersdata),
+            'solutionhtml' => $solutionhtml,
+            'canedit' => $canedit,
+        ];
+
+        // Teacher per-question reorder/edit/delete actions (server-side, as before).
+        if ($canedit) {
+            $qdata['canmoveup'] = ($question->sortorder > 1);
+            $qdata['canmovedown'] = ($question->sortorder < $numquestions);
+            $qdata['moveupurl'] = (new moodle_url('/local/casospracticos/case_view.php', [
+                'id' => $id, 'action' => 'moveup', 'questionid' => $question->id, 'sesskey' => sesskey(),
+            ]))->out(false);
+            $qdata['movedownurl'] = (new moodle_url('/local/casospracticos/case_view.php', [
+                'id' => $id, 'action' => 'movedown', 'questionid' => $question->id, 'sesskey' => sesskey(),
+            ]))->out(false);
+            $qdata['editurl'] = (new moodle_url('/local/casospracticos/question_edit.php',
+                ['id' => $question->id]))->out(false);
+            $qdata['deleteurl'] = (new moodle_url('/local/casospracticos/case_view.php', [
+                'id' => $id, 'action' => 'deletequestion', 'questionid' => $question->id, 'sesskey' => sesskey(),
+            ]))->out(false);
+        }
+
+        $questionsdata[] = $qdata;
     }
 }
 
-// Summary.
-echo html_writer::start_div('case-summary card mt-4');
-echo html_writer::start_div('card-body');
-$totalmarks = case_manager::get_total_marks($id);
-echo html_writer::tag('p', '<strong>' . get_string('numquestions', 'local_casospracticos', count($case->questions)) . '</strong>');
-echo html_writer::tag('p', '<strong>' . get_string('defaultmark', 'local_casospracticos') . ':</strong> ' . $totalmarks);
-echo html_writer::end_div();
-echo html_writer::end_div();
+$templatecontext = [
+    'case' => [
+        'id' => $case->id,
+        'name' => format_string($case->name),
+        'statement' => format_text($case->statement, $case->statementformat),
+        'statusclass' => $statusclassmap[$case->status] ?? 'bg-secondary',
+        'statuslabel' => $statuses[$case->status] ?? $case->status,
+        'questioncount' => $numquestions,
+        'totalmarks' => case_manager::get_total_marks($id),
+        'hasquestions' => $hasquestions,
+    ],
+    'canedit' => $canedit,
+    'showpractice' => $showpractice,
+    'showquestions' => $showquestions,
+    'printable' => true,
+    // Toolbar URLs and capability flags.
+    'practiceurl' => (new moodle_url('/local/casospracticos/practice.php', ['id' => $id]))->out(false),
+    'timedurl' => (new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $id]))->out(false),
+    'myattemptsurl' => (new moodle_url('/local/casospracticos/my_attempts.php', ['caseid' => $id]))->out(false),
+    'canexport' => has_capability('local/casospracticos:export', $context),
+    'exporturl' => (new moodle_url('/local/casospracticos/export.php', ['caseids[]' => $id]))->out(false),
+    'canstats' => has_capability('local/casospracticos:viewaudit', $context),
+    'statsurl' => (new moodle_url('/local/casospracticos/case_stats.php', ['id' => $id]))->out(false),
+    'newquestionurl' => (new moodle_url('/local/casospracticos/question_edit.php', ['caseid' => $id]))->out(false),
+    'backurl' => (new moodle_url('/local/casospracticos/index.php', ['category' => $case->categoryid]))->out(false),
+    // Pre-rendered trusted HTML regions.
+    'teachermenuhtml' => $teachermenuhtml,
+    'attachmentshtml' => $attachmentshtml,
+    'upgradectahtml' => $upgradectahtml,
+    'questions' => $questionsdata,
+];
 
-// Back button.
-echo html_writer::div(
-    $OUTPUT->single_button(
-        new moodle_url('/local/casospracticos/index.php', ['category' => $case->categoryid]),
-        get_string('backtocases', 'local_casospracticos'),
-        'get'
-    ),
-    'mt-4'
-);
+echo $OUTPUT->render_from_template('local_casospracticos/case_view', $templatecontext);
 
 echo $OUTPUT->footer();

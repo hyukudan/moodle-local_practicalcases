@@ -63,6 +63,7 @@ $string['cases'] = 'Casos';
 $string['case'] = 'Caso';
 $string['newcase'] = 'Nuevo caso';
 $string['editcase'] = 'Editar caso';
+$string['editdeliverable'] = 'Editar entrega';
 $string['deletecase'] = 'Eliminar caso';
 $string['viewcase'] = 'Ver caso';
 $string['casename'] = 'Nombre del caso';
@@ -645,3 +646,39 @@ $string['settings:trialaccess_desc'] = 'Qué ve un alumno en prueba (matrícula 
 $string['settings:trialaccess_statement'] = 'Solo enunciado (recomendado)';
 $string['settings:trialaccess_full'] = 'Solución completa';
 $string['settings:trialaccess_none'] = 'Sin acceso';
+
+// Editor del entregable (deliverable_edit.php).
+$string['deliverable:editheading'] = 'Configurar entregable de documento';
+$string['deliverable:enabled'] = 'Activar entregable';
+$string['deliverable:enabled_help'] = 'Cuando está activo, el alumnado puede descargar un archivo de partida, completarlo y subir su versión en la página de práctica. Cuando está desactivado, el caso se comporta como si no tuviera entregable.';
+$string['deliverable:filetype'] = 'Tipo de archivo esperado';
+$string['deliverable:startfile'] = 'Archivo de partida';
+$string['deliverable:startfile_help'] = 'Documento ofimático opcional (docx/xlsx) que el alumnado descarga como punto de partida del ejercicio.';
+$string['deliverable:correctionmode'] = 'Modo de corrección';
+$string['deliverable:correctionmode_help'] = 'Automático: el archivo subido se corrige automáticamente con el corrector integrado según la rúbrica. Manual: un profesor corrige cada entrega a mano (nota + comentario); no se ejecuta corrección automática.';
+$string['deliverable:correctionmode_auto'] = 'Automático (corrector)';
+$string['deliverable:correctionmode_manual'] = 'Manual (corregido por el profesor)';
+$string['deliverable:rubrica'] = 'Rúbrica (JSON)';
+$string['deliverable:rubrica_help'] = 'El contenido de rubrica.json que utiliza el corrector automático. Solo es relevante en modo de corrección automática.';
+$string['deliverable:maxscore'] = 'Puntuación máxima';
+$string['deliverable:err_maxscore'] = 'Introduce una puntuación máxima mayor que cero.';
+$string['deliverable:saved'] = 'Configuración del entregable guardada.';
+$string['error:invalidcorrectionmode'] = 'Modo de corrección no válido: {$a}';
+
+// Notificaciones del entregable.
+$string['notification:deliverablesubmitted_subject'] = 'Entregable enviado para revisión: {$a}';
+$string['notification:deliverablesubmitted_body'] = 'El alumno/a {$a->student} ha enviado un entregable de documento para el caso "{$a->casename}" y está pendiente de tu revisión.
+
+Revísalo y califícalo aquí: {$a->url}';
+$string['notification:deliverablesubmitted_body_html'] = '<p>El alumno/a {$a->student} ha enviado un entregable de documento para el caso "<strong>{$a->casename}</strong>" y está pendiente de tu revisión.</p><p><a href="{$a->url}">Revisar y calificar</a></p>';
+$string['notification:deliverablesubmitted_small'] = 'Entregable por revisar: {$a}';
+$string['notification:deliverablegraded_subject'] = 'Tu entregable ha sido calificado: {$a}';
+$string['notification:deliverablegraded_body'] = 'Tu entregable de documento para el caso "{$a->casename}" ha sido calificado: {$a->score}.
+
+Consulta el comentario aquí: {$a->url}';
+$string['notification:deliverablegraded_body_html'] = '<p>Tu entregable de documento para el caso "<strong>{$a->casename}</strong>" ha sido calificado: <strong>{$a->score}</strong>.</p><p><a href="{$a->url}">Consulta el comentario</a></p>';
+$string['notification:deliverablegraded_small'] = 'Entregable calificado: {$a}';
+
+// Nombres de proveedores de mensajes (Preferencias > Notificaciones).
+$string['messageprovider:deliverablesubmitted'] = 'Un alumno ha enviado un entregable para revisión manual';
+$string['messageprovider:deliverablegraded'] = 'Tu entregable ha sido calificado';

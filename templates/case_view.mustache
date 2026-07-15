@@ -20,9 +20,21 @@
     Template for displaying a single practical case with questions.
 
     Context variables required for this template:
-    * case - Case object with name, statement, status, questions array
-    * canedit - Boolean for edit capability
-    * caninsert - Boolean for insert into quiz capability
+    * case - Case object with id, name, statusclass, statuslabel, questioncount, totalmarks, hasquestions
+    * canedit - Boolean for edit capability (per-question action links)
+    * showpractice - Boolean: show the practice/timed/my-attempts buttons (has questions and full access)
+    * showquestions - Boolean: render the questions + summary (false for statement-only/preview users)
+    * practiceurl, timedurl, myattemptsurl - URLs for the practice buttons
+    * canexport, exporturl - Export button
+    * canstats, statsurl - Statistics button
+    * printable - Boolean: show the print button
+    * newquestionurl, backurl - URLs
+    * teachermenuhtml - Pre-rendered core action_menu (edit case / new question / insert into quiz), trusted HTML
+    * attachmentshtml - Pre-rendered attachments block, trusted HTML (may be empty)
+    * upgradectahtml - Pre-rendered upgrade CTA for statement-only users, trusted HTML (may be empty)
+    * questions - Array of question objects, each with number, questiontext, qtypelabel, defaultmark,
+                  answers[], solutionhtml (pre-rendered solution feedback + normativa), and per-question
+                  action booleans/urls (canmoveup, canmovedown, moveupurl, movedownurl, editurl, deleteurl)
 
     Example context (json):
     {
@@ -30,63 +42,80 @@
             "id": 1,
             "name": "Caso sobre silencio administrativo",
             "statement": "<p>Enunciado largo...</p>",
-            "status": "published",
             "statusclass": "bg-success",
             "statuslabel": "Publicado",
             "questioncount": 3,
-            "totalmarks": 3.0
+            "totalmarks": 3.0,
+            "hasquestions": true
         },
+        "canedit": true,
+        "showpractice": true,
+        "showquestions": true,
+        "practiceurl": "https://example.com/practice.php?id=1",
+        "timedurl": "https://example.com/practice_timed.php?id=1",
+        "myattemptsurl": "https://example.com/my_attempts.php?caseid=1",
+        "canexport": false,
+        "canstats": false,
+        "printable": true,
+        "newquestionurl": "https://example.com/question_edit.php?caseid=1",
+        "backurl": "https://example.com/index.php?category=1",
+        "teachermenuhtml": "",
+        "attachmentshtml": "",
+        "upgradectahtml": "",
         "questions": [
             {
                 "id": 1,
                 "number": 1,
                 "questiontext": "¿Cuál es el plazo?",
-                "qtype": "multichoice",
                 "qtypelabel": "Opción múltiple",
                 "defaultmark": 1.0,
+                "canedit": false,
                 "answers": [
-                    {"id": 1, "answer": "3 meses", "iscorrect": true, "fraction": 100},
-                    {"id": 2, "answer": "6 meses", "iscorrect": false, "fraction": 0}
-                ]
+                    {"id": 1, "answer": "3 meses", "iscorrect": true, "showfraction": false, "fraction": 100},
+                    {"id": 2, "answer": "6 meses", "iscorrect": false, "showfraction": false, "fraction": 0}
+                ],
+                "solutionhtml": ""
             }
-        ],
-        "canedit": true,
-        "caninsert": true
+        ]
     }
 }}
 <div class="local-casospracticos-case-view" data-caseid="{{case.id}}" role="article" aria-labelledby="case-title-{{case.id}}">
     {{! Case Header }}
     <div class="case-header mb-4 pb-3 border-bottom">
-        <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
-                <h2 class="mb-2" id="case-title-{{case.id}}">{{case.name}}</h2>
+                <h2 class="mb-2" id="case-title-{{case.id}}">{{{case.name}}}</h2>
                 <span class="badge {{case.statusclass}}" role="status">{{case.statuslabel}}</span>
-                {{#case.difficulty}}
-                <span class="badge bg-info ms-2" aria-label="{{#str}}difficulty, local_casospracticos{{/str}} {{case.difficulty}} {{#str}}outof, core{{/str}} 5">
-                    {{#str}}difficulty, local_casospracticos{{/str}}: {{case.difficulty}}/5
-                </span>
-                {{/case.difficulty}}
             </div>
-            <nav class="case-actions btn-group" role="toolbar" aria-label="{{#str}}caseactions, local_casospracticos{{/str}}">
-                {{#canedit}}
-                <a href="{{editurl}}" class="btn btn-outline-primary">
-                    {{#pix}}t/edit, core{{/pix}} {{#str}}editcase, local_casospracticos{{/str}}
-                </a>
-                <a href="{{newquestionurl}}" class="btn btn-outline-success">
-                    {{#pix}}t/add, core{{/pix}} {{#str}}newquestion, local_casospracticos{{/str}}
-                </a>
-                {{/canedit}}
-                {{#case.hasquestions}}
-                <a href="{{practiceurl}}" class="btn btn-info">
+            <div class="case-actions d-flex flex-wrap gap-2" role="group" aria-label="{{#str}}caseactions, local_casospracticos{{/str}}">
+                {{#showpractice}}
+                <a href="{{practiceurl}}" class="btn btn-primary">
                     {{#pix}}i/preview, core{{/pix}} {{#str}}practice, local_casospracticos{{/str}}
                 </a>
-                {{#caninsert}}
-                <a href="{{insertquizurl}}" class="btn btn-success">
-                    {{#pix}}i/import, core{{/pix}} {{#str}}insertintoquiz, local_casospracticos{{/str}}
+                <a href="{{timedurl}}" class="btn btn-outline-secondary">
+                    {{#pix}}i/scheduled, core{{/pix}} {{#str}}timedpractice, local_casospracticos{{/str}}
                 </a>
-                {{/caninsert}}
-                {{/case.hasquestions}}
-            </nav>
+                <a href="{{myattemptsurl}}" class="btn btn-outline-secondary">
+                    {{#pix}}i/report, core{{/pix}} {{#str}}viewmyattempts, local_casospracticos{{/str}}
+                </a>
+                {{/showpractice}}
+                {{#canexport}}
+                <a href="{{exporturl}}" class="btn btn-outline-secondary">
+                    {{#pix}}i/export, core{{/pix}} {{#str}}export, local_casospracticos{{/str}}
+                </a>
+                {{/canexport}}
+                {{#canstats}}
+                <a href="{{statsurl}}" class="btn btn-outline-secondary">
+                    {{#pix}}i/stats, core{{/pix}} {{#str}}statistics, local_casospracticos{{/str}}
+                </a>
+                {{/canstats}}
+                {{#printable}}
+                <button type="button" class="btn btn-outline-secondary" onclick="window.print(); return false;">
+                    {{#pix}}t/print, core{{/pix}} {{#str}}print, local_casospracticos{{/str}}
+                </button>
+                {{/printable}}
+                {{{teachermenuhtml}}}
+            </div>
         </div>
     </div>
 
@@ -100,6 +129,10 @@
         </div>
     </div>
 
+    {{! Attachments (pre-rendered in PHP; empty when the case has none) }}
+    {{{attachmentshtml}}}
+
+    {{#showquestions}}
     {{! Questions Section }}
     <section class="case-questions" aria-labelledby="questions-heading">
         <h4 class="mb-3" id="questions-heading">
@@ -155,7 +188,7 @@
                     {{{questiontext}}}
                 </div>
 
-                {{#answers.length}}
+                {{#hasanswers}}
                 <ul class="list-group" role="list" aria-label="{{#str}}answers, local_casospracticos{{/str}}">
                     {{#answers}}
                     <li class="list-group-item {{#iscorrect}}list-group-item-success{{/iscorrect}}" aria-label="{{#iscorrect}}{{#str}}correctanswer, local_casospracticos{{/str}}{{/iscorrect}}{{^iscorrect}}{{#str}}incorrectanswer, local_casospracticos{{/str}}{{/iscorrect}}">
@@ -163,11 +196,11 @@
                             <div>
                                 {{#iscorrect}}
                                 {{#pix}}i/valid, core{{/pix}}
-                                <span class="visually-hidden">{{#str}}correct{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}correct, local_casospracticos{{/str}}</span>
                                 {{/iscorrect}}
                                 {{^iscorrect}}
                                 {{#pix}}i/invalid, core{{/pix}}
-                                <span class="visually-hidden">{{#str}}incorrect{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}incorrect, local_casospracticos{{/str}}</span>
                                 {{/iscorrect}}
                                 {{{answer}}}
                             </div>
@@ -183,14 +216,10 @@
                     </li>
                     {{/answers}}
                 </ul>
-                {{/answers.length}}
+                {{/hasanswers}}
 
-                {{#generalfeedback}}
-                <div class="alert alert-info mt-3 mb-0" role="note">
-                    <strong>{{#str}}generalfeedback, local_casospracticos{{/str}}:</strong>
-                    {{{generalfeedback}}}
-                </div>
-                {{/generalfeedback}}
+                {{! Canonical solution feedback + normativa links, pre-rendered in PHP }}
+                {{{solutionhtml}}}
             </div>
         </article>
         {{/questions}}
@@ -207,17 +236,17 @@
                     <strong>{{#str}}defaultmark, local_casospracticos{{/str}}:</strong> {{case.totalmarks}}
                 </div>
                 <div class="col-md-4 text-end">
-                    <a href="{{backurl}}" class="btn btn-secondary">
+                    <a href="{{backurl}}" class="btn btn-outline-secondary">
                         {{#str}}backtocases, local_casospracticos{{/str}}
                     </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
+    {{/showquestions}}
 
-{{#js}}
-require(['local_casospracticos/case_editor'], function(editor) {
-    editor.init({{case.id}});
-});
-{{/js}}
+    {{^showquestions}}
+    {{! Statement-only / preview users: upgrade CTA (empty for preview), never the questions }}
+    {{{upgradectahtml}}}
+    {{/showquestions}}
+</div>
