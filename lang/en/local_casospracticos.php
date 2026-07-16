@@ -646,6 +646,7 @@ $string['deliverable:editheading'] = 'Configure document deliverable';
 $string['deliverable:enabled'] = 'Enable deliverable';
 $string['deliverable:enabled_help'] = 'When enabled, students can download a start file, complete it and upload their version on the practice page. When disabled, the case behaves as if it had no deliverable.';
 $string['deliverable:filetype'] = 'Expected file type';
+$string['deliverable:filetype:any'] = 'Any format';
 $string['deliverable:startfile'] = 'Start file';
 $string['deliverable:startfile_help'] = 'Optional office document (docx/xlsx) that students download as the starting point for the exercise.';
 $string['deliverable:correctionmode'] = 'Correction mode';

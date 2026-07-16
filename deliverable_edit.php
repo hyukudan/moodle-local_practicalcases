@@ -70,6 +70,7 @@ class local_casospracticos_deliverable_form extends moodleform {
             get_string('deliverable:filetype', 'local_casospracticos'), [
                 'docx' => 'docx',
                 'xlsx' => 'xlsx',
+                'any' => get_string('deliverable:filetype:any', 'local_casospracticos'),
             ]);
         $mform->setType('filetype', PARAM_ALPHA);
         $mform->setDefault('filetype', 'docx');

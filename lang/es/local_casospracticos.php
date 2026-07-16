@@ -655,6 +655,7 @@ $string['deliverable:editheading'] = 'Configurar entregable de documento';
 $string['deliverable:enabled'] = 'Activar entregable';
 $string['deliverable:enabled_help'] = 'Cuando está activo, el alumnado puede descargar un archivo de partida, completarlo y subir su versión en la página de práctica. Cuando está desactivado, el caso se comporta como si no tuviera entregable.';
 $string['deliverable:filetype'] = 'Tipo de archivo esperado';
+$string['deliverable:filetype:any'] = 'Cualquier formato';
 $string['deliverable:startfile'] = 'Archivo de partida';
 $string['deliverable:startfile_help'] = 'Documento ofimático opcional (docx/xlsx) que el alumnado descarga como punto de partida del ejercicio.';
 $string['deliverable:correctionmode'] = 'Modo de corrección';
