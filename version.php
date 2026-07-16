@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026071600;  // Persist manual grading for essay practice attempts.
+$plugin->version   = 2026071601;  // Direct (deliverable-only) submission flow for per-case document deliverables.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.6.0';

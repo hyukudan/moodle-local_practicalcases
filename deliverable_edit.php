@@ -91,6 +91,16 @@ class local_casospracticos_deliverable_form extends moodleform {
         $mform->setDefault('correctionmode', 'auto');
         $mform->addHelpButton('correctionmode', 'deliverable:correctionmode', 'local_casospracticos');
 
+        // Submission flow.
+        $mform->addElement('select', 'submissionflow',
+            get_string('deliverable:submissionflow', 'local_casospracticos'), [
+                'afterattempt' => get_string('deliverable:submissionflow_afterattempt', 'local_casospracticos'),
+                'direct' => get_string('deliverable:submissionflow_direct', 'local_casospracticos'),
+            ]);
+        $mform->setType('submissionflow', PARAM_ALPHA);
+        $mform->setDefault('submissionflow', 'afterattempt');
+        $mform->addHelpButton('submissionflow', 'deliverable:submissionflow', 'local_casospracticos');
+
         // Rubrica (JSON used by the auto corrector).
         $mform->addElement('textarea', 'rubrica',
             get_string('deliverable:rubrica', 'local_casospracticos'),
@@ -122,6 +132,14 @@ class local_casospracticos_deliverable_form extends moodleform {
         $maxscore = isset($data['maxscore']) ? unformat_float($data['maxscore'], true) : null;
         if ($maxscore === false || $maxscore === null || $maxscore <= 0) {
             $errors['maxscore'] = get_string('deliverable:err_maxscore', 'local_casospracticos');
+        }
+
+        // Direct submission (deliverable-only, no question attempt) is only
+        // supported with manual correction: there is no scored question attempt
+        // to feed the Python autograder, so direct+auto is rejected.
+        if (($data['submissionflow'] ?? 'afterattempt') === 'direct'
+                && ($data['correctionmode'] ?? 'auto') !== 'manual') {
+            $errors['submissionflow'] = get_string('deliverable:err_directrequiresmanual', 'local_casospracticos');
         }
 
         return $errors;
@@ -180,6 +198,7 @@ if ($existing) {
     $formdefaults['enabled'] = $existing->enabled;
     $formdefaults['filetype'] = $existing->filetype ?: 'docx';
     $formdefaults['correctionmode'] = $existing->correctionmode ?? 'auto';
+    $formdefaults['submissionflow'] = $existing->submissionflow ?? 'afterattempt';
     $formdefaults['rubrica'] = $existing->rubrica;
     $formdefaults['maxscore'] = $existing->maxscore;
 }
@@ -217,6 +236,7 @@ if ($form->is_cancelled()) {
     $record->rubrica = $data->rubrica;
     $record->maxscore = unformat_float($data->maxscore, true);
     $record->correctionmode = $data->correctionmode;
+    $record->submissionflow = $data->submissionflow;
 
     case_manager::save_deliverable($record);
 

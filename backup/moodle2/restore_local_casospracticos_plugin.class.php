@@ -397,6 +397,22 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $data->timecreated = $data->timecreated ?? time();
         $data->timemodified = time();
 
+        // Normalize submissionflow to protect the direct+manual invariant enforced
+        // elsewhere in the plugin. A legacy backup (pre-Option A) has no
+        // submissionflow; a hand-edited one could carry a bogus value or an
+        // invalid direct+auto combination. Guard both cases so a restored case can
+        // never introduce an invalid 'direct' row:
+        //   - unknown/absent value      -> 'afterattempt'
+        //   - 'direct' but not manual   -> 'afterattempt' (direct requires manual)
+        $flow = $data->submissionflow ?? 'afterattempt';
+        if (!in_array($flow, ['afterattempt', 'direct'], true)) {
+            $flow = 'afterattempt';
+        }
+        if ($flow === 'direct' && (($data->correctionmode ?? 'auto') !== 'manual')) {
+            $flow = 'afterattempt';
+        }
+        $data->submissionflow = $flow;
+
         unset($data->id);
 
         // The caseid key is unique; skip if a deliverable already exists for it.

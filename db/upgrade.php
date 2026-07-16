@@ -553,5 +553,21 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071600, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071601) {
+        // Explicit submission flow for the per-case document deliverable.
+        // Additive, NOT NULL default 'afterattempt' -> every existing deliverable
+        // keeps its current behaviour (upload appears after a finished question
+        // attempt). 'direct' opts a case into deliverable-only submission with no
+        // question attempt (used for ofimática cases where the file IS the work).
+        $table = new xmldb_table('local_cp_case_deliverable');
+        $field = new xmldb_field('submissionflow', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'afterattempt', 'correctionmode');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071601, 'local', 'casospracticos');
+    }
+
     return true;
 }

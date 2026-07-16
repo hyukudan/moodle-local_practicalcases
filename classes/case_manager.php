@@ -718,6 +718,18 @@ class case_manager {
         }
         $record->correctionmode = $mode;
 
+        // Submission flow: 'afterattempt' (default/legacy) or 'direct'. 'direct'
+        // is only valid with manual correction (no scored question attempt exists
+        // to auto-grade). Default missing/unknown values to the safe legacy flow.
+        $flow = $record->submissionflow ?? 'afterattempt';
+        if (!in_array($flow, ['afterattempt', 'direct'], true)) {
+            $flow = 'afterattempt';
+        }
+        if ($flow === 'direct' && $mode !== 'manual') {
+            throw new \moodle_exception('error:directrequiresmanual', 'local_casospracticos');
+        }
+        $record->submissionflow = $flow;
+
         $now = time();
         $caseid = (int) $record->caseid;
         $existing = $DB->get_record('local_cp_case_deliverable', ['caseid' => $caseid]);

@@ -105,7 +105,7 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $deliverables = new backup_nested_element('cp_deliverables');
         $deliverable = new backup_nested_element('cp_deliverable', ['id'], [
             'enabled', 'filetype', 'startfilename', 'rubrica', 'maxscore',
-            'correctionmode', 'timecreated', 'timemodified'
+            'correctionmode', 'submissionflow', 'timecreated', 'timemodified'
         ]);
 
         // Build the tree.
