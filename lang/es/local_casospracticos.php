@@ -667,6 +667,10 @@ $string['deliverable:submissionflow_help'] = 'Tras el intento (por defecto): el 
 $string['deliverable:submissionflow_afterattempt'] = 'Tras el intento (subir tras terminar las preguntas)';
 $string['deliverable:submissionflow_direct'] = 'Directo (solo entregable, sin preguntas)';
 $string['deliverable:err_directrequiresmanual'] = 'La entrega directa solo está disponible con corrección manual. Pon el modo de corrección en Manual o elige el flujo "Tras el intento".';
+$string['deliverable:maxfiles'] = 'Número máximo de archivos';
+$string['deliverable:maxfiles_help'] = 'Número máximo de archivos que el alumno puede subir en una entrega; 1 = un solo archivo. Los valores mayores que 1 (por ejemplo, un Word y un Excel juntos) solo tienen efecto con corrección manual: el corrector automático siempre califica exactamente un archivo, por lo que en los casos automáticos se fuerza a 1.';
+$string['deliverable:err_maxfilesrange'] = 'Introduce un número entero de archivos entre 1 y {$a}.';
+$string['deliverable:err_maxfilesrequiresmanual'] = 'Permitir más de un archivo solo está disponible con corrección manual. Pon el modo de corrección en Manual o deja el número máximo de archivos en 1.';
 $string['error:directrequiresmanual'] = 'El flujo de entrega directo requiere el modo de corrección manual.';
 $string['deliverable:rubrica'] = 'Rúbrica (JSON)';
 $string['deliverable:rubrica_help'] = 'El contenido de rubrica.json que utiliza el corrector automático. Solo es relevante en modo de corrección automática.';

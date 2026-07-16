@@ -101,6 +101,15 @@ class local_casospracticos_deliverable_form extends moodleform {
         $mform->setDefault('submissionflow', 'afterattempt');
         $mform->addHelpButton('submissionflow', 'deliverable:submissionflow', 'local_casospracticos');
 
+        // Max number of files the student may upload in one submission. Only takes
+        // effect with manual correction (the auto corrector consumes exactly one
+        // file); auto is clamped to 1 in validation and at runtime.
+        $mform->addElement('text', 'maxfiles',
+            get_string('deliverable:maxfiles', 'local_casospracticos'), ['size' => 6]);
+        $mform->setType('maxfiles', PARAM_INT);
+        $mform->setDefault('maxfiles', 1);
+        $mform->addHelpButton('maxfiles', 'deliverable:maxfiles', 'local_casospracticos');
+
         // Rubrica (JSON used by the auto corrector).
         $mform->addElement('textarea', 'rubrica',
             get_string('deliverable:rubrica', 'local_casospracticos'),
@@ -140,6 +149,18 @@ class local_casospracticos_deliverable_form extends moodleform {
         if (($data['submissionflow'] ?? 'afterattempt') === 'direct'
                 && ($data['correctionmode'] ?? 'auto') !== 'manual') {
             $errors['submissionflow'] = get_string('deliverable:err_directrequiresmanual', 'local_casospracticos');
+        }
+
+        // Max files: integer in [1, LOCAL_CP_DELIVERABLE_MAXFILES_CAP]. Multi-file
+        // (>1) is only valid with manual correction: the Python autograder
+        // consumes exactly one file, so auto + maxfiles>1 is rejected here (and
+        // additionally clamped to 1 at runtime as a belt-and-suspenders measure).
+        $maxfiles = isset($data['maxfiles']) ? (int) $data['maxfiles'] : 1;
+        if ($maxfiles < 1 || $maxfiles > LOCAL_CP_DELIVERABLE_MAXFILES_CAP) {
+            $errors['maxfiles'] = get_string('deliverable:err_maxfilesrange', 'local_casospracticos',
+                LOCAL_CP_DELIVERABLE_MAXFILES_CAP);
+        } else if ($maxfiles > 1 && ($data['correctionmode'] ?? 'auto') !== 'manual') {
+            $errors['maxfiles'] = get_string('deliverable:err_maxfilesrequiresmanual', 'local_casospracticos');
         }
 
         return $errors;
@@ -199,6 +220,7 @@ if ($existing) {
     $formdefaults['filetype'] = $existing->filetype ?: 'docx';
     $formdefaults['correctionmode'] = $existing->correctionmode ?? 'auto';
     $formdefaults['submissionflow'] = $existing->submissionflow ?? 'afterattempt';
+    $formdefaults['maxfiles'] = isset($existing->maxfiles) ? (int) $existing->maxfiles : 1;
     $formdefaults['rubrica'] = $existing->rubrica;
     $formdefaults['maxscore'] = $existing->maxscore;
 }
@@ -237,6 +259,19 @@ if ($form->is_cancelled()) {
     $record->maxscore = unformat_float($data->maxscore, true);
     $record->correctionmode = $data->correctionmode;
     $record->submissionflow = $data->submissionflow;
+
+    // Persist maxfiles, clamped to [1, cap]. Auto correction always stores 1
+    // (single-file), so the value only carries meaning for manual cases.
+    $maxfiles = (int) ($data->maxfiles ?? 1);
+    if ($maxfiles < 1) {
+        $maxfiles = 1;
+    } else if ($maxfiles > LOCAL_CP_DELIVERABLE_MAXFILES_CAP) {
+        $maxfiles = LOCAL_CP_DELIVERABLE_MAXFILES_CAP;
+    }
+    if ($record->correctionmode !== 'manual') {
+        $maxfiles = 1;
+    }
+    $record->maxfiles = $maxfiles;
 
     case_manager::save_deliverable($record);
 

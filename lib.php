@@ -398,6 +398,10 @@ define('LOCAL_CP_ACCESS_NONE', 0);
 define('LOCAL_CP_ACCESS_STATEMENT', 10);
 define('LOCAL_CP_ACCESS_FULL', 20);
 
+// Upper bound for the per-case deliverable maxfiles setting (student uploads
+// per submission). Sensible ceiling so a typo can't request thousands of files.
+define('LOCAL_CP_DELIVERABLE_MAXFILES_CAP', 10);
+
 /**
  * Course id whose enrolment gates the central case bank (the paid product).
  *

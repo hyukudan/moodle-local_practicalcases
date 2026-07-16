@@ -658,6 +658,10 @@ $string['deliverable:submissionflow_help'] = 'After attempt (default): the uploa
 $string['deliverable:submissionflow_afterattempt'] = 'After attempt (upload after finishing questions)';
 $string['deliverable:submissionflow_direct'] = 'Direct (deliverable only, no questions)';
 $string['deliverable:err_directrequiresmanual'] = 'Direct submission is only available with manual correction. Set the correction mode to Manual, or choose the "After attempt" flow.';
+$string['deliverable:maxfiles'] = 'Maximum number of files';
+$string['deliverable:maxfiles_help'] = 'Maximum number of files a student may upload in a single submission; 1 = a single file. Values greater than 1 (e.g. a Word and an Excel together) only take effect with manual correction — the automatic corrector always grades exactly one file, so automatic cases are forced to 1.';
+$string['deliverable:err_maxfilesrange'] = 'Enter a whole number of files between 1 and {$a}.';
+$string['deliverable:err_maxfilesrequiresmanual'] = 'Allowing more than one file is only available with manual correction. Set the correction mode to Manual, or leave the maximum number of files at 1.';
 $string['error:directrequiresmanual'] = 'Direct submission flow requires manual correction mode.';
 $string['deliverable:rubrica'] = 'Rubric (JSON)';
 $string['deliverable:rubrica_help'] = 'The rubrica.json content used by the automatic corrector. Only relevant in automatic correction mode.';

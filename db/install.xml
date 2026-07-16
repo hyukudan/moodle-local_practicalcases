@@ -323,6 +323,7 @@
         <FIELD NAME="maxscore" TYPE="number" LENGTH="10" NOTNULL="true" DEFAULT="100" DECIMALS="4" COMMENT="Maximum deliverable score"/>
         <FIELD NAME="correctionmode" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="auto" SEQUENCE="false" COMMENT="auto=python autograder, manual=teacher-graded"/>
         <FIELD NAME="submissionflow" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="afterattempt" SEQUENCE="false" COMMENT="afterattempt=upload appears after a finished question attempt (default, legacy); direct=explicit deliverable-only submission with no question attempt"/>
+        <FIELD NAME="maxfiles" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Max number of files a student may upload in one submission. Default 1 = single-file (legacy) behaviour. Values >1 only take effect with correctionmode=manual; the auto corrector always consumes exactly one file."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>

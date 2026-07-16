@@ -569,5 +569,21 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071601, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071602) {
+        // Per-case max number of files a student may upload in one deliverable
+        // submission. Additive, NOT NULL default 1 -> every existing deliverable
+        // keeps single-file behaviour. Values >1 only take effect with
+        // correctionmode='manual' (the Python autograder always consumes exactly
+        // one file, so auto cases are clamped to 1 at edit and at runtime).
+        $table = new xmldb_table('local_cp_case_deliverable');
+        $field = new xmldb_field('maxfiles', XMLDB_TYPE_INTEGER, '4', null,
+            XMLDB_NOTNULL, null, '1', 'submissionflow');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071602, 'local', 'casospracticos');
+    }
+
     return true;
 }
