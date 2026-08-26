@@ -32,7 +32,9 @@ $functions = [
         'description' => 'Get all practical case categories',
         'type' => 'read',
         'ajax' => true,
-        'capabilities' => 'local/casospracticos:view',
+        // No capability metadata: these are gated by entitlement to the product
+        // course (see api::require_bank_access), not by a system-level capability.
+        'capabilities' => '',
     ],
 
     // Cases.
@@ -42,7 +44,9 @@ $functions = [
         'description' => 'Get practical cases, optionally filtered by category',
         'type' => 'read',
         'ajax' => true,
-        'capabilities' => 'local/casospracticos:view',
+        // No capability metadata: these are gated by entitlement to the product
+        // course (see api::require_bank_access), not by a system-level capability.
+        'capabilities' => '',
     ],
     'local_casospracticos_get_case' => [
         'classname' => 'local_casospracticos\external\api',
@@ -50,7 +54,9 @@ $functions = [
         'description' => 'Get a single practical case with all questions',
         'type' => 'read',
         'ajax' => true,
-        'capabilities' => 'local/casospracticos:view',
+        // No capability metadata: these are gated by entitlement to the product
+        // course (see api::require_bank_access), not by a system-level capability.
+        'capabilities' => '',
     ],
     'local_casospracticos_create_case' => [
         'classname' => 'local_casospracticos\external\api',
@@ -84,7 +90,9 @@ $functions = [
         'description' => 'Get questions for a case',
         'type' => 'read',
         'ajax' => true,
-        'capabilities' => 'local/casospracticos:view',
+        // No capability metadata: these are gated by entitlement to the product
+        // course (see api::require_bank_access), not by a system-level capability.
+        'capabilities' => '',
     ],
     'local_casospracticos_create_question' => [
         'classname' => 'local_casospracticos\external\api',
@@ -196,7 +204,9 @@ $functions = [
         'description' => 'Auto-save practice responses during timed practice',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'local/casospracticos:view',
+        // No capability metadata: these are gated by entitlement to the product
+        // course (see api::require_bank_access), not by a system-level capability.
+        'capabilities' => '',
     ],
 ];
 

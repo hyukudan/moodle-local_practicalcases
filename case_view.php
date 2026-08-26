@@ -254,8 +254,8 @@ if ($showquestions && $hasquestions) {
 
     // Performance: pre-load all answers and normativa links to avoid N+1 queries.
     $questionids = array_column($case->questions, 'id');
-    // Answer keys, feedback and legal-basis links are privileged editorial data.
-    // Do not even load them for an ordinary learner opening the case statement.
+    // Answer keys, feedback and legal-basis links are what the product sells:
+    // load them for entitled viewers, and not at all for anyone below that bar.
     $allanswers = $canviewanswers
         ? question_manager::get_answers_for_questions($questionids)
         : [];

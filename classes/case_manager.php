@@ -496,7 +496,8 @@ class case_manager {
      * @param string|null $status Status filter
      * @return array Cases with questioncount field
      */
-    public static function get_with_counts(int $categoryid = null, string $status = null): array {
+    public static function get_with_counts(int $categoryid = null, string $status = null,
+            bool $excludeblocked = false): array {
         global $DB;
 
         $params = [];
@@ -512,6 +513,11 @@ class case_manager {
             $params['status'] = $status;
         }
 
+        // Learner-facing callers must not advertise questions the learner will never
+        // be served: blocked ones are filtered out of every learner view, so counting
+        // them made the cards promise more questions than the case delivers.
+        $blockedwhere = $excludeblocked ? "WHERE feedbackstatus <> 'blocked'" : '';
+
         // Use a subquery for question counts to avoid GROUP BY compatibility issues with PostgreSQL.
         // PostgreSQL requires all non-aggregated SELECT columns to appear in GROUP BY.
         $sql = "SELECT c.*, COALESCE(qc.questioncount, 0) AS questioncount
@@ -519,6 +525,7 @@ class case_manager {
                 LEFT JOIN (
                     SELECT caseid, COUNT(*) AS questioncount
                     FROM {local_cp_questions}
+                    {$blockedwhere}
                     GROUP BY caseid
                 ) qc ON qc.caseid = c.id
                 WHERE {$where}

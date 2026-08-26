@@ -103,10 +103,14 @@ Feature: Practical case management
     And I should not see "Draft Case 1"
     And I should not see "Archived Case"
 
+  # A learner cannot even reach the back-office: the navigation node is hidden
+  # and index.php refuses them. Asserting "should not see New case" on a page
+  # they can never open was a false green.
   @javascript
-  Scenario: Student cannot create cases
+  Scenario: A learner cannot reach the back-office at all
     Given I log out
     And I log in as "student1"
-    When I navigate to "Plugins > Local plugins > Manage practical cases" in site administration
-    Then I should not see "New case"
+    When I am on the "local_casospracticos > Back-office" page
+    Then I should see "you do not currently have permissions to do that"
+    And I should not see "New case"
     And I should not see "New category"

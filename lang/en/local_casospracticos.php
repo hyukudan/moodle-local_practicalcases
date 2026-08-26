@@ -627,7 +627,7 @@ $string['timer:submityouranswers'] = 'Time is up! Please submit your answers.';
 
 // Access control / paywall (central case bank).
 $string['cta:solutionlocked_title'] = 'Unlock the full solution';
-$string['cta:solutionlocked_body'] = 'The trial lets you read the case statements. To see the reasoned solution, method and answer keys for every question, join the full Practical Cases course.';
+$string['cta:solutionlocked_body'] = 'The trial lets you read the case statements. To see the reasoned solution, method and answer keys for every available question, join the full Practical Cases course.';
 $string['cta:unlock'] = 'View the course and unlock';
 $string['access:required_title'] = 'Content reserved for students';
 $string['access:required_body'] = 'The bank of solved practical cases is available to students of the Practical Cases course. Enrol to unlock {$a} cases with their solutions.';
@@ -687,3 +687,9 @@ $string['notification:deliverablegraded_small'] = 'Deliverable graded: {$a}';
 // Message provider names (Preferences > Notifications).
 $string['messageprovider:deliverablesubmitted'] = 'A student submitted a deliverable for manual review';
 $string['messageprovider:deliverablegraded'] = 'Your deliverable has been graded';
+
+// Real-bank card actions.
+$string['realbank:practise'] = 'Practise';
+$string['realbank:timed'] = 'Timed';
+$string['realbank:statement'] = 'View statement';
+$string['realbank:solution'] = 'View solution';

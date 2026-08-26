@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026071602;  // Per-case maxfiles: multi-file deliverable upload (manual mode).
+$plugin->version   = 2026082600;  // Access: entitlement (not capability) governs answer keys and solutions.
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.6.0';
+$plugin->release   = '1.6.1';

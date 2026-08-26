@@ -576,8 +576,11 @@ function local_casospracticos_alert_missing_product_course(int $courseid): void 
  * editorial capability local/casospracticos:viewanswers, which no student ever
  * holds, so a paying student opening a link labelled "Ver caso con solución"
  * got the questions with the solution stripped out. Entitlement to the product
- * (LOCAL_CP_ACCESS_FULL) is what buys the solution; the capability stays as the
- * editorial bypass for unpublished/draft material.
+ * (LOCAL_CP_ACCESS_FULL) is what buys the solution.
+ *
+ * The :viewanswers capability is kept only for backwards compatibility: it no
+ * longer decides anything a learner sees, and it never gated drafts either —
+ * that is can_view_unpublished(), which tests :edit.
  *
  * @param context $context Context to test the editorial capabilities in.
  * @param int|null $viewaccess Pre-computed access level, to save a second lookup.

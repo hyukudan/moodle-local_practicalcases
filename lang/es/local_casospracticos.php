@@ -636,7 +636,7 @@ $string['review_status_revision_requested'] = 'Revisión solicitada';
 
 // Access control / paywall (central case bank).
 $string['cta:solutionlocked_title'] = 'Desbloquea la solución completa';
-$string['cta:solutionlocked_body'] = 'Con la versión de prueba puedes leer el enunciado de los casos. Para ver la solución razonada, el método y las claves de todas las preguntas, accede al curso completo de Casos Prácticos.';
+$string['cta:solutionlocked_body'] = 'Con la versión de prueba puedes leer el enunciado de los casos. Para ver la solución razonada, el método y las claves de todas las preguntas disponibles, accede al curso completo de Casos Prácticos.';
 $string['cta:unlock'] = 'Ver el curso y desbloquear';
 $string['access:required_title'] = 'Contenido reservado a alumnos';
 $string['access:required_body'] = 'El banco de casos prácticos resueltos está disponible para los alumnos del curso de Casos Prácticos. Accede al curso para desbloquear los {$a} casos con sus soluciones.';
@@ -696,3 +696,9 @@ $string['notification:deliverablegraded_small'] = 'Entregable calificado: {$a}';
 // Nombres de proveedores de mensajes (Preferencias > Notificaciones).
 $string['messageprovider:deliverablesubmitted'] = 'Un alumno ha enviado un entregable para revisión manual';
 $string['messageprovider:deliverablegraded'] = 'Tu entregable ha sido calificado';
+
+// Acciones de las tarjetas del banco real.
+$string['realbank:practise'] = 'Practicar';
+$string['realbank:timed'] = 'Cronometrado';
+$string['realbank:statement'] = 'Ver supuesto';
+$string['realbank:solution'] = 'Ver solución';

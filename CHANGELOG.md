@@ -1,5 +1,53 @@
 # Changelog - Practical Cases Plugin
 
+> **Aviso de fiabilidad.** Este fichero se quedó parado en v1.1.0 (enero) mientras el plugin
+> llegaba a la 1.6. Las versiones 1.2–1.6 NO están documentadas aquí y no se reconstruyen a
+> posteriori para no inventar historia: para ese tramo, la fuente es `git log`.
+> Corrección concreta: más abajo se afirma que las preguntas **Matching** están soportadas.
+> **No lo están.** `question_manager.php` las excluye a propósito hasta que exista un modelo
+> persistido de subpreguntas ("Matching is deliberately excluded"), y
+> `test_matching_is_rejected_consistently()` lo comprueba.
+
+## v1.6.1 (2026-08-26) - El alumno de pago ve la solución
+
+### Corregido
+
+- **Ningún alumno veía jamás una solución.** `case_view.php` exigía la capacidad editorial
+  `local/casospracticos:viewanswers`, que ni un solo alumno posee, así que ni siquiera se
+  cargaban respuestas, feedback ni normativa. El enlace decía "Ver caso con solución" y la
+  página era incapaz de entregar una. Ahora el derecho de matrícula (`LOCAL_CP_ACCESS_FULL`)
+  es lo que compra la solución.
+- **El error "No tiene permiso" venía de la miga de pan.** Nueve productores de enlaces de
+  alumno apuntaban a `index.php`, que es back-office y conserva su cierre a propósito.
+- **`review_attempt.php` no comprobaba el derecho, sólo la propiedad**: con la matrícula
+  caducada se seguían reabriendo intentos viejos y leyendo la clave de cada opción.
+- **El banco enlazaba sus tarjetas con `preview=1`**, que oculta hasta las preguntas.
+- **El autoguardado del cronometrado fallaba para todo alumno** (capacidad en contexto sistema
+  en un endpoint externo).
+- **Paridad API/web**: `get_case`/`get_questions` no retiraban las preguntas bloqueadas que la
+  web sí retira, y `get_categories` devolvía la taxonomía editorial completa.
+- **Los contadores mentían**: las tarjetas anunciaban preguntas bloqueadas que el alumno nunca
+  recibe (25 anunciadas / 24 entregadas).
+- **Archivar un caso** ahora lo retira también de `pluginfile()`, `review_attempt` y
+  `timed_result`, que sólo comprobaban que existiera.
+- **Fail-open cerrado**: con el curso producto irresoluble se concedía acceso completo a todo
+  usuario autenticado, y en silencio. Ahora deniega y avisa al log.
+
+### Añadido
+
+- Tres reglas con un único hogar en `lib.php`: `can_view_answers()`,
+  `can_see_blocked_questions()` y `get_root_url()`. Estaban duplicadas y por eso divergieron.
+- Paso Behat `"<usuario>" has "NONE|STATEMENT|FULL" access to the practical-case bank`, sin el
+  cual ningún escenario podía describir el recorrido real de un alumno.
+- `tests/access_policy_test.php`: contrato de la política de acceso.
+
+### Cambiado
+
+- `db/services.php` deja de declarar `local/casospracticos:view` como requisito: informaba del
+  criterio equivocado.
+- La capacidad `local/casospracticos:viewanswers` queda como **heredada**: ya no decide nada de
+  lo que ve un alumno, y nunca gobernó los borradores (eso es `:edit`).
+
 ## v1.1.0 (2026-01-12) - Secure Sessions + Timed Practice Mode
 
 ### 🔐 Security Improvements IMPLEMENTED

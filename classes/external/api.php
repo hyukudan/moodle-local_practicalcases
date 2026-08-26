@@ -143,8 +143,7 @@ class api extends external_api {
      * Whether the current user may see answer-key data (fraction/feedback).
      *
      * Delegates to the single home of the rule in lib.php: entitlement to the
-     * product (LOCAL_CP_ACCESS_FULL) buys the answer key, and the editorial
-     * capabilities remain a bypass for unpublished material. Keeping a second
+     * product (LOCAL_CP_ACCESS_FULL) buys the answer key. Keeping a second
      * copy of the rule here is what let the two drift apart, leaving paying
      * students unable to see any solution at all.
      *
@@ -357,10 +356,11 @@ class api extends external_api {
             $statusfilter = case_manager::STATUS_PUBLISHED;
         }
 
+        $excludeblocked = !case_manager::can_view_unpublished($context);
         if ($params['categoryid'] > 0) {
-            $cases = case_manager::get_with_counts($params['categoryid'], $statusfilter);
+            $cases = case_manager::get_with_counts($params['categoryid'], $statusfilter, $excludeblocked);
         } else {
-            $cases = case_manager::get_with_counts(null, $statusfilter);
+            $cases = case_manager::get_with_counts(null, $statusfilter, $excludeblocked);
         }
 
         $result = [];
@@ -427,7 +427,7 @@ class api extends external_api {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
-        // Only authoring/review users may receive the answer key (fraction/feedback).
+        // Entitled viewers and editorial may receive the answer key (fraction/feedback).
         $includekeys = self::can_view_answer_keys($context);
 
         // Parity with case_view.php: blocked questions are pulled from circulation.
@@ -700,7 +700,7 @@ class api extends external_api {
             throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
         }
 
-        // Only authoring/review users may receive the answer key (fraction/feedback).
+        // Entitled viewers and editorial may receive the answer key (fraction/feedback).
         $includekeys = self::can_view_answer_keys($context);
 
         $questions = question_manager::get_by_case_with_answers($params['caseid']);
@@ -729,6 +729,9 @@ class api extends external_api {
                 $payload['generalfeedback'] = self::format_richtext($q->generalfeedback ?? '', $context);
                 $payload['reasoning'] = self::format_richtext($q->reasoning ?? '', $context);
                 $payload['modelanswer'] = self::format_richtext($q->modelanswer ?? '', $context);
+            }
+            if (case_manager::can_view_unpublished($context)) {
+                // Editorial workflow metadata, never part of a learner payload.
                 $payload['feedbackstatus'] = $q->feedbackstatus ?? 'legacy';
             }
             $result[] = $payload;
@@ -1503,13 +1506,8 @@ class api extends external_api {
         self::validate_context($context);
         // Entitlement, not system capability: this is the autosave of a student's
         // own timed practice, loaded from practice_timed.php. Gating it on the
-        // capability at system context made it fail for every student. Throw
-        // rather than calling require_view_access(), whose failure path is a
-        // redirect to the purchase CTA and would corrupt the JSON response.
-        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
-        if (local_casospracticos_get_view_access() < LOCAL_CP_ACCESS_FULL) {
-            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
-        }
+        // capability at system context made it fail for every student.
+        self::require_bank_access(LOCAL_CP_ACCESS_FULL);
         self::check_rate_limit('save_practice_responses', 'write');
 
         $params = self::validate_parameters(self::save_practice_responses_parameters(), [

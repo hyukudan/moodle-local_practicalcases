@@ -3971,7 +3971,7 @@ $sql = "SELECT c.id, c.name, c.statement, c.tags, c.timemodified, cat.name AS ca
                COUNT(q.id) AS questioncount
           FROM {local_cp_cases} c
           JOIN {local_cp_categories} cat ON cat.id = c.categoryid
-     LEFT JOIN {local_cp_questions} q ON q.caseid = c.id
+     LEFT JOIN {local_cp_questions} q ON q.caseid = c.id AND q.feedbackstatus <> 'blocked'
          WHERE $wherehtml
       GROUP BY c.id, c.name, c.statement, c.tags, c.timemodified, cat.name
       ORDER BY $ordersql";
@@ -4275,10 +4275,10 @@ if (!$cases) {
         }
 
         echo html_writer::start_div('cp-real-actions');
-        echo html_writer::link($practiceurl, 'Practicar', ['class' => 'cp-real-primary']);
-        echo html_writer::link($timedurl, 'Cronometrado', ['class' => 'cp-real-secondary']);
-        echo html_writer::link($previewurl, 'Ver supuesto', ['class' => 'cp-real-secondary']);
-        echo html_writer::link($solutionurl, 'Ver solución', ['class' => 'cp-real-secondary']);
+        echo html_writer::link($practiceurl, get_string('realbank:practise', 'local_casospracticos'), ['class' => 'cp-real-primary']);
+        echo html_writer::link($timedurl, get_string('realbank:timed', 'local_casospracticos'), ['class' => 'cp-real-secondary']);
+        echo html_writer::link($previewurl, get_string('realbank:statement', 'local_casospracticos'), ['class' => 'cp-real-secondary']);
+        echo html_writer::link($solutionurl, get_string('realbank:solution', 'local_casospracticos'), ['class' => 'cp-real-secondary']);
         echo html_writer::end_div();
         echo html_writer::end_div();
     }
