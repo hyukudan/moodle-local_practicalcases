@@ -52,7 +52,7 @@ $PAGE->set_heading(get_string('pluginname', 'local_casospracticos'));
 $PAGE->set_pagelayout('standard');
 
 $PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'),
-    new moodle_url('/local/casospracticos/index.php'));
+    local_casospracticos_get_root_url());
 if ($case) {
     $PAGE->navbar->add(format_string($case->name),
         new moodle_url('/local/casospracticos/case_view.php', ['id' => $caseid]));
@@ -217,7 +217,7 @@ if ($case) {
     $backurl = new moodle_url('/local/casospracticos/case_view.php', ['id' => $caseid]);
     echo html_writer::link($backurl, get_string('backtocases', 'local_casospracticos'), ['class' => 'btn btn-secondary']);
 } else {
-    $backurl = new moodle_url('/local/casospracticos/index.php');
+    $backurl = local_casospracticos_get_root_url();
     echo html_writer::link($backurl, get_string('back'), ['class' => 'btn btn-secondary']);
 }
 echo html_writer::end_div();

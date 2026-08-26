@@ -62,7 +62,7 @@ $PAGE->set_url(new moodle_url('/local/casospracticos/real_bank.php', [
 $PAGE->set_title('Banco general de casos prácticos reales');
 $PAGE->set_heading('Banco general de casos prácticos reales');
 $PAGE->set_pagelayout('standard');
-$PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'), new moodle_url('/local/casospracticos/index.php'));
+$PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'), local_casospracticos_get_root_url());
 $PAGE->navbar->add('Banco real');
 
 /**
@@ -4242,9 +4242,16 @@ if (!$cases) {
 } else {
     echo html_writer::start_div('cp-real-grid');
     foreach ($cases as $case) {
+        // Two deliberate routes: the preview strips the questions (spoiler-free
+        // read of the statement), the solution route is the full view. The card
+        // title must lead to the full one — sending every card through the
+        // preview left paying students unable to reach any solution at all.
         $previewurl = new moodle_url('/local/casospracticos/case_view.php', [
             'id' => $case->id,
             'preview' => 1,
+        ]);
+        $solutionurl = new moodle_url('/local/casospracticos/case_view.php', [
+            'id' => $case->id,
         ]);
         $practiceurl = new moodle_url('/local/casospracticos/practice.php', ['id' => $case->id]);
         $timedurl = new moodle_url('/local/casospracticos/practice_timed.php', ['id' => $case->id]);
@@ -4252,7 +4259,7 @@ if (!$cases) {
         echo html_writer::start_div('cp-real-card');
         $badge = local_cp_real_bank_card_badge($case->tags);
         echo html_writer::start_div('cp-real-card-head');
-        echo html_writer::tag('h4', html_writer::link($previewurl, format_string($case->name)));
+        echo html_writer::tag('h4', html_writer::link($solutionurl, format_string($case->name)));
         if ($badge !== '') {
             echo html_writer::span(s($badge), 'cp-real-card-badge');
         }
@@ -4271,6 +4278,7 @@ if (!$cases) {
         echo html_writer::link($practiceurl, 'Practicar', ['class' => 'cp-real-primary']);
         echo html_writer::link($timedurl, 'Cronometrado', ['class' => 'cp-real-secondary']);
         echo html_writer::link($previewurl, 'Ver supuesto', ['class' => 'cp-real-secondary']);
+        echo html_writer::link($solutionurl, 'Ver solución', ['class' => 'cp-real-secondary']);
         echo html_writer::end_div();
         echo html_writer::end_div();
     }

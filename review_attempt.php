@@ -33,6 +33,12 @@ $attemptid = required_param('id', PARAM_INT);
 $context = context_system::instance();
 require_login();
 
+// Entitlement, not just ownership: this page prints the answer key and the
+// canonical reasoning for every option. Ownership alone let a user whose
+// entitlement had lapsed keep extracting solutions from old attempts. Same bar
+// as my_attempts.php and practice.php, which already require full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
+
 // Get the attempt.
 $attempt = $DB->get_record('local_cp_practice_attempts', ['id' => $attemptid], '*', MUST_EXIST);
 
@@ -51,7 +57,11 @@ if ($attempt->userid != $USER->id) {
 }
 
 $case = case_manager::get($attempt->caseid);
-if (!$case) {
+// Revalidate the case's CURRENT state, not just that it once existed: this page
+// reprints the answer key, so archiving a case must withdraw it here too, the
+// same way case_view.php refuses a case that is no longer visible. Editorial
+// keeps access through can_view_unpublished().
+if (!$case || !case_manager::is_visible_to_user($case, $context)) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
 }
 
@@ -62,7 +72,7 @@ $PAGE->set_heading(get_string('pluginname', 'local_casospracticos'));
 $PAGE->set_pagelayout('standard');
 
 $PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'),
-    new moodle_url('/local/casospracticos/index.php'));
+    local_casospracticos_get_root_url());
 $PAGE->navbar->add(format_string($case->name),
     new moodle_url('/local/casospracticos/case_view.php', ['id' => $case->id]));
 $PAGE->navbar->add(get_string('reviewattempt', 'local_casospracticos'));
@@ -74,8 +84,7 @@ $responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $at
 // Get every question in the case with its answers. get_with_answers() accepts
 // a question ID, not a case ID.
 $questions = question_manager::get_by_case_with_answers($attempt->caseid);
-if (!has_capability('local/casospracticos:review', $context)
-        && !has_capability('local/casospracticos:edit', $context)) {
+if (!local_casospracticos_can_see_blocked_questions($context)) {
     $questions = question_manager::filter_practice_questions($questions);
 }
 

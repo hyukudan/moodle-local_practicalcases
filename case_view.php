@@ -68,10 +68,10 @@ $PAGE->set_pagelayout('admin');
 
 // Navigation.
 $PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'),
-    new moodle_url('/local/casospracticos/index.php'));
+    local_casospracticos_get_root_url());
 if ($category) {
     $PAGE->navbar->add(format_string($category->name),
-        new moodle_url('/local/casospracticos/index.php', ['category' => $category->id]));
+        local_casospracticos_get_root_url(['category' => $category->id]));
 }
 $PAGE->navbar->add(format_string($case->name));
 
@@ -142,9 +142,8 @@ $statusclassmap = [
 ];
 
 $canedit = has_capability('local/casospracticos:edit', $context);
-$canviewanswers = has_capability('local/casospracticos:viewanswers', $context)
-    || case_manager::can_view_unpublished($context);
-$canreviewblocked = $canedit || has_capability('local/casospracticos:review', $context);
+$canviewanswers = local_casospracticos_can_view_answers($context, $viewaccess);
+$canreviewblocked = local_casospracticos_can_see_blocked_questions($context);
 if (!$canreviewblocked) {
     $case->questions = question_manager::filter_practice_questions($case->questions);
 }
@@ -344,7 +343,7 @@ $templatecontext = [
     'canstats' => has_capability('local/casospracticos:viewaudit', $context),
     'statsurl' => (new moodle_url('/local/casospracticos/case_stats.php', ['id' => $id]))->out(false),
     'newquestionurl' => (new moodle_url('/local/casospracticos/question_edit.php', ['caseid' => $id]))->out(false),
-    'backurl' => (new moodle_url('/local/casospracticos/index.php', ['category' => $case->categoryid]))->out(false),
+    'backurl' => local_casospracticos_get_root_url(['category' => $case->categoryid])->out(false),
     // Pre-rendered trusted HTML regions.
     'teachermenuhtml' => $teachermenuhtml,
     'attachmentshtml' => $attachmentshtml,

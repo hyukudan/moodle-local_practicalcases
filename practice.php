@@ -58,7 +58,7 @@ $PAGE->set_heading(get_string('pluginname', 'local_casospracticos'));
 $PAGE->set_pagelayout('standard');
 
 $PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'),
-    new moodle_url('/local/casospracticos/index.php'));
+    local_casospracticos_get_root_url());
 $PAGE->navbar->add(format_string($case->name),
     new moodle_url('/local/casospracticos/case_view.php', ['id' => $caseid]));
 $PAGE->navbar->add(get_string('practice', 'local_casospracticos'));

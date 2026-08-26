@@ -23,12 +23,15 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\achievements_manager;
 
 $context = context_system::instance();
 require_login();
-require_capability('local/casospracticos:view', $context);
+// Entitlement, not system capability: achievements are earned by practising,
+// which already requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/casospracticos/achievements.php'));
@@ -37,7 +40,7 @@ $PAGE->set_heading(get_string('pluginname', 'local_casospracticos'));
 $PAGE->set_pagelayout('standard');
 
 $PAGE->navbar->add(get_string('pluginname', 'local_casospracticos'),
-    new moodle_url('/local/casospracticos/index.php'));
+    local_casospracticos_get_root_url());
 $PAGE->navbar->add(get_string('achievements', 'local_casospracticos'));
 
 echo $OUTPUT->header();
@@ -184,7 +187,7 @@ if (achievements_manager::has_external_plugin()) {
 // Back button.
 echo html_writer::start_div('mt-4');
 echo html_writer::link(
-    new moodle_url('/local/casospracticos/index.php'),
+    local_casospracticos_get_root_url(),
     get_string('backtocases', 'local_casospracticos'),
     ['class' => 'btn btn-secondary']
 );

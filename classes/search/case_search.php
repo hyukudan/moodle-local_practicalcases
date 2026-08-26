@@ -110,7 +110,9 @@ class case_search extends \core_search\base {
      * @return \moodle_url
      */
     public function get_context_url(\core_search\document $doc) {
-        return new \moodle_url('/local/casospracticos/index.php');
+        global $CFG;
+        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
+        return local_casospracticos_get_root_url();
     }
 
     /**
@@ -120,15 +122,19 @@ class case_search extends \core_search\base {
      * @return int
      */
     public function check_access($id) {
-        global $DB;
+        global $DB, $CFG;
 
         $case = $DB->get_record('local_cp_cases', ['id' => $id]);
         if (!$case) {
             return \core_search\manager::ACCESS_DELETED;
         }
 
+        // Entitlement, not system capability: a student holds the role in the
+        // product course's context only, so the capability check here hid every
+        // case from every paying student's search results.
+        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
         $context = \context_system::instance();
-        if (!has_capability('local/casospracticos:view', $context)) {
+        if (local_casospracticos_get_view_access() < LOCAL_CP_ACCESS_STATEMENT) {
             return \core_search\manager::ACCESS_DENIED;
         }
 

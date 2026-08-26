@@ -142,21 +142,39 @@ class api extends external_api {
     /**
      * Whether the current user may see answer-key data (fraction/feedback).
      *
-     * Gated by the dedicated local/casospracticos:viewanswers capability, which
-     * by default is granted to editingteacher and manager only. Plain viewers
-     * (students) must never receive correctness data.
-     *
-     * As a safety net we also honour the editorial capability (anyone who can
-     * view unpublished cases, i.e. holders of local/casospracticos:edit and
-     * above) so that existing privileged roles keep access even before the new
-     * capability has been assigned to their role.
+     * Delegates to the single home of the rule in lib.php: entitlement to the
+     * product (LOCAL_CP_ACCESS_FULL) buys the answer key, and the editorial
+     * capabilities remain a bypass for unpublished material. Keeping a second
+     * copy of the rule here is what let the two drift apart, leaving paying
+     * students unable to see any solution at all.
      *
      * @param \context $context The context
      * @return bool True if the user may see answer keys
      */
     protected static function can_view_answer_keys(\context $context): bool {
-        return has_capability('local/casospracticos:viewanswers', $context)
-            || case_manager::can_view_unpublished($context);
+        global $CFG;
+        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
+        return local_casospracticos_can_view_answers($context);
+    }
+
+    /**
+     * Require at least $minlevel of entitlement to the case bank.
+     *
+     * External-function counterpart of local_casospracticos_require_view_access():
+     * that one redirects to the purchase CTA on failure, which would corrupt a
+     * JSON response, so this throws instead. Gating these endpoints on the
+     * capability at system context locked out every paying student, since a
+     * student only ever holds the role in the product course's context.
+     *
+     * @param int $minlevel One of LOCAL_CP_ACCESS_*.
+     * @throws \moodle_exception
+     */
+    protected static function require_bank_access(int $minlevel): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
+        if (local_casospracticos_get_view_access() < $minlevel) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
     }
 
     /**
@@ -263,7 +281,7 @@ class api extends external_api {
     public static function get_categories() {
         $context = \context_system::instance();
         self::validate_context($context);
-        require_capability('local/casospracticos:view', $context);
+        self::require_bank_access(LOCAL_CP_ACCESS_STATEMENT);
         self::check_rate_limit('get_categories', 'read');
 
         // Optimized: Uses single query for case counts instead of N+1.
@@ -271,7 +289,14 @@ class api extends external_api {
         $categories = category_manager::get_flat_tree_with_counts($statusfilter);
         $result = [];
 
+        // Non-editorial users must not see the shape of the editorial taxonomy:
+        // categories holding nothing they may open (and their descriptions).
+        $showempty = case_manager::can_view_unpublished($context);
+
         foreach ($categories as $cat) {
+            if (!$showempty && (int) $cat->casecount === 0) {
+                continue;
+            }
             $result[] = [
                 'id' => $cat->id,
                 'name' => $cat->name,
@@ -319,7 +344,7 @@ class api extends external_api {
     public static function get_cases($categoryid = 0, $status = '') {
         $context = \context_system::instance();
         self::validate_context($context);
-        require_capability('local/casospracticos:view', $context);
+        self::require_bank_access(LOCAL_CP_ACCESS_STATEMENT);
         self::check_rate_limit('get_cases', 'read');
 
         $params = self::validate_parameters(self::get_cases_parameters(), [
@@ -388,7 +413,7 @@ class api extends external_api {
     public static function get_case($id) {
         $context = \context_system::instance();
         self::validate_context($context);
-        require_capability('local/casospracticos:view', $context);
+        self::require_bank_access(LOCAL_CP_ACCESS_FULL);
         self::check_rate_limit('get_case', 'read');
 
         $params = self::validate_parameters(self::get_case_parameters(), ['id' => $id]);
@@ -405,6 +430,10 @@ class api extends external_api {
         // Only authoring/review users may receive the answer key (fraction/feedback).
         $includekeys = self::can_view_answer_keys($context);
 
+        // Parity with case_view.php: blocked questions are pulled from circulation.
+        if (!local_casospracticos_can_see_blocked_questions($context)) {
+            $case->questions = question_manager::filter_practice_questions($case->questions);
+        }
         $questions = [];
         foreach ($case->questions as $q) {
             $answers = question_manager::get_answers($q->id);
@@ -656,7 +685,7 @@ class api extends external_api {
     public static function get_questions($caseid) {
         $context = \context_system::instance();
         self::validate_context($context);
-        require_capability('local/casospracticos:view', $context);
+        self::require_bank_access(LOCAL_CP_ACCESS_FULL);
         self::check_rate_limit('get_questions', 'read');
 
         $params = self::validate_parameters(self::get_questions_parameters(), ['caseid' => $caseid]);
@@ -675,6 +704,10 @@ class api extends external_api {
         $includekeys = self::can_view_answer_keys($context);
 
         $questions = question_manager::get_by_case_with_answers($params['caseid']);
+        // Parity with case_view.php: blocked questions are pulled from circulation.
+        if (!local_casospracticos_can_see_blocked_questions($context)) {
+            $questions = question_manager::filter_practice_questions($questions);
+        }
 
         $result = [];
         foreach ($questions as $q) {
@@ -1464,11 +1497,19 @@ class api extends external_api {
      * Save practice responses for auto-save functionality.
      */
     public static function save_practice_responses($attemptid, $responses) {
-        global $USER;
+        global $USER, $CFG;
 
         $context = \context_system::instance();
         self::validate_context($context);
-        require_capability('local/casospracticos:view', $context);
+        // Entitlement, not system capability: this is the autosave of a student's
+        // own timed practice, loaded from practice_timed.php. Gating it on the
+        // capability at system context made it fail for every student. Throw
+        // rather than calling require_view_access(), whose failure path is a
+        // redirect to the purchase CTA and would corrupt the JSON response.
+        require_once($CFG->dirroot . '/local/casospracticos/lib.php');
+        if (local_casospracticos_get_view_access() < LOCAL_CP_ACCESS_FULL) {
+            throw new \moodle_exception('error:nopermission', 'local_casospracticos');
+        }
         self::check_rate_limit('save_practice_responses', 'write');
 
         $params = self::validate_parameters(self::save_practice_responses_parameters(), [

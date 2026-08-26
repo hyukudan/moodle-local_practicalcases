@@ -124,9 +124,11 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
         $itemid = array_shift($args);
         $relativepath = implode('/', $args);
 
-        // Validate case exists.
+        // Validate case exists AND is still visible to this user. Checking mere
+        // existence meant archiving a case pulled it from every page while its
+        // attachments stayed downloadable by direct URL.
         $case = \local_casospracticos\case_manager::get((int)$itemid);
-        if (!$case) {
+        if (!$case || !\local_casospracticos\case_manager::is_visible_to_user($case, $context)) {
             return false;
         }
 
@@ -444,9 +446,13 @@ function local_casospracticos_get_view_access(?int $userid = null): int {
     try {
         $coursecontext = context_course::instance($courseid, MUST_EXIST);
     } catch (\moodle_exception $e) {
-        // Product course misconfigured/missing: grant FULL to logged-in users
-        // rather than mass-lock paying students (never repeat the original bug).
-        return LOCAL_CP_ACCESS_FULL;
+        // Fail closed. Granting FULL here handed the entire product — statements,
+        // answer keys and canonical solutions — to every authenticated user the
+        // moment a config typo or a deleted course made the product course
+        // unresolvable, and did it silently. Editorial and site admins are already
+        // let through above, so they keep access and can repair the setting.
+        local_casospracticos_alert_missing_product_course($courseid);
+        return LOCAL_CP_ACCESS_NONE;
     }
 
     // Active, capability-bearing enrolment = entitlement to the bank at all.
@@ -526,6 +532,105 @@ function local_casospracticos_require_view_access(int $minlevel = LOCAL_CP_ACCES
         'returnurl' => $returnurl ? $returnurl->out_as_local_url(false) : '',
     ]);
     redirect($ctaurl);
+}
+
+/**
+ * Shout when the product course cannot be resolved.
+ *
+ * This is a configuration emergency: with the course missing, nobody but
+ * editorial can reach the bank at all. Silence is what let the previous
+ * fail-open behaviour go unnoticed, so this always leaves a trace — throttled to
+ * once an hour so a broken setting cannot flood the log on every page view.
+ *
+ * @param int $courseid The unresolvable product course id.
+ */
+function local_casospracticos_alert_missing_product_course(int $courseid): void {
+    $now = time();
+    try {
+        $last = (int) get_config('local_casospracticos', 'missingcoursealert');
+    } catch (\Throwable $e) {
+        $last = 0; // Database unhappy too: shout anyway, that is the whole point.
+    }
+    if ($last && ($now - $last) < HOURSECS) {
+        return;
+    }
+    // Log BEFORE touching the database: if set_config() throws, losing the alert
+    // is the worst possible outcome. Two racing requests may log twice; that is
+    // cheaper than a silent configuration emergency.
+    error_log('local_casospracticos: EL CURSO PRODUCTO ' . $courseid . ' NO EXISTE. '
+        . 'El banco de casos queda cerrado para todos los alumnos hasta que se corrija '
+        . 'el ajuste productcourseid del plugin.');
+    try {
+        set_config('missingcoursealert', $now, 'local_casospracticos');
+    } catch (\Throwable $e) {
+        // Throttling is a nicety; never let it break the access decision.
+        return;
+    }
+}
+
+/**
+ * May this user see answer keys, per-answer feedback and the canonical solution?
+ *
+ * Single home for the rule. It used to live duplicated in case_view.php and in
+ * external\api::can_view_answer_keys(), and the two drifted: both required the
+ * editorial capability local/casospracticos:viewanswers, which no student ever
+ * holds, so a paying student opening a link labelled "Ver caso con solución"
+ * got the questions with the solution stripped out. Entitlement to the product
+ * (LOCAL_CP_ACCESS_FULL) is what buys the solution; the capability stays as the
+ * editorial bypass for unpublished/draft material.
+ *
+ * @param context $context Context to test the editorial capabilities in.
+ * @param int|null $viewaccess Pre-computed access level, to save a second lookup.
+ * @return bool
+ */
+function local_casospracticos_can_view_answers(context $context, ?int $viewaccess = null): bool {
+    $viewaccess = $viewaccess ?? local_casospracticos_get_view_access();
+    if ($viewaccess >= LOCAL_CP_ACCESS_FULL) {
+        return true;
+    }
+    return has_capability('local/casospracticos:viewanswers', $context)
+        || \local_casospracticos\case_manager::can_view_unpublished($context);
+}
+
+/**
+ * May this user see questions whose feedback is flagged 'blocked'?
+ *
+ * Blocked questions are ones editorial has pulled from circulation. Only people
+ * who can edit or review them have any business receiving them. Kept here rather
+ * than inline so the web view and the external API cannot drift apart — the web
+ * filtered them out and the API did not, which handed learners questions the
+ * page had deliberately removed.
+ *
+ * @param context $context
+ * @return bool
+ */
+function local_casospracticos_can_see_blocked_questions(context $context): bool {
+    return has_capability('local/casospracticos:edit', $context)
+        || has_capability('local/casospracticos:review', $context);
+}
+
+/**
+ * Root URL of the case bank for the current user.
+ *
+ * index.php is the back-office catalogue (pagelayout 'admin', CRUD actions) and
+ * deliberately keeps its system-level capability gate. Student-facing pages must
+ * therefore never hardcode it in a breadcrumb or a back button: doing so put a
+ * "No tiene permiso para esta acción" one click away from every case. The
+ * student's canonical root is the real bank.
+ *
+ * The decision is always taken against the system context, never against a
+ * caller-supplied one: index.php gates on the capability at system context, so
+ * testing anywhere else could hand back a link its own target would reject.
+ *
+ * @param array $backofficeparams Extra params, honoured only for the back-office URL.
+ * @return moodle_url
+ */
+function local_casospracticos_get_root_url(array $backofficeparams = []): moodle_url {
+    if (has_capability('local/casospracticos:view', context_system::instance())) {
+        // Back-office only: category filters etc. are meaningless in the student bank.
+        return new moodle_url('/local/casospracticos/index.php', $backofficeparams);
+    }
+    return new moodle_url('/local/casospracticos/real_bank.php');
 }
 
 /**
