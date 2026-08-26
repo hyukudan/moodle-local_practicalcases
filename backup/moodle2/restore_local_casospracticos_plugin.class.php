@@ -200,6 +200,12 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         }
 
         $data->caseid = $caseid;
+        // Normativa links are not portable in a course backup because article
+        // IDs belong to the target site's legislation catalogue.
+        if (($data->feedbackstatus ?? 'legacy') === 'verified') {
+            $data->feedbackstatus = 'needs_review';
+            $data->feedbackverifiedat = null;
+        }
         $data->timecreated = time();
         $data->timemodified = time();
 
@@ -390,6 +396,22 @@ class restore_local_casospracticos_plugin extends restore_local_plugin {
         $data->caseid = $caseid;
         $data->timecreated = $data->timecreated ?? time();
         $data->timemodified = time();
+
+        // Normalize submissionflow to protect the direct+manual invariant enforced
+        // elsewhere in the plugin. A legacy backup (pre-Option A) has no
+        // submissionflow; a hand-edited one could carry a bogus value or an
+        // invalid direct+auto combination. Guard both cases so a restored case can
+        // never introduce an invalid 'direct' row:
+        //   - unknown/absent value      -> 'afterattempt'
+        //   - 'direct' but not manual   -> 'afterattempt' (direct requires manual)
+        $flow = $data->submissionflow ?? 'afterattempt';
+        if (!in_array($flow, ['afterattempt', 'direct'], true)) {
+            $flow = 'afterattempt';
+        }
+        if ($flow === 'direct' && (($data->correctionmode ?? 'auto') !== 'manual')) {
+            $flow = 'afterattempt';
+        }
+        $data->submissionflow = $flow;
 
         unset($data->id);
 

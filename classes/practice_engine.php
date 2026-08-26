@@ -44,13 +44,21 @@ class practice_engine {
      *   'results'    => array  questionid => stdClass result object (same shape as before),
      *   'score'      => float  total score,
      *   'maxscore'   => float  total max,
-     *   'percentage' => float  0-100
+     *   'percentage' => float|null  0-100, null while manual grading is pending
+     *   'gradingstatus' => string auto|needsgrading
      * }
      */
     public static function score_submission(array $questions, array $responses): array {
         $results = [];
         $score = 0;
         $maxscore = 0;
+        $hasmanual = false;
+
+        $unsupported = question_manager::unsupported_practice_qtypes($questions);
+        if ($unsupported) {
+            throw new \moodle_exception('error:unsupportedpracticeqtype', 'local_casospracticos', '',
+                implode(', ', $unsupported));
+        }
 
         foreach ($questions as $question) {
             $paramname = 'q' . $question->id;
@@ -81,10 +89,7 @@ class practice_engine {
 
                 case 'essay':
                     $result = self::score_essay($question, $responses[$paramname] ?? '');
-                    break;
-
-                case 'matching':
-                    $result = self::score_matching($question, $responses, $paramname);
+                    $hasmanual = true;
                     break;
 
                 default:
@@ -102,13 +107,14 @@ class practice_engine {
             $results[$question->id] = $result;
         }
 
-        $percentage = $maxscore > 0 ? round(($score / $maxscore) * 100) : 0;
+        $percentage = $hasmanual ? null : ($maxscore > 0 ? round(($score / $maxscore) * 100) : 0);
 
         return [
             'results' => $results,
             'score' => $score,
             'maxscore' => $maxscore,
             'percentage' => $percentage,
+            'gradingstatus' => $hasmanual ? 'needsgrading' : 'auto',
         ];
     }
 
@@ -264,6 +270,7 @@ class practice_engine {
         $result->selectedids = [];
         $result->response = $response;
         $result->score = 0;
+        $result->requiresgrading = true;
 
         return $result;
     }

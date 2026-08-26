@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\case_manager;
 
@@ -32,6 +33,9 @@ $perpage = 20;
 
 $context = context_system::instance();
 require_login();
+
+// Attempt history exposes scoring/solutions, so it requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
 
 $case = null;
 if ($caseid) {
@@ -108,9 +112,10 @@ $attempts = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
 
 // Summary stats.
 $sql = "SELECT COUNT(*) as total_attempts,
-               AVG(percentage) as avg_percentage,
-               MAX(percentage) as best_percentage,
-               SUM(CASE WHEN percentage >= 70 THEN 1 ELSE 0 END) as passed_attempts
+               AVG(CASE WHEN gradingstatus <> 'needsgrading' THEN percentage END) as avg_percentage,
+               MAX(CASE WHEN gradingstatus <> 'needsgrading' THEN percentage END) as best_percentage,
+               SUM(CASE WHEN gradingstatus <> 'needsgrading' AND percentage >= 70 THEN 1 ELSE 0 END) as passed_attempts,
+               SUM(CASE WHEN gradingstatus <> 'needsgrading' THEN 1 ELSE 0 END) as graded_attempts
         FROM {local_cp_practice_attempts}
         WHERE $where";
 $stats = $DB->get_record_sql($sql, $params);
@@ -149,7 +154,7 @@ echo html_writer::end_div();
 echo html_writer::start_div('col-md-3');
 echo html_writer::start_div('card text-center');
 echo html_writer::start_div('card-body');
-$passrate = $stats->total_attempts > 0 ? round(($stats->passed_attempts / $stats->total_attempts) * 100) : 0;
+$passrate = $stats->graded_attempts > 0 ? round(($stats->passed_attempts / $stats->graded_attempts) * 100) : 0;
 echo html_writer::tag('h4', $passrate . '%', ['class' => 'text-info']);
 echo html_writer::tag('p', get_string('passrate', 'local_casospracticos'), ['class' => 'text-muted mb-0']);
 echo html_writer::end_div();
@@ -172,8 +177,9 @@ $table->attributes['class'] = 'table table-striped';
 
 $num = $total - ($page * $perpage);
 foreach ($attempts as $attempt) {
-    $scoreclass = $attempt->percentage >= 70 ? 'text-success' :
-                 ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger');
+    $needsgrading = ($attempt->gradingstatus ?? 'auto') === 'needsgrading';
+    $scoreclass = $needsgrading ? 'text-info' : ($attempt->percentage >= 70 ? 'text-success' :
+                 ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger'));
 
     $timetaken = $attempt->timefinished - $attempt->timestarted;
     $timetakenstr = $timetaken > 0 ? format_time($timetaken) : '-';
@@ -185,11 +191,10 @@ foreach ($attempts as $attempt) {
         $num--,
         html_writer::link($caseurl, format_string($attempt->casename)),
         userdate($attempt->timefinished, get_string('strftimedatetime', 'langconfig')),
-        html_writer::tag('span',
-            round($attempt->score, 1) . '/' . round($attempt->maxscore, 1) .
-            ' (' . round($attempt->percentage) . '%)',
-            ['class' => $scoreclass]
-        ),
+        html_writer::tag('span', $needsgrading
+            ? get_string('pendingmanualgrading', 'local_casospracticos')
+            : round($attempt->score, 1) . '/' . round($attempt->maxscore, 1) .
+                ' (' . round($attempt->percentage) . '%)', ['class' => $scoreclass]),
         $timetakenstr,
         html_writer::link($reviewurl, get_string('review', 'local_casospracticos'),
             ['class' => 'btn btn-sm btn-outline-primary']),

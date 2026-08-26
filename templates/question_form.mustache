@@ -118,6 +118,18 @@
             <div id="generalfeedback-help-{{uniqid}}" class="form-text visually-hidden">{{#str}}generalfeedback_help, local_casospracticos{{/str}}</div>
         </div>
 
+        <div class="mb-3">
+            <label for="reasoning-{{uniqid}}" class="form-label">{{#str}}reasoning, local_casospracticos{{/str}}</label>
+            <textarea class="form-control" id="reasoning-{{uniqid}}" name="reasoning" rows="5">{{question.reasoning}}</textarea>
+            <div class="form-text">{{#str}}reasoning_help, local_casospracticos{{/str}}</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="modelanswer-{{uniqid}}" class="form-label">{{#str}}modelanswer, local_casospracticos{{/str}}</label>
+            <textarea class="form-control" id="modelanswer-{{uniqid}}" name="modelanswer" rows="5">{{question.modelanswer}}</textarea>
+            <div class="form-text">{{#str}}modelanswer_help, local_casospracticos{{/str}}</div>
+        </div>
+
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" data-action="cancel">
                 {{#str}}cancel{{/str}}

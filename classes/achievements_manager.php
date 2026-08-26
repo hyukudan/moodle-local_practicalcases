@@ -220,7 +220,8 @@ class achievements_manager {
                     SUM(CASE WHEN percentage >= 100 THEN 1 ELSE 0 END) as perfect_scores,
                     AVG(percentage) as average_score
                 FROM {local_cp_practice_attempts}
-                WHERE userid = :userid AND status = 'finished'";
+                WHERE userid = :userid AND status = 'finished'
+                  AND gradingstatus <> 'needsgrading'";
 
         $result = $DB->get_record_sql($sql, ['userid' => $userid]);
 
@@ -367,6 +368,7 @@ class achievements_manager {
         $sql = "SELECT id, percentage
                 FROM {local_cp_practice_attempts}
                 WHERE userid = :userid AND status = 'finished'
+                  AND gradingstatus <> 'needsgrading'
                 ORDER BY timefinished DESC, id DESC";
 
         $rs = $DB->get_recordset_sql($sql, ['userid' => $userid]);
@@ -402,6 +404,7 @@ class achievements_manager {
                 FROM {local_cp_practice_attempts}
                 WHERE userid = :userid
                 AND status = 'finished'
+                AND gradingstatus <> 'needsgrading'
                 AND timefinished >= :weekago";
 
         $weekago = time() - (7 * 24 * 60 * 60);

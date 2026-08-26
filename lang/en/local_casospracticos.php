@@ -65,6 +65,7 @@ $string['cases'] = 'Cases';
 $string['case'] = 'Case';
 $string['newcase'] = 'New case';
 $string['editcase'] = 'Edit case';
+$string['editdeliverable'] = 'Edit deliverable';
 $string['deletecase'] = 'Delete case';
 $string['viewcase'] = 'View case';
 $string['casename'] = 'Case name';
@@ -109,6 +110,19 @@ $string['questionupdated'] = 'Question updated successfully';
 $string['questiondeleted'] = 'Question deleted successfully';
 $string['defaultmark'] = 'Default points';
 $string['generalfeedback'] = 'General feedback';
+$string['reasoning'] = 'Applied reasoning';
+$string['reasoning_help'] = 'Explain the rule and apply it to the case facts. If empty, the legacy general feedback is shown.';
+$string['modelanswer'] = 'Model answer';
+$string['modelanswer_help'] = 'A complete, proportionate answer the learner could write, not instructions about what to mention.';
+$string['feedbackstatus'] = 'Feedback editorial status';
+$string['feedbackstatus_legacy'] = 'Legacy';
+$string['feedbackstatus_needs_review'] = 'Needs review';
+$string['feedbackstatus_verified'] = 'Verified';
+$string['feedbackstatus_blocked'] = 'Blocked';
+$string['feedbackblockednotice'] = 'The explanation for this question is under editorial review and is temporarily unavailable.';
+$string['verifiednormativa'] = 'Verified legislation';
+$string['error:invalidfeedbackstatus'] = 'Invalid feedback editorial status';
+$string['error:reviewsourcestale'] = 'The review source for question {$a} changed; the batch was not applied.';
 $string['shuffleanswers'] = 'Shuffle answers';
 $string['singleanswer'] = 'Single answer';
 $string['multipleanswers'] = 'Multiple answers';
@@ -476,6 +490,9 @@ $string['qtype_essay'] = 'Essay';
 $string['qtype_matching'] = 'Matching';
 $string['essayinfo'] = 'Essay questions will be graded manually by an instructor';
 $string['essaymanualgrading'] = 'This essay will be reviewed and graded by an instructor';
+$string['pendingmanualgrading'] = 'Submission recorded — pending manual grading';
+$string['pendingmanualgrading_desc'] = 'Your essay response was saved. A final score will appear after an instructor grades it.';
+$string['error:unsupportedpracticeqtype'] = 'This case contains a question type that cannot be practised safely yet: {$a}';
 $string['youressay'] = 'Write your essay here...';
 $string['matchingpairs'] = 'Match each item on the left with an item on the right';
 $string['choosedots'] = 'Choose...';
@@ -607,3 +624,66 @@ $string['timer:warning1min'] = '1 minute remaining!';
 $string['timer:timeup'] = 'TIME UP!';
 $string['timer:autosubmitting'] = 'Time is up! Submitting your answers...';
 $string['timer:submityouranswers'] = 'Time is up! Please submit your answers.';
+
+// Access control / paywall (central case bank).
+$string['cta:solutionlocked_title'] = 'Unlock the full solution';
+$string['cta:solutionlocked_body'] = 'The trial lets you read the case statements. To see the reasoned solution, method and answer keys for every question, join the full Practical Cases course.';
+$string['cta:unlock'] = 'View the course and unlock';
+$string['access:required_title'] = 'Content reserved for students';
+$string['access:required_body'] = 'The bank of solved practical cases is available to students of the Practical Cases course. Enrol to unlock {$a} cases with their solutions.';
+$string['access:goto'] = 'Go to the Practical Cases course';
+$string['access:pagetitle'] = 'Practical Cases access';
+$string['settings:productcourseid'] = 'Product course (gating)';
+$string['settings:productcourseid_desc'] = 'ID of the course whose enrolment grants access to the central practical-case bank. Defaults to 103.';
+$string['settings:trialaccess'] = 'Trial access level';
+$string['settings:trialaccess_desc'] = 'What a trial student (self enrol with customint6=1) sees: statement only, full solution, or nothing.';
+$string['settings:trialaccess_statement'] = 'Statement only (recommended)';
+$string['settings:trialaccess_full'] = 'Full solution';
+$string['settings:trialaccess_none'] = 'No access';
+
+// Deliverable editor (deliverable_edit.php).
+$string['deliverable:editheading'] = 'Configure document deliverable';
+$string['deliverable:enabled'] = 'Enable deliverable';
+$string['deliverable:enabled_help'] = 'When enabled, students can download a start file, complete it and upload their version on the practice page. When disabled, the case behaves as if it had no deliverable.';
+$string['deliverable:filetype'] = 'Expected file type';
+$string['deliverable:filetype:any'] = 'Any format';
+$string['deliverable:startfile'] = 'Start file';
+$string['deliverable:startfile_help'] = 'Optional office document (docx/xlsx) that students download as the starting point for the exercise.';
+$string['deliverable:correctionmode'] = 'Correction mode';
+$string['deliverable:correctionmode_help'] = 'Auto: the uploaded file is graded automatically by the built-in corrector using the rubric. Manual: a teacher grades each submission by hand (score + comment); no automatic grading runs.';
+$string['deliverable:correctionmode_auto'] = 'Automatic (corrector)';
+$string['deliverable:correctionmode_manual'] = 'Manual (teacher-graded)';
+$string['deliverable:submissionflow'] = 'Submission flow';
+$string['deliverable:submissionflow_help'] = 'After attempt (default): the upload box appears after the student finishes the case questions — use this for cases that combine questions with a document. Direct: the student sees only the statement, the start-file download and the upload box, with no questions and no question attempt — use this for exercises where the uploaded file IS the whole exercise (e.g. ofimática). Direct is only available with manual correction.';
+$string['deliverable:submissionflow_afterattempt'] = 'After attempt (upload after finishing questions)';
+$string['deliverable:submissionflow_direct'] = 'Direct (deliverable only, no questions)';
+$string['deliverable:err_directrequiresmanual'] = 'Direct submission is only available with manual correction. Set the correction mode to Manual, or choose the "After attempt" flow.';
+$string['deliverable:maxfiles'] = 'Maximum number of files';
+$string['deliverable:maxfiles_help'] = 'Maximum number of files a student may upload in a single submission; 1 = a single file. Values greater than 1 (e.g. a Word and an Excel together) only take effect with manual correction — the automatic corrector always grades exactly one file, so automatic cases are forced to 1.';
+$string['deliverable:err_maxfilesrange'] = 'Enter a whole number of files between 1 and {$a}.';
+$string['deliverable:err_maxfilesrequiresmanual'] = 'Allowing more than one file is only available with manual correction. Set the correction mode to Manual, or leave the maximum number of files at 1.';
+$string['error:directrequiresmanual'] = 'Direct submission flow requires manual correction mode.';
+$string['deliverable:rubrica'] = 'Rubric (JSON)';
+$string['deliverable:rubrica_help'] = 'The rubrica.json content used by the automatic corrector. Only relevant in automatic correction mode.';
+$string['deliverable:maxscore'] = 'Maximum score';
+$string['deliverable:err_maxscore'] = 'Enter a maximum score greater than zero.';
+$string['deliverable:saved'] = 'Deliverable configuration saved.';
+$string['error:invalidcorrectionmode'] = 'Invalid correction mode: {$a}';
+
+// Deliverable notifications.
+$string['notification:deliverablesubmitted_subject'] = 'Deliverable submitted for review: {$a}';
+$string['notification:deliverablesubmitted_body'] = 'The student {$a->student} has submitted a document deliverable for the case "{$a->casename}" and it is awaiting your review.
+
+Review and grade it here: {$a->url}';
+$string['notification:deliverablesubmitted_body_html'] = '<p>The student {$a->student} has submitted a document deliverable for the case "<strong>{$a->casename}</strong>" and it is awaiting your review.</p><p><a href="{$a->url}">Review and grade it</a></p>';
+$string['notification:deliverablesubmitted_small'] = 'Deliverable to review: {$a}';
+$string['notification:deliverablegraded_subject'] = 'Your deliverable has been graded: {$a}';
+$string['notification:deliverablegraded_body'] = 'Your document deliverable for the case "{$a->casename}" has been graded: {$a->score}.
+
+See the feedback here: {$a->url}';
+$string['notification:deliverablegraded_body_html'] = '<p>Your document deliverable for the case "<strong>{$a->casename}</strong>" has been graded: <strong>{$a->score}</strong>.</p><p><a href="{$a->url}">See the feedback</a></p>';
+$string['notification:deliverablegraded_small'] = 'Deliverable graded: {$a}';
+
+// Message provider names (Preferences > Notifications).
+$string['messageprovider:deliverablesubmitted'] = 'A student submitted a deliverable for manual review';
+$string['messageprovider:deliverablegraded'] = 'Your deliverable has been graded';

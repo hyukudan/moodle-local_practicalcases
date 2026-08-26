@@ -21,8 +21,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['jquery', 'core/ajax', 'core/notification', 'core/templates', 'core/str', 'core/modal_factory', 'core/modal_events'],
-function($, Ajax, Notification, Templates, Str, ModalFactory, ModalEvents) {
+define(['jquery', 'core/ajax', 'core/notification', 'core/templates', 'core/str', 'core/modal_factory'],
+function($, Ajax, Notification, Templates, Str, ModalFactory) {
 
     /**
      * Question editor class.
@@ -272,13 +272,19 @@ function($, Ajax, Notification, Templates, Str, ModalFactory, ModalEvents) {
         var args = data.id ? {
             id: data.id,
             questiontext: data.questiontext,
-            defaultmark: data.defaultmark
+            defaultmark: data.defaultmark,
+            generalfeedback: data.generalfeedback,
+            reasoning: data.reasoning,
+            modelanswer: data.modelanswer
         } : {
             caseid: data.caseid,
             questiontext: data.questiontext,
             qtype: data.qtype,
             defaultmark: data.defaultmark,
-            answers: data.answers
+            answers: data.answers,
+            generalfeedback: data.generalfeedback,
+            reasoning: data.reasoning,
+            modelanswer: data.modelanswer
         };
 
         Ajax.call([{
@@ -313,6 +319,8 @@ function($, Ajax, Notification, Templates, Str, ModalFactory, ModalEvents) {
             defaultmark: parseFloat(form.find('[name="defaultmark"]').val()) || 1.0,
             shuffleanswers: parseInt(form.find('[name="shuffleanswers"]').val(), 10),
             generalfeedback: form.find('[name="generalfeedback"]').val(),
+            reasoning: form.find('[name="reasoning"]').val(),
+            modelanswer: form.find('[name="modelanswer"]').val(),
             answers: []
         };
 

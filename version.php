@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_casospracticos';
-$plugin->version   = 2026061500;  // Stage 2a: add optional per-case document deliverable (local_cp_case_deliverable + deliverable filearea).
+$plugin->version   = 2026071602;  // Per-case maxfiles: multi-file deliverable upload (manual mode).
 $plugin->requires  = 2024042200;  // Moodle 4.4+
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.3.2';
+$plugin->release   = '1.6.0';

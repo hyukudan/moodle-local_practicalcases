@@ -23,6 +23,7 @@
  */
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/local/casospracticos/lib.php');
 
 use local_casospracticos\case_manager;
 use local_casospracticos\question_manager;
@@ -67,10 +68,19 @@ $PAGE->navbar->add(format_string($case->name),
 $PAGE->navbar->add(get_string('reviewattempt', 'local_casospracticos'));
 
 // Get user responses for this attempt.
-$responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $attemptid], '', 'questionid, response, score, iscorrect');
+$responses = $DB->get_records('local_cp_practice_responses', ['attemptid' => $attemptid], '',
+    'questionid, response, score, iscorrect, requiresgrading');
 
-// Get questions with answers.
-$questions = question_manager::get_with_answers($attempt->caseid);
+// Get every question in the case with its answers. get_with_answers() accepts
+// a question ID, not a case ID.
+$questions = question_manager::get_by_case_with_answers($attempt->caseid);
+if (!has_capability('local/casospracticos:review', $context)
+        && !has_capability('local/casospracticos:edit', $context)) {
+    $questions = question_manager::filter_practice_questions($questions);
+}
+
+// Use the same solution contract as immediate and timed practice review.
+$allnormativa = local_casospracticos_get_normativa_links(array_column($questions, 'id'));
 
 // Shuffle answer order so the bank's "correct in sortorder=1" bias isn't visible
 // in review. Matching is by answer id, so a fresh shuffle (no session persistence)
@@ -88,18 +98,21 @@ echo html_writer::tag('h2', format_string($case->name));
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
 
-$scoreclass = $attempt->percentage >= 70 ? 'text-success' :
-             ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger');
+$needsgrading = ($attempt->gradingstatus ?? 'auto') === 'needsgrading';
+$scoreclass = $needsgrading ? 'text-info' : ($attempt->percentage >= 70 ? 'text-success' :
+             ($attempt->percentage >= 50 ? 'text-warning' : 'text-danger'));
 
 echo html_writer::start_div('row');
 echo html_writer::start_div('col-md-3');
 echo html_writer::tag('strong', get_string('score', 'grades') . ': ');
-echo html_writer::tag('span', round($attempt->score, 2) . ' / ' . round($attempt->maxscore, 2), ['class' => $scoreclass]);
+echo html_writer::tag('span', $needsgrading
+    ? get_string('pendingmanualgrading', 'local_casospracticos')
+    : round($attempt->score, 2) . ' / ' . round($attempt->maxscore, 2), ['class' => $scoreclass]);
 echo html_writer::end_div();
 
 echo html_writer::start_div('col-md-3');
 echo html_writer::tag('strong', get_string('percentage', 'grades') . ': ');
-echo html_writer::tag('span', round($attempt->percentage) . '%', ['class' => $scoreclass]);
+echo html_writer::tag('span', $needsgrading ? '—' : round($attempt->percentage) . '%', ['class' => $scoreclass]);
 echo html_writer::end_div();
 
 echo html_writer::start_div('col-md-3');
@@ -129,7 +142,9 @@ foreach ($questions as $question) {
     $response = $responses[$question->id] ?? null;
 
     $cardclass = 'card mb-3';
-    if ($response) {
+    if ($response && !empty($response->requiresgrading)) {
+        $cardclass .= ' border-info';
+    } else if ($response) {
         $cardclass .= $response->iscorrect ? ' border-success' : ' border-danger';
     }
 
@@ -137,7 +152,9 @@ foreach ($questions as $question) {
 
     // Question header.
     $headerclass = 'card-header';
-    if ($response) {
+    if ($response && !empty($response->requiresgrading)) {
+        $headerclass .= ' bg-info text-dark';
+    } else if ($response) {
         $headerclass .= $response->iscorrect ? ' bg-success text-white' : ' bg-danger text-white';
     }
     echo html_writer::start_div($headerclass);
@@ -197,7 +214,8 @@ foreach ($questions as $question) {
             }
 
             // Show feedback for this answer if user selected it.
-            if ($isselected && !empty($answer->feedback)) {
+            if ($isselected && ($question->feedbackstatus ?? 'legacy') !== 'blocked'
+                    && !empty($answer->feedback)) {
                 echo html_writer::div(
                     $OUTPUT->pix_icon('i/info', '') . ' ' . format_text($answer->feedback, $answer->feedbackformat),
                     'mt-2 small'
@@ -226,16 +244,18 @@ foreach ($questions as $question) {
                 break;
             }
         }
+    } else if ($question->qtype === 'essay') {
+        $usertext = $response ? (string) $response->response : '';
+        echo html_writer::div(
+            html_writer::tag('strong', get_string('youranswer', 'local_casospracticos') . ':') .
+            html_writer::tag('div', nl2br(s($usertext)), ['class' => 'mt-2', 'style' => 'white-space: pre-wrap;']),
+            'mb-2'
+        );
+        echo html_writer::div(get_string('pendingmanualgrading', 'local_casospracticos'), 'alert alert-info');
     }
 
-    // General feedback.
-    if (!empty($question->generalfeedback)) {
-        echo html_writer::div(
-            html_writer::tag('strong', get_string('generalfeedback', 'local_casospracticos') . ': ') .
-            format_text($question->generalfeedback, $question->generalfeedbackformat),
-            'alert alert-info mt-3'
-        );
-    }
+    $qnormativa = $allnormativa[$question->id] ?? [];
+    echo local_casospracticos_render_solution_feedback($question, $qnormativa);
 
     echo html_writer::end_div(); // card-body
     echo html_writer::end_div(); // card

@@ -63,6 +63,7 @@ $string['cases'] = 'Casos';
 $string['case'] = 'Caso';
 $string['newcase'] = 'Nuevo caso';
 $string['editcase'] = 'Editar caso';
+$string['editdeliverable'] = 'Editar entrega';
 $string['deletecase'] = 'Eliminar caso';
 $string['viewcase'] = 'Ver caso';
 $string['casename'] = 'Nombre del caso';
@@ -107,6 +108,19 @@ $string['questionupdated'] = 'Pregunta actualizada correctamente';
 $string['questiondeleted'] = 'Pregunta eliminada correctamente';
 $string['defaultmark'] = 'Puntuación por defecto';
 $string['generalfeedback'] = 'Retroalimentación general';
+$string['reasoning'] = 'Razonamiento aplicado';
+$string['reasoning_help'] = 'Explica la regla y aplícala a los hechos concretos. Si queda vacío, se mostrará la retroalimentación general heredada.';
+$string['modelanswer'] = 'Propuesta de redacción';
+$string['modelanswer_help'] = 'Respuesta completa y proporcionada que el alumno podría redactar, no instrucciones sobre lo que debería mencionar.';
+$string['feedbackstatus'] = 'Estado editorial del feedback';
+$string['feedbackstatus_legacy'] = 'Heredado';
+$string['feedbackstatus_needs_review'] = 'Necesita revisión';
+$string['feedbackstatus_verified'] = 'Verificado';
+$string['feedbackstatus_blocked'] = 'Bloqueado';
+$string['feedbackblockednotice'] = 'La explicación de esta pregunta está en revisión editorial y no se muestra temporalmente.';
+$string['verifiednormativa'] = 'Normativa verificada';
+$string['error:invalidfeedbackstatus'] = 'Estado editorial del feedback no válido';
+$string['error:reviewsourcestale'] = 'La fuente de revisión de la pregunta {$a} ha cambiado; no se ha aplicado el lote.';
 $string['shuffleanswers'] = 'Barajar respuestas';
 $string['singleanswer'] = 'Respuesta única';
 $string['multipleanswers'] = 'Respuestas múltiples';
@@ -467,6 +481,9 @@ $string['qtype_essay'] = 'Ensayo';
 $string['qtype_matching'] = 'Emparejamiento';
 $string['essayinfo'] = 'Las preguntas tipo ensayo serán calificadas manualmente por un instructor';
 $string['essaymanualgrading'] = 'Este ensayo será revisado y calificado por un instructor';
+$string['pendingmanualgrading'] = 'Entrega registrada — pendiente de corrección manual';
+$string['pendingmanualgrading_desc'] = 'Tu respuesta de ensayo se ha guardado. La nota final aparecerá cuando la corrija un docente.';
+$string['error:unsupportedpracticeqtype'] = 'Este caso contiene un tipo de pregunta que todavía no puede practicarse de forma segura: {$a}';
 $string['youressay'] = 'Escribe tu ensayo aquí...';
 $string['matchingpairs'] = 'Empareja cada elemento de la izquierda con uno de la derecha';
 $string['choosedots'] = 'Elegir...';
@@ -616,3 +633,66 @@ $string['review_status_pending'] = 'Pendiente';
 $string['review_status_approved'] = 'Aprobado';
 $string['review_status_rejected'] = 'Rechazado';
 $string['review_status_revision_requested'] = 'Revisión solicitada';
+
+// Access control / paywall (central case bank).
+$string['cta:solutionlocked_title'] = 'Desbloquea la solución completa';
+$string['cta:solutionlocked_body'] = 'Con la versión de prueba puedes leer el enunciado de los casos. Para ver la solución razonada, el método y las claves de todas las preguntas, accede al curso completo de Casos Prácticos.';
+$string['cta:unlock'] = 'Ver el curso y desbloquear';
+$string['access:required_title'] = 'Contenido reservado a alumnos';
+$string['access:required_body'] = 'El banco de casos prácticos resueltos está disponible para los alumnos del curso de Casos Prácticos. Accede al curso para desbloquear los {$a} casos con sus soluciones.';
+$string['access:goto'] = 'Ir al curso de Casos Prácticos';
+$string['access:pagetitle'] = 'Acceso a Casos Prácticos';
+$string['settings:productcourseid'] = 'Curso del producto (gating)';
+$string['settings:productcourseid_desc'] = 'ID del curso cuya matrícula da acceso al banco central de casos prácticos. Por defecto 103.';
+$string['settings:trialaccess'] = 'Acceso de la versión de prueba';
+$string['settings:trialaccess_desc'] = 'Qué ve un alumno en prueba (matrícula self con customint6=1): solo el enunciado, la solución completa, o nada.';
+$string['settings:trialaccess_statement'] = 'Solo enunciado (recomendado)';
+$string['settings:trialaccess_full'] = 'Solución completa';
+$string['settings:trialaccess_none'] = 'Sin acceso';
+
+// Editor del entregable (deliverable_edit.php).
+$string['deliverable:editheading'] = 'Configurar entregable de documento';
+$string['deliverable:enabled'] = 'Activar entregable';
+$string['deliverable:enabled_help'] = 'Cuando está activo, el alumnado puede descargar un archivo de partida, completarlo y subir su versión en la página de práctica. Cuando está desactivado, el caso se comporta como si no tuviera entregable.';
+$string['deliverable:filetype'] = 'Tipo de archivo esperado';
+$string['deliverable:filetype:any'] = 'Cualquier formato';
+$string['deliverable:startfile'] = 'Archivo de partida';
+$string['deliverable:startfile_help'] = 'Documento ofimático opcional (docx/xlsx) que el alumnado descarga como punto de partida del ejercicio.';
+$string['deliverable:correctionmode'] = 'Modo de corrección';
+$string['deliverable:correctionmode_help'] = 'Automático: el archivo subido se corrige automáticamente con el corrector integrado según la rúbrica. Manual: un profesor corrige cada entrega a mano (nota + comentario); no se ejecuta corrección automática.';
+$string['deliverable:correctionmode_auto'] = 'Automático (corrector)';
+$string['deliverable:correctionmode_manual'] = 'Manual (corregido por el profesor)';
+$string['deliverable:submissionflow'] = 'Flujo de entrega';
+$string['deliverable:submissionflow_help'] = 'Tras el intento (por defecto): el cuadro de subida aparece después de que el alumno termine las preguntas del caso; úsalo en casos que combinan preguntas con un documento. Directo: el alumno solo ve el enunciado, la descarga del archivo de partida y el cuadro de subida, sin preguntas ni intento de preguntas; úsalo cuando el archivo subido ES todo el ejercicio (por ejemplo, ofimática). El flujo directo solo está disponible con corrección manual.';
+$string['deliverable:submissionflow_afterattempt'] = 'Tras el intento (subir tras terminar las preguntas)';
+$string['deliverable:submissionflow_direct'] = 'Directo (solo entregable, sin preguntas)';
+$string['deliverable:err_directrequiresmanual'] = 'La entrega directa solo está disponible con corrección manual. Pon el modo de corrección en Manual o elige el flujo "Tras el intento".';
+$string['deliverable:maxfiles'] = 'Número máximo de archivos';
+$string['deliverable:maxfiles_help'] = 'Número máximo de archivos que el alumno puede subir en una entrega; 1 = un solo archivo. Los valores mayores que 1 (por ejemplo, un Word y un Excel juntos) solo tienen efecto con corrección manual: el corrector automático siempre califica exactamente un archivo, por lo que en los casos automáticos se fuerza a 1.';
+$string['deliverable:err_maxfilesrange'] = 'Introduce un número entero de archivos entre 1 y {$a}.';
+$string['deliverable:err_maxfilesrequiresmanual'] = 'Permitir más de un archivo solo está disponible con corrección manual. Pon el modo de corrección en Manual o deja el número máximo de archivos en 1.';
+$string['error:directrequiresmanual'] = 'El flujo de entrega directo requiere el modo de corrección manual.';
+$string['deliverable:rubrica'] = 'Rúbrica (JSON)';
+$string['deliverable:rubrica_help'] = 'El contenido de rubrica.json que utiliza el corrector automático. Solo es relevante en modo de corrección automática.';
+$string['deliverable:maxscore'] = 'Puntuación máxima';
+$string['deliverable:err_maxscore'] = 'Introduce una puntuación máxima mayor que cero.';
+$string['deliverable:saved'] = 'Configuración del entregable guardada.';
+$string['error:invalidcorrectionmode'] = 'Modo de corrección no válido: {$a}';
+
+// Notificaciones del entregable.
+$string['notification:deliverablesubmitted_subject'] = 'Entregable enviado para revisión: {$a}';
+$string['notification:deliverablesubmitted_body'] = 'El alumno/a {$a->student} ha enviado un entregable de documento para el caso "{$a->casename}" y está pendiente de tu revisión.
+
+Revísalo y califícalo aquí: {$a->url}';
+$string['notification:deliverablesubmitted_body_html'] = '<p>El alumno/a {$a->student} ha enviado un entregable de documento para el caso "<strong>{$a->casename}</strong>" y está pendiente de tu revisión.</p><p><a href="{$a->url}">Revisar y calificar</a></p>';
+$string['notification:deliverablesubmitted_small'] = 'Entregable por revisar: {$a}';
+$string['notification:deliverablegraded_subject'] = 'Tu entregable ha sido calificado: {$a}';
+$string['notification:deliverablegraded_body'] = 'Tu entregable de documento para el caso "{$a->casename}" ha sido calificado: {$a->score}.
+
+Consulta el comentario aquí: {$a->url}';
+$string['notification:deliverablegraded_body_html'] = '<p>Tu entregable de documento para el caso "<strong>{$a->casename}</strong>" ha sido calificado: <strong>{$a->score}</strong>.</p><p><a href="{$a->url}">Consulta el comentario</a></p>';
+$string['notification:deliverablegraded_small'] = 'Entregable calificado: {$a}';
+
+// Nombres de proveedores de mensajes (Preferencias > Notificaciones).
+$string['messageprovider:deliverablesubmitted'] = 'Un alumno ha enviado un entregable para revisión manual';
+$string['messageprovider:deliverablegraded'] = 'Tu entregable ha sido calificado';

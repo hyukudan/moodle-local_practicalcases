@@ -149,36 +149,34 @@ if ($action && confirm_sesskey()) {
 
 echo $OUTPUT->header();
 
-// Action buttons.
+// Action buttons. Uniform toolbar of navigation links (GET-only, no state change).
 $buttons = [];
 if (has_capability('local/casospracticos:managecategories', $context)) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/category_edit.php'),
         get_string('newcategory', 'local_casospracticos'),
-        'get'
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 if (has_capability('local/casospracticos:create', $context) && $categoryid > 0) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/case_edit.php', ['category' => $categoryid]),
         get_string('newcase', 'local_casospracticos'),
-        'get'
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 // My attempts - for all users to view their practice history.
-$buttons[] = $OUTPUT->single_button(
+$buttons[] = html_writer::link(
     new moodle_url('/local/casospracticos/my_attempts.php'),
     get_string('myattempts', 'local_casospracticos'),
-    'get',
-    ['class' => 'btn-outline-info']
+    ['class' => 'btn btn-outline-secondary']
 );
 // Achievements button - if gamification is enabled.
 if (\local_casospracticos\achievements_manager::is_enabled()) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/achievements.php'),
         get_string('achievements', 'local_casospracticos'),
-        'get',
-        ['class' => 'btn-outline-warning']
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 if (has_capability('local/casospracticos:export', $context)) {
@@ -186,37 +184,42 @@ if (has_capability('local/casospracticos:export', $context)) {
     if ($categoryid > 0) {
         $exporturl->param('categoryid', $categoryid);
     }
-    $buttons[] = $OUTPUT->single_button($exporturl, get_string('export', 'local_casospracticos'), 'get');
+    $buttons[] = html_writer::link(
+        $exporturl,
+        get_string('export', 'local_casospracticos'),
+        ['class' => 'btn btn-outline-secondary']
+    );
     $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/pdf_library.php'),
-        '<i class="fa fa-file-pdf-o mr-1"></i>' . get_string('pdflibrary', 'local_casospracticos'),
-        ['class' => 'btn btn-outline-danger btn-sm ml-1']
+        $OUTPUT->pix_icon('f/pdf', '', 'moodle', ['aria-hidden' => 'true']) . ' '
+            . get_string('pdflibrary', 'local_casospracticos'),
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 if (has_capability('local/casospracticos:import', $context)) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/import.php'),
         get_string('import', 'local_casospracticos'),
-        'get'
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 // Links to audit log and review dashboard for managers.
 if (has_capability('local/casospracticos:viewaudit', $context)) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/audit_log.php'),
         get_string('auditlog', 'local_casospracticos'),
-        'get'
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 if (has_capability('local/casospracticos:review', $context)) {
-    $buttons[] = $OUTPUT->single_button(
+    $buttons[] = html_writer::link(
         new moodle_url('/local/casospracticos/review_dashboard.php'),
         get_string('reviewdashboard', 'local_casospracticos'),
-        'get'
+        ['class' => 'btn btn-outline-secondary']
     );
 }
 if (!empty($buttons)) {
-    echo html_writer::div(implode(' ', $buttons), 'mb-3');
+    echo html_writer::div(implode(' ', $buttons), 'cp-toolbar');
 }
 
 // Categories sidebar and cases list.

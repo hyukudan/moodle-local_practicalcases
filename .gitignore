@@ -15,3 +15,7 @@ Thumbs.db
 
 # Moodle
 /vendor/
+
+# Copias de seguridad puntuales (no son codigo)
+*.bak_*
+*.pre

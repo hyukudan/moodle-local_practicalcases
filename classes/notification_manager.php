@@ -247,6 +247,128 @@ class notification_manager {
     }
 
     /**
+     * Notify graders that a student submitted a manual-mode deliverable.
+     *
+     * Recipients are the users who hold mod/casospracticos:grade in the module
+     * context. The context link points at the teacher grading report filtered to
+     * the submitting student.
+     *
+     * @param \context_module $context The activity module context.
+     * @param \stdClass $attempt The mod_casospracticos attempt row (has userid, caseid, id).
+     * @param \stdClass $case The local_cp_cases record (for the case name).
+     * @return void
+     */
+    public static function notify_deliverable_submitted(\context_module $context, \stdClass $attempt,
+            \stdClass $case): void {
+        global $DB;
+
+        $graders = get_users_by_capability($context, 'mod/casospracticos:grade', 'u.*');
+        if (empty($graders)) {
+            return;
+        }
+
+        $student = $DB->get_record('user', ['id' => $attempt->userid]);
+        $sender = $student ?: \core_user::get_noreply_user();
+        $studentname = $student ? fullname($student) : get_string('unknownuser', 'moodle');
+
+        // cmid = the module context instance id -> report.php ?id=cmid.
+        $reporturl = new \moodle_url('/mod/casospracticos/report.php', [
+            'id' => $context->instanceid,
+            'studentid' => $attempt->userid,
+        ]);
+
+        $a = [
+            'casename' => $case->name,
+            'student' => $studentname,
+            'url' => $reporturl->out(false),
+        ];
+
+        foreach ($graders as $grader) {
+            $message = new \core\message\message();
+            $message->component = 'local_casospracticos';
+            $message->name = 'deliverablesubmitted';
+            $message->userfrom = $sender;
+            $message->userto = $grader;
+            $message->subject = get_string('notification:deliverablesubmitted_subject', 'local_casospracticos',
+                $case->name);
+            $message->fullmessage = get_string('notification:deliverablesubmitted_body', 'local_casospracticos', $a);
+            $message->fullmessageformat = FORMAT_PLAIN;
+            $message->fullmessagehtml = get_string('notification:deliverablesubmitted_body_html',
+                'local_casospracticos', [
+                    'casename' => format_string($case->name),
+                    'student' => s($studentname),
+                    'url' => $reporturl->out(false),
+                ]);
+            $message->smallmessage = get_string('notification:deliverablesubmitted_small', 'local_casospracticos',
+                $case->name);
+            $message->notification = 1;
+            $message->contexturl = $reporturl;
+            $message->contexturlname = $case->name;
+
+            message_send($message);
+        }
+    }
+
+    /**
+     * Notify a student that their deliverable has been graded manually.
+     *
+     * @param \context_module $context The activity module context.
+     * @param \stdClass $attempt The graded attempt row (userid, id, deliverablereviewer,
+     *                           deliverablemanualscore, deliverablemaxscore).
+     * @param \stdClass $case The local_cp_cases record (for the case name).
+     * @return void
+     */
+    public static function notify_deliverable_graded(\context_module $context, \stdClass $attempt,
+            \stdClass $case): void {
+        global $DB;
+
+        $student = $DB->get_record('user', ['id' => $attempt->userid]);
+        if (!$student) {
+            return;
+        }
+
+        $reviewer = !empty($attempt->deliverablereviewer)
+            ? $DB->get_record('user', ['id' => $attempt->deliverablereviewer]) : false;
+        $sender = $reviewer ?: \core_user::get_noreply_user();
+
+        $reviewurl = new \moodle_url('/mod/casospracticos/review.php', [
+            'id' => $context->instanceid,
+            'attemptid' => $attempt->id,
+        ]);
+
+        $score = isset($attempt->deliverablemanualscore) ? (float) $attempt->deliverablemanualscore : 0;
+        $max = isset($attempt->deliverablemaxscore) ? (float) $attempt->deliverablemaxscore : 0;
+        $scorestr = format_float($score, 2) . ' / ' . format_float($max, 2);
+
+        $a = [
+            'casename' => $case->name,
+            'score' => $scorestr,
+            'url' => $reviewurl->out(false),
+        ];
+
+        $message = new \core\message\message();
+        $message->component = 'local_casospracticos';
+        $message->name = 'deliverablegraded';
+        $message->userfrom = $sender;
+        $message->userto = $student;
+        $message->subject = get_string('notification:deliverablegraded_subject', 'local_casospracticos', $case->name);
+        $message->fullmessage = get_string('notification:deliverablegraded_body', 'local_casospracticos', $a);
+        $message->fullmessageformat = FORMAT_PLAIN;
+        $message->fullmessagehtml = get_string('notification:deliverablegraded_body_html', 'local_casospracticos', [
+            'casename' => format_string($case->name),
+            'score' => $scorestr,
+            'url' => $reviewurl->out(false),
+        ]);
+        $message->smallmessage = get_string('notification:deliverablegraded_small', 'local_casospracticos',
+            $case->name);
+        $message->notification = 1;
+        $message->contexturl = $reviewurl;
+        $message->contexturlname = $case->name;
+
+        message_send($message);
+    }
+
+    /**
      * Get users with a specific capability.
      *
      * @param string $capability The capability to check.

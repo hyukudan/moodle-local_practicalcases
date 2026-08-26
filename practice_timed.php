@@ -50,6 +50,9 @@ $timelimit = max($mintimelimit, min($maxtimelimit, $timelimit));
 $context = context_system::instance();
 require_login();
 
+// Timed practice reveals answer keys and feedback, so it requires full access.
+local_casospracticos_require_view_access(LOCAL_CP_ACCESS_FULL);
+
 $case = case_manager::get($caseid);
 if (!$case) {
     throw new moodle_exception('error:casenotfound', 'local_casospracticos');
@@ -100,12 +103,21 @@ if ($attempt->status === 'finished') {
 // Check if time expired.
 $timeleft = timed_attempt_manager::get_time_left($attemptid);
 if ($timeleft <= 0 && !$submit) {
-    // Auto-submit when time runs out.
-    $submit = true;
+    // A GET cannot carry a sesskey. Finalize idempotently from autosaved data
+    // after the manager verifies owner, status and the authoritative deadline.
+    timed_attempt_manager::finalize_expired_attempt($attemptid, $USER->id);
+    redirect(new moodle_url('/local/casospracticos/timed_result.php', ['attempt' => $attemptid]));
 }
 
 // Get all questions of this case with their answers (keyed by question id).
-$questions = question_manager::get_by_case_with_answers($caseid);
+$questions = question_manager::filter_practice_questions(
+    question_manager::get_by_case_with_answers($caseid)
+);
+$unsupportedqtypes = question_manager::unsupported_practice_qtypes($questions);
+if ($unsupportedqtypes) {
+    throw new moodle_exception('error:unsupportedpracticeqtype', 'local_casospracticos', '',
+        implode(', ', $unsupportedqtypes));
+}
 
 // Restore the shuffled question order persisted on the attempt.
 $questionorder = json_decode($attempt->questionorder ?? '', true);
@@ -169,6 +181,7 @@ if ($submit) {
             'selected' => $res->selectedids ?? ($res->response ?? ''),
             'score' => $res->score ?? 0,
             'correct' => $res->correct ?? false,
+            'requiresgrading' => $res->requiresgrading ?? false,
         ];
     }
 
@@ -179,7 +192,8 @@ if ($submit) {
         $timespent = min($timespent, (int) $freshattempt->timelimit);
     }
     $timespent = max(0, $timespent);
-    timed_attempt_manager::finish_attempt($attemptid, $score, $maxscore, $responsedata, $timespent);
+    timed_attempt_manager::finish_attempt($attemptid, $score, $maxscore, $responsedata, $timespent,
+        $scored['gradingstatus']);
 
     // Redirect to results page.
     redirect(new moodle_url('/local/casospracticos/timed_result.php', ['attempt' => $attemptid]));
@@ -212,7 +226,6 @@ echo html_writer::end_div();
 echo html_writer::start_div('case-practice');
 echo html_writer::tag('h3', format_string($case->name));
 echo html_writer::div(format_text($case->statement, $case->statementformat), 'case-statement mb-4');
-echo local_casospracticos_render_attachments_block($caseid);
 
 // Instructions.
 if (!$submit) {
@@ -297,15 +310,6 @@ foreach ($questions as $question) {
             }
         }
 
-    } else if ($question->qtype === 'essay') {
-        $paramname = 'q' . $question->id;
-        echo html_writer::tag('textarea', s($savedvalue ?? ''), [
-            'name' => $paramname,
-            'class' => 'form-control',
-            'rows' => 8,
-            'placeholder' => get_string('youranswer', 'local_casospracticos'),
-        ]);
-
     } else if ($question->qtype === 'shortanswer') {
         $paramname = 'q' . $question->id;
         echo html_writer::empty_tag('input', [
@@ -331,6 +335,19 @@ foreach ($questions as $question) {
                 ['for' => $id, 'class' => 'form-check-label']);
             echo html_writer::end_div();
         }
+    } else if ($question->qtype === 'essay') {
+        $paramname = 'q' . $question->id;
+        echo html_writer::tag('label', get_string('youranswer', 'local_casospracticos'), [
+            'for' => $paramname,
+            'class' => 'form-label',
+        ]);
+        echo html_writer::tag('textarea', s((string) ($savedvalue ?? '')), [
+            'id' => $paramname,
+            'name' => $paramname,
+            'class' => 'form-control',
+            'rows' => 8,
+        ]);
+        echo html_writer::div(get_string('essaymanualgrading', 'local_casospracticos'), 'form-text');
     }
 
     echo html_writer::end_div(); // card-body.

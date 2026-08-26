@@ -104,7 +104,10 @@ function local_casospracticos_pluginfile($course, $cm, $context, $filearea, $arg
 
     require_login();
 
-    if (!has_capability('local/casospracticos:view', $context)) {
+    // Serve attachments to any user with at least statement-level access
+    // (paywall enrolment in the product course), mirroring case_view.php.
+    // Editorial/admin keep access via the FULL branch of get_view_access().
+    if (local_casospracticos_get_view_access() < LOCAL_CP_ACCESS_STATEMENT) {
         return false;
     }
 
@@ -221,63 +224,6 @@ function local_casospracticos_get_file_icon(string $filename): array {
 }
 
 /**
- * Render the downloadable attachments block for a practical case.
- *
- * @param int $caseid Case ID.
- * @param string $classes Wrapper CSS classes.
- * @return string HTML block, or an empty string when the case has no attachments.
- */
-function local_casospracticos_render_attachments_block(int $caseid, string $classes = 'case-attachments card mb-4'): string {
-    $attachments = \local_casospracticos\case_manager::get_attachments($caseid);
-    if (empty($attachments)) {
-        return '';
-    }
-
-    $html = html_writer::start_div($classes);
-    $html .= html_writer::start_div('card-header bg-light');
-    $html .= html_writer::tag('h5', get_string('attachments', 'local_casospracticos') .
-        ' <span class="badge bg-secondary">' . count($attachments) . '</span>', ['class' => 'mb-0']);
-    $html .= html_writer::end_div();
-    $html .= html_writer::start_div('card-body');
-    $html .= html_writer::start_tag('ul', ['class' => 'list-group list-group-flush']);
-
-    foreach ($attachments as $attachment) {
-        $html .= html_writer::start_tag('li', ['class' => 'list-group-item d-flex justify-content-between align-items-center']);
-
-        $fileinfo = html_writer::tag('i', '', ['class' => 'fa ' . $attachment->icon . ' me-2', 'aria-hidden' => 'true']);
-        $fileinfo .= html_writer::tag('span', $attachment->filename, ['class' => 'fw-medium']);
-        $fileinfo .= html_writer::tag('span', ' (' . $attachment->filesizeformatted . ')', ['class' => 'text-muted small']);
-        $html .= html_writer::div($fileinfo);
-
-        $html .= html_writer::start_div('btn-group btn-group-sm');
-        $html .= html_writer::link(
-            $attachment->downloadurl,
-            html_writer::tag('i', '', ['class' => 'fa fa-download', 'aria-hidden' => 'true']) . ' ' .
-            get_string('download', 'moodle'),
-            ['class' => 'btn btn-outline-primary btn-sm', 'title' => get_string('download', 'moodle')]
-        );
-
-        if ($attachment->isembeddable) {
-            $html .= html_writer::link(
-                $attachment->viewurl,
-                html_writer::tag('i', '', ['class' => 'fa fa-eye', 'aria-hidden' => 'true']) . ' ' .
-                get_string('view'),
-                ['class' => 'btn btn-outline-secondary btn-sm', 'target' => '_blank', 'title' => get_string('view')]
-            );
-        }
-
-        $html .= html_writer::end_div();
-        $html .= html_writer::end_tag('li');
-    }
-
-    $html .= html_writer::end_tag('ul');
-    $html .= html_writer::end_div();
-    $html .= html_writer::end_div();
-
-    return $html;
-}
-
-/**
  * Get the optional document deliverable definition for a case.
  *
  * Returns the {local_cp_case_deliverable} row only when it exists AND is
@@ -338,7 +284,9 @@ function local_casospracticos_get_normativa_links(array $questionids): array {
 
     // Check that the normativa plugin tables exist.
     $dbman = $DB->get_manager();
-    if (!$dbman->table_exists('local_cp_question_normativa')) {
+    if (!$dbman->table_exists('local_cp_question_normativa')
+            || !$dbman->table_exists('local_normativa_articulos')
+            || !$dbman->table_exists('local_normativa_fuentes')) {
         return [];
     }
 
@@ -403,30 +351,11 @@ function local_casospracticos_render_normativa_panel(int $questionid, array $lin
     $first = true;
     foreach ($byfuente as $group) {
         $articles = $group['articles'];
-        $count = count($articles);
-
-        if ($count <= 3) {
-            foreach ($articles as $link) {
-                $item = (array)$link;
-                $item['questionid'] = $questionid;
-                if ($first) {
-                    $item['first'] = true;
-                    $first = false;
-                }
-                $templatelinks[] = $item;
-            }
-        } else {
-            // Compact range.
-            $nums = array_map(function($a) { return $a->numero_articulo; }, $articles);
-            $ids = array_map(function($a) { return (int)$a->articuloid; }, $articles);
-            $firstlink = reset($articles);
-
-            $item = (array)$firstlink;
+        // Keep every article explicit. Turning four or more links into a visual
+        // range is misleading when the stored articles are not contiguous.
+        foreach ($articles as $link) {
+            $item = (array) $link;
             $item['questionid'] = $questionid;
-            $item['numero_articulo'] = reset($nums) . '-' . end($nums);
-            $item['articulo_titulo'] = $count . ' artículos';
-            $item['is_range'] = true;
-            $item['articuloids_json'] = json_encode($ids);
             if ($first) {
                 $item['first'] = true;
                 $first = false;
@@ -442,4 +371,178 @@ function local_casospracticos_render_normativa_panel(int $questionid, array $lin
 
     // Reuse normativa plugin's template.
     return $OUTPUT->render_from_template('local_normativa/question_normativa_panel', $data);
+}
+
+/**
+ * Render the canonical solution and its linked legislation.
+ *
+ * @param object $question Practical-case question.
+ * @param array $normativa Normativa links preloaded for this question.
+ * @return string HTML
+ */
+function local_casospracticos_render_solution_feedback(object $question, array $normativa = []): string {
+    global $OUTPUT;
+
+    $data = \local_casospracticos\feedback_view_builder::build($question);
+    $html = $OUTPUT->render_from_template('local_casospracticos/solution_feedback', $data);
+    if (!empty($normativa)) {
+        $html .= local_casospracticos_render_normativa_panel((int) $question->id, $normativa);
+    }
+    return $html;
+}
+
+// Access levels for the central practical-case bank.
+// NONE: authenticated but no entitlement. STATEMENT: trial (enunciado only, no solution).
+// FULL: paying student / editorial / admin (statement + solution + practice).
+define('LOCAL_CP_ACCESS_NONE', 0);
+define('LOCAL_CP_ACCESS_STATEMENT', 10);
+define('LOCAL_CP_ACCESS_FULL', 20);
+
+// Upper bound for the per-case deliverable maxfiles setting (student uploads
+// per submission). Sensible ceiling so a typo can't request thousands of files.
+define('LOCAL_CP_DELIVERABLE_MAXFILES_CAP', 10);
+
+/**
+ * Course id whose enrolment gates the central case bank (the paid product).
+ *
+ * @return int
+ */
+function local_casospracticos_get_product_courseid(): int {
+    $courseid = (int) get_config('local_casospracticos', 'productcourseid');
+    return $courseid > 0 ? $courseid : 103;
+}
+
+/**
+ * Resolve the effective access level of a user to the central case bank.
+ *
+ * Entitlement is driven by *active* enrolment in the product course, not by a
+ * system-level capability (students only ever hold the student role at course
+ * level, so a system check blocks everyone — the historical bug). Editorial/admin
+ * keep a system-level bypass via local/casospracticos:view (no student holds it
+ * at system). Trial (self-enrol with customint6=1) maps to a configurable level
+ * (default: statement only); any paid/manual enrolment always wins (FULL).
+ *
+ * @param int|null $userid Defaults to current user.
+ * @return int One of LOCAL_CP_ACCESS_*.
+ */
+function local_casospracticos_get_view_access(?int $userid = null): int {
+    global $USER, $DB;
+
+    $userid = $userid ?? (int) $USER->id;
+    if ($userid <= 0 || isguestuser($userid)) {
+        return LOCAL_CP_ACCESS_NONE;
+    }
+
+    // Editorial / admin bypass at system context (no ordinary student has this).
+    $syscontext = context_system::instance();
+    if (is_siteadmin($userid)
+            || has_capability('local/casospracticos:view', $syscontext, $userid)) {
+        return LOCAL_CP_ACCESS_FULL;
+    }
+
+    $courseid = local_casospracticos_get_product_courseid();
+    try {
+        $coursecontext = context_course::instance($courseid, MUST_EXIST);
+    } catch (\moodle_exception $e) {
+        // Product course misconfigured/missing: grant FULL to logged-in users
+        // rather than mass-lock paying students (never repeat the original bug).
+        return LOCAL_CP_ACCESS_FULL;
+    }
+
+    // Active, capability-bearing enrolment = entitlement to the bank at all.
+    if (!is_enrolled($coursecontext, $userid, 'local/casospracticos:view', true)) {
+        return LOCAL_CP_ACCESS_NONE;
+    }
+
+    // Classify the active enrolment(s): paid/manual beats trial.
+    $now = time();
+    $sql = "SELECT ue.id, e.enrol, e.customint6, e.status AS estatus,
+                   ue.status AS uestatus, ue.timestart, ue.timeend
+              FROM {user_enrolments} ue
+              JOIN {enrol} e ON e.id = ue.enrolid
+             WHERE ue.userid = :userid AND e.courseid = :courseid";
+    $rows = $DB->get_records_sql($sql, ['userid' => $userid, 'courseid' => $courseid]);
+
+    $haspaid = false;
+    $hastrial = false;
+    $hasother = false;
+    foreach ($rows as $row) {
+        if ((int) $row->estatus !== 0 || (int) $row->uestatus !== 0) {
+            continue; // Suspended enrol instance or user enrolment.
+        }
+        if (!empty($row->timestart) && $row->timestart > $now) {
+            continue;
+        }
+        if (!empty($row->timeend) && $row->timeend < $now) {
+            continue;
+        }
+        if ($row->enrol === 'self' && (int) $row->customint6 === 1) {
+            $hastrial = true;
+        } else if ($row->enrol === 'buynow' || $row->enrol === 'manual') {
+            $haspaid = true;
+        } else {
+            $hasother = true;
+        }
+    }
+
+    if ($haspaid || $hasother) {
+        return LOCAL_CP_ACCESS_FULL;
+    }
+    if ($hastrial) {
+        $trial = get_config('local_casospracticos', 'trialaccess');
+        if ($trial === 'full') {
+            return LOCAL_CP_ACCESS_FULL;
+        }
+        if ($trial === 'none') {
+            return LOCAL_CP_ACCESS_NONE;
+        }
+        return LOCAL_CP_ACCESS_STATEMENT; // Default policy: enunciado only.
+    }
+
+    // Enrolled and active per is_enrolled() but unclassified: do not lock out.
+    return LOCAL_CP_ACCESS_FULL;
+}
+
+/**
+ * Require at least $minlevel of access; otherwise redirect to the purchase CTA.
+ *
+ * @param int $minlevel Minimum LOCAL_CP_ACCESS_* required.
+ * @param moodle_url|null $returnurl Where to come back after purchasing.
+ * @return int The user's actual access level (>= $minlevel).
+ */
+function local_casospracticos_require_view_access(int $minlevel = LOCAL_CP_ACCESS_STATEMENT,
+        ?moodle_url $returnurl = null): int {
+    global $PAGE;
+
+    require_login();
+
+    $access = local_casospracticos_get_view_access();
+    if ($access >= $minlevel) {
+        return $access;
+    }
+
+    $returnurl = $returnurl ?? $PAGE->url;
+    $ctaurl = new moodle_url('/local/casospracticos/access.php', [
+        'returnurl' => $returnurl ? $returnurl->out_as_local_url(false) : '',
+    ]);
+    redirect($ctaurl);
+}
+
+/**
+ * CTA banner shown to trial users on the statement-only view.
+ *
+ * @return string HTML
+ */
+function local_casospracticos_render_upgrade_cta(): string {
+    global $OUTPUT;
+
+    $courseid = local_casospracticos_get_product_courseid();
+    $buyurl = new moodle_url('/enrol/index.php', ['id' => $courseid]);
+    $body = html_writer::tag('h5', get_string('cta:solutionlocked_title', 'local_casospracticos'));
+    $body .= html_writer::tag('p', get_string('cta:solutionlocked_body', 'local_casospracticos'));
+    $body .= html_writer::link($buyurl,
+        $OUTPUT->pix_icon('t/unlock', '', 'moodle', ['aria-hidden' => 'true']) . ' '
+            . get_string('cta:unlock', 'local_casospracticos'),
+        ['class' => 'btn btn-primary']);
+    return html_writer::div($body, 'alert alert-warning cp-upgrade-cta mt-4');
 }

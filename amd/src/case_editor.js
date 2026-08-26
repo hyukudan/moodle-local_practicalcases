@@ -90,7 +90,7 @@ function($, Ajax, Notification, Str, ModalFactory, ModalEvents) {
         });
 
         // Quick edit question text.
-        this.container.on('dblclick', '.question-text', function(e) {
+        this.container.on('dblclick', '.question-text', function() {
             if ($(this).find('textarea').length) {
                 return;
             }

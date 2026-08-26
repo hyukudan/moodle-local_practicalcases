@@ -241,6 +241,11 @@ class case_manager {
     public static function update(object $data): bool {
         global $DB;
 
+        $existing = self::get((int) $data->id);
+        if (!$existing) {
+            throw new \moodle_exception('error:casenotfound', 'local_casospracticos');
+        }
+
         $record = new \stdClass();
         $record->id = $data->id;
 
@@ -265,8 +270,32 @@ class case_manager {
         }
 
         $record->timemodified = time();
+        $statementchanged = isset($record->statement)
+            && ((string) $record->statement !== (string) $existing->statement
+                || (int) $record->statementformat !== (int) $existing->statementformat);
 
-        return $DB->update_record(self::TABLE, $record);
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $result = $DB->update_record(self::TABLE, $record);
+            if ($statementchanged) {
+                $DB->execute("UPDATE {local_cp_questions}
+                                 SET feedbackstatus = :needsreview,
+                                     feedbackverifiedat = NULL,
+                                     timemodified = :timemodified
+                               WHERE caseid = :caseid
+                                 AND feedbackstatus = :verified", [
+                    'needsreview' => 'needs_review',
+                    'timemodified' => time(),
+                    'caseid' => (int) $record->id,
+                    'verified' => 'verified',
+                ]);
+            }
+            $transaction->allow_commit();
+            return $result;
+        } catch (\Exception $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
     }
 
     /**
@@ -641,6 +670,130 @@ class case_manager {
         );
 
         return count($files);
+    }
+
+    /**
+     * Get the raw deliverable definition row for a case (no enabled filter).
+     *
+     * Unlike local_casospracticos_get_case_deliverable() (which only returns
+     * enabled rows and is used on the student-facing path), this returns the
+     * row regardless of the enabled flag so the deliverable editor can load and
+     * re-save a currently-disabled configuration.
+     *
+     * @param int $caseid Case ID
+     * @return \stdClass|false The deliverable row, or false if none exists.
+     */
+    public static function get_deliverable_raw(int $caseid) {
+        global $DB;
+
+        if (!$DB->get_manager()->table_exists('local_cp_case_deliverable')) {
+            return false;
+        }
+
+        return $DB->get_record('local_cp_case_deliverable', ['caseid' => (int) $caseid]);
+    }
+
+    /**
+     * Create or update the deliverable definition for a case (upsert by caseid).
+     *
+     * The caseid column carries a unique key, so at most one row exists per
+     * case. Sets timecreated on insert and timemodified on every write. The
+     * correctionmode is validated against the allowed set.
+     *
+     * Decision C: when an existing row transitions manual -> auto AND is enabled,
+     * any attempts that submitted a file but were never auto-graded (because the
+     * case was in manual mode) are re-queued for the Python autograder. Queueing
+     * is de-duplicated so toggling the mode repeatedly does not pile up tasks.
+     *
+     * @param \stdClass $record Deliverable data. Must contain caseid.
+     * @return int The deliverable row id.
+     * @throws \moodle_exception If correctionmode is invalid.
+     */
+    public static function save_deliverable(\stdClass $record): int {
+        global $DB;
+
+        $mode = $record->correctionmode ?? 'auto';
+        if (!in_array($mode, ['auto', 'manual'], true)) {
+            throw new \moodle_exception('error:invalidcorrectionmode', 'local_casospracticos', '', $mode);
+        }
+        $record->correctionmode = $mode;
+
+        // Submission flow: 'afterattempt' (default/legacy) or 'direct'. 'direct'
+        // is only valid with manual correction (no scored question attempt exists
+        // to auto-grade). Default missing/unknown values to the safe legacy flow.
+        $flow = $record->submissionflow ?? 'afterattempt';
+        if (!in_array($flow, ['afterattempt', 'direct'], true)) {
+            $flow = 'afterattempt';
+        }
+        if ($flow === 'direct' && $mode !== 'manual') {
+            throw new \moodle_exception('error:directrequiresmanual', 'local_casospracticos');
+        }
+        $record->submissionflow = $flow;
+
+        $now = time();
+        $caseid = (int) $record->caseid;
+        $existing = $DB->get_record('local_cp_case_deliverable', ['caseid' => $caseid]);
+
+        if ($existing) {
+            $record->id = $existing->id;
+            $record->timemodified = $now;
+            // Never rewrite timecreated on update.
+            unset($record->timecreated);
+            $DB->update_record('local_cp_case_deliverable', $record);
+            $id = (int) $existing->id;
+
+            // Decision C: manual -> auto (enabled) re-queues stuck deliverables.
+            $wasmanual = (($existing->correctionmode ?? 'auto') === 'manual');
+            $nowauto = ($mode === 'auto');
+            $enabled = !empty($record->enabled);
+            if ($wasmanual && $nowauto && $enabled) {
+                self::requeue_stuck_deliverables($caseid);
+            }
+        } else {
+            $record->timecreated = $now;
+            $record->timemodified = $now;
+            $id = (int) $DB->insert_record('local_cp_case_deliverable', $record);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Re-queue the auto-grader for attempts stuck without an auto grade.
+     *
+     * Targets mod_casospracticos attempts of the given case that uploaded a file
+     * but were never machine-graded (manual mode) and have no manual grade yet.
+     * De-duplicated via queue_adhoc_task(..., true). Guarded so the local plugin
+     * degrades gracefully if the module is absent.
+     *
+     * @param int $caseid Case ID.
+     * @return void
+     */
+    protected static function requeue_stuck_deliverables(int $caseid): void {
+        global $DB;
+
+        if (!$DB->get_manager()->table_exists('casospracticos_attempts')) {
+            return;
+        }
+        if (!class_exists('\mod_casospracticos\task\grade_deliverable')) {
+            return;
+        }
+
+        $stuck = $DB->get_records_select(
+            'casospracticos_attempts',
+            "caseid = ? AND deliverablefilesubmitted = 1 AND deliverablemanualscore IS NULL
+                 AND deliverablestatus IN ('submitted', 'error')",
+            [$caseid],
+            '',
+            'id'
+        );
+
+        foreach ($stuck as $row) {
+            $task = new \mod_casospracticos\task\grade_deliverable();
+            $task->set_custom_data(['attemptid' => (int) $row->id]);
+            // Second arg = check-for-existing: dedupes identical pending tasks.
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
     }
 
     /**

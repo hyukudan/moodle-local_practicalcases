@@ -459,5 +459,131 @@ function xmldb_local_casospracticos_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026061500, 'local', 'casospracticos');
     }
 
+    if ($oldversion < 2026071200) {
+        // Register the pre-existing ad-hoc table local_cp_question_normativa
+        // (CP question -> normativa article link, populated by local_normativa
+        // tooling) so the schema is versioned. No-op where it already exists.
+        $table = new xmldb_table('local_cp_question_normativa');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('articulo_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('relevancia', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '100');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('queart', XMLDB_INDEX_UNIQUE, ['questionid', 'articulo_id']);
+            $table->add_index('que', XMLDB_INDEX_NOTUNIQUE, ['questionid']);
+            $table->add_index('art', XMLDB_INDEX_NOTUNIQUE, ['articulo_id']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071200, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026071400) {
+        $table = new xmldb_table('local_cp_questions');
+
+        $fields = [
+            new xmldb_field('reasoning', XMLDB_TYPE_TEXT, null, null, null, null, null, 'generalfeedbackformat'),
+            new xmldb_field('reasoningformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1', 'reasoning'),
+            new xmldb_field('modelanswer', XMLDB_TYPE_TEXT, null, null, null, null, null, 'reasoningformat'),
+            new xmldb_field('modelanswerformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1', 'modelanswer'),
+            new xmldb_field('feedbackstatus', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'legacy', 'modelanswerformat'),
+            new xmldb_field('feedbackverifiedat', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'feedbackstatus'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        $index = new xmldb_index('feedbackstatus', XMLDB_INDEX_NOTUNIQUE, ['feedbackstatus']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071400, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026071500) {
+        // Manual-vs-auto correction mode for the per-case document deliverable.
+        // Additive, NOT NULL default 'auto' -> every existing deliverable keeps
+        // its current (auto Python autograder) behaviour.
+        $table = new xmldb_table('local_cp_case_deliverable');
+        $field = new xmldb_field('correctionmode', XMLDB_TYPE_CHAR, '10', null,
+            XMLDB_NOTNULL, null, 'auto', 'maxscore');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071500, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026071600) {
+        // Persist manual-grading state instead of representing essays as failed 0/0 attempts.
+        $attempttable = new xmldb_table('local_cp_practice_attempts');
+        $gradingstatus = new xmldb_field('gradingstatus', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'auto', 'percentage');
+        if (!$dbman->field_exists($attempttable, $gradingstatus)) {
+            $dbman->add_field($attempttable, $gradingstatus);
+        }
+        $percentage = new xmldb_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null,
+            null, null, null, 'maxscore');
+        $dbman->change_field_notnull($attempttable, $percentage);
+
+        $responsetable = new xmldb_table('local_cp_practice_responses');
+        $requiresgrading = new xmldb_field('requiresgrading', XMLDB_TYPE_INTEGER, '1', null,
+            XMLDB_NOTNULL, null, '0', 'iscorrect');
+        if (!$dbman->field_exists($responsetable, $requiresgrading)) {
+            $dbman->add_field($responsetable, $requiresgrading);
+        }
+
+        $timedtable = new xmldb_table('local_cp_timed_attempts');
+        $timedgradingstatus = new xmldb_field('gradingstatus', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'auto', 'percentage');
+        if (!$dbman->field_exists($timedtable, $timedgradingstatus)) {
+            $dbman->add_field($timedtable, $timedgradingstatus);
+        }
+        $timedpercentage = new xmldb_field('percentage', XMLDB_TYPE_NUMBER, '5, 2', null,
+            null, null, null, 'maxscore');
+        $dbman->change_field_notnull($timedtable, $timedpercentage);
+
+        upgrade_plugin_savepoint(true, 2026071600, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026071601) {
+        // Explicit submission flow for the per-case document deliverable.
+        // Additive, NOT NULL default 'afterattempt' -> every existing deliverable
+        // keeps its current behaviour (upload appears after a finished question
+        // attempt). 'direct' opts a case into deliverable-only submission with no
+        // question attempt (used for ofimática cases where the file IS the work).
+        $table = new xmldb_table('local_cp_case_deliverable');
+        $field = new xmldb_field('submissionflow', XMLDB_TYPE_CHAR, '20', null,
+            XMLDB_NOTNULL, null, 'afterattempt', 'correctionmode');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071601, 'local', 'casospracticos');
+    }
+
+    if ($oldversion < 2026071602) {
+        // Per-case max number of files a student may upload in one deliverable
+        // submission. Additive, NOT NULL default 1 -> every existing deliverable
+        // keeps single-file behaviour. Values >1 only take effect with
+        // correctionmode='manual' (the Python autograder always consumes exactly
+        // one file, so auto cases are clamped to 1 at edit and at runtime).
+        $table = new xmldb_table('local_cp_case_deliverable');
+        $field = new xmldb_field('maxfiles', XMLDB_TYPE_INTEGER, '4', null,
+            XMLDB_NOTNULL, null, '1', 'submissionflow');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026071602, 'local', 'casospracticos');
+    }
+
     return true;
 }

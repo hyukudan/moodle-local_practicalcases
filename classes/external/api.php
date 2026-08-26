@@ -683,17 +683,22 @@ class api extends external_api {
                 $answers[] = self::build_answer_payload($a, $includekeys, $context);
             }
 
-            $result[] = [
+            $payload = [
                 'id' => $q->id,
                 // Cleaned HTML, render-ready: see format_richtext().
                 'questiontext' => self::format_richtext($q->questiontext, $context),
                 'qtype' => $q->qtype,
                 'defaultmark' => (float) $q->defaultmark,
                 'sortorder' => $q->sortorder,
-                // Cleaned HTML, render-ready: see format_richtext().
-                'generalfeedback' => self::format_richtext($q->generalfeedback ?? '', $context),
                 'answers' => $answers,
             ];
+            if ($includekeys) {
+                $payload['generalfeedback'] = self::format_richtext($q->generalfeedback ?? '', $context);
+                $payload['reasoning'] = self::format_richtext($q->reasoning ?? '', $context);
+                $payload['modelanswer'] = self::format_richtext($q->modelanswer ?? '', $context);
+                $payload['feedbackstatus'] = $q->feedbackstatus ?? 'legacy';
+            }
+            $result[] = $payload;
         }
 
         return $result;
@@ -710,7 +715,10 @@ class api extends external_api {
                 'qtype' => new external_value(PARAM_ALPHA, 'Question type'),
                 'defaultmark' => new external_value(PARAM_FLOAT, 'Default mark'),
                 'sortorder' => new external_value(PARAM_INT, 'Sort order'),
-                'generalfeedback' => new external_value(PARAM_RAW, 'General feedback, cleaned HTML (format_text)'),
+                'generalfeedback' => new external_value(PARAM_RAW, 'Legacy general feedback', VALUE_OPTIONAL),
+                'reasoning' => new external_value(PARAM_RAW, 'Applied reasoning', VALUE_OPTIONAL),
+                'modelanswer' => new external_value(PARAM_RAW, 'Student-facing model answer', VALUE_OPTIONAL),
+                'feedbackstatus' => new external_value(PARAM_ALPHAEXT, 'Editorial status', VALUE_OPTIONAL),
                 'answers' => new external_multiple_structure(
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Answer ID'),
@@ -739,13 +747,17 @@ class api extends external_api {
                     'feedback' => new external_value(PARAM_RAW, 'Feedback', VALUE_DEFAULT, ''),
                 ])
             ),
+            'generalfeedback' => new external_value(PARAM_RAW, 'Legacy general feedback', VALUE_DEFAULT, ''),
+            'reasoning' => new external_value(PARAM_RAW, 'Applied reasoning', VALUE_DEFAULT, ''),
+            'modelanswer' => new external_value(PARAM_RAW, 'Student-facing model answer', VALUE_DEFAULT, ''),
         ]);
     }
 
     /**
      * Create a question.
      */
-    public static function create_question($caseid, $questiontext, $qtype, $defaultmark, $answers) {
+    public static function create_question($caseid, $questiontext, $qtype, $defaultmark, $answers,
+            $generalfeedback = '', $reasoning = '', $modelanswer = '') {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
@@ -757,6 +769,9 @@ class api extends external_api {
             'qtype' => $qtype,
             'defaultmark' => $defaultmark,
             'answers' => $answers,
+            'generalfeedback' => $generalfeedback,
+            'reasoning' => $reasoning,
+            'modelanswer' => $modelanswer,
         ]);
 
         // Verify user can edit the parent case.
@@ -771,6 +786,9 @@ class api extends external_api {
             'qtype' => $params['qtype'],
             'defaultmark' => $params['defaultmark'],
             'answers' => $params['answers'],
+            'generalfeedback' => $params['generalfeedback'],
+            'reasoning' => $params['reasoning'],
+            'modelanswer' => $params['modelanswer'],
         ];
 
         $id = question_manager::create($data);
@@ -796,13 +814,17 @@ class api extends external_api {
             'id' => new external_value(PARAM_INT, 'Question ID'),
             'questiontext' => new external_value(PARAM_RAW, 'Question text', VALUE_DEFAULT, ''),
             'defaultmark' => new external_value(PARAM_FLOAT, 'Default mark', VALUE_DEFAULT, 0),
+            'generalfeedback' => new external_value(PARAM_RAW, 'Legacy general feedback', VALUE_DEFAULT, null, NULL_ALLOWED),
+            'reasoning' => new external_value(PARAM_RAW, 'Applied reasoning', VALUE_DEFAULT, null, NULL_ALLOWED),
+            'modelanswer' => new external_value(PARAM_RAW, 'Student-facing model answer', VALUE_DEFAULT, null, NULL_ALLOWED),
         ]);
     }
 
     /**
      * Update a question.
      */
-    public static function update_question($id, $questiontext = '', $defaultmark = 0) {
+    public static function update_question($id, $questiontext = '', $defaultmark = 0,
+            $generalfeedback = null, $reasoning = null, $modelanswer = null) {
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('local/casospracticos:edit', $context);
@@ -812,6 +834,9 @@ class api extends external_api {
             'id' => $id,
             'questiontext' => $questiontext,
             'defaultmark' => $defaultmark,
+            'generalfeedback' => $generalfeedback,
+            'reasoning' => $reasoning,
+            'modelanswer' => $modelanswer,
         ]);
 
         // Verify user can edit the parent case.
@@ -829,6 +854,12 @@ class api extends external_api {
         }
         if (!empty($params['defaultmark'])) {
             $data->defaultmark = $params['defaultmark'];
+        }
+        foreach (['generalfeedback', 'reasoning', 'modelanswer'] as $field) {
+            if ($params[$field] !== null) {
+                $data->{$field} = $params[$field];
+                $data->{$field . 'format'} = FORMAT_HTML;
+            }
         }
 
         question_manager::update($data);

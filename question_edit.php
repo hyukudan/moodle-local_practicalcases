@@ -89,6 +89,25 @@ class question_edit_form extends moodleform {
         ]);
         $mform->setType('generalfeedback_editor', PARAM_RAW);
 
+        $mform->addElement('editor', 'reasoning_editor', get_string('reasoning', 'local_casospracticos'), [
+            'rows' => 6,
+        ], ['maxfiles' => 0, 'noclean' => false]);
+        $mform->setType('reasoning_editor', PARAM_RAW);
+        $mform->addHelpButton('reasoning_editor', 'reasoning', 'local_casospracticos');
+
+        $mform->addElement('editor', 'modelanswer_editor', get_string('modelanswer', 'local_casospracticos'), [
+            'rows' => 5,
+        ], ['maxfiles' => 0, 'noclean' => false]);
+        $mform->setType('modelanswer_editor', PARAM_RAW);
+        $mform->addHelpButton('modelanswer_editor', 'modelanswer', 'local_casospracticos');
+
+        $mform->addElement('select', 'feedbackstatus', get_string('feedbackstatus', 'local_casospracticos'), [
+            'legacy' => get_string('feedbackstatus_legacy', 'local_casospracticos'),
+            'needs_review' => get_string('feedbackstatus_needs_review', 'local_casospracticos'),
+            'blocked' => get_string('feedbackstatus_blocked', 'local_casospracticos'),
+        ]);
+        $mform->setType('feedbackstatus', PARAM_ALPHAEXT);
+
         // Answers section.
         $mform->addElement('header', 'answershdr', get_string('answers', 'local_casospracticos'));
         $mform->setExpanded('answershdr');
@@ -276,6 +295,19 @@ if ($question) {
         'text' => $question->generalfeedback,
         'format' => $question->generalfeedbackformat,
     ];
+    $formdata->reasoning_editor = [
+        'text' => $question->reasoning ?? '',
+        'format' => $question->reasoningformat ?? FORMAT_HTML,
+    ];
+    $formdata->modelanswer_editor = [
+        'text' => $question->modelanswer ?? '',
+        'format' => $question->modelanswerformat ?? FORMAT_HTML,
+    ];
+    // Verification is granted only by the consolidated review pipeline. Any
+    // manual edit sends a previously verified record back to review.
+    if (($formdata->feedbackstatus ?? 'legacy') === 'verified') {
+        $formdata->feedbackstatus = 'needs_review';
+    }
 
     // Set answers.
     $i = 0;
@@ -313,6 +345,12 @@ if ($form->is_cancelled()) {
     $record->shuffleanswers = $data->shuffleanswers;
     $record->generalfeedback = $data->generalfeedback_editor['text'];
     $record->generalfeedbackformat = $data->generalfeedback_editor['format'];
+    $record->reasoning = $data->reasoning_editor['text'];
+    $record->reasoningformat = $data->reasoning_editor['format'];
+    $record->modelanswer = $data->modelanswer_editor['text'];
+    $record->modelanswerformat = $data->modelanswer_editor['format'];
+    $record->feedbackstatus = $data->feedbackstatus;
+    $record->feedbackverifiedat = null;
 
     if ($data->id) {
         // Update question.

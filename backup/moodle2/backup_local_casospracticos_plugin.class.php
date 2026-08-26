@@ -75,6 +75,8 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $question = new backup_nested_element('cp_question', ['id'], [
             'questiontext', 'questiontextformat', 'qtype', 'defaultmark',
             'sortorder', 'generalfeedback', 'generalfeedbackformat',
+            'reasoning', 'reasoningformat', 'modelanswer', 'modelanswerformat',
+            'feedbackstatus', 'feedbackverifiedat',
             'single', 'shuffleanswers', 'timecreated', 'timemodified'
         ]);
 
@@ -103,7 +105,7 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         $deliverables = new backup_nested_element('cp_deliverables');
         $deliverable = new backup_nested_element('cp_deliverable', ['id'], [
             'enabled', 'filetype', 'startfilename', 'rubrica', 'maxscore',
-            'timecreated', 'timemodified'
+            'correctionmode', 'submissionflow', 'timecreated', 'timemodified'
         ]);
 
         // Build the tree.
@@ -131,13 +133,13 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
         if ($userinfo) {
             $practiceattempts = new backup_nested_element('cp_practice_attempts');
             $attempt = new backup_nested_element('cp_attempt', ['id'], [
-                'userid', 'score', 'maxscore', 'percentage', 'status',
+                'userid', 'score', 'maxscore', 'percentage', 'gradingstatus', 'status',
                 'timestarted', 'timefinished', 'timecreated'
             ]);
 
             $responses = new backup_nested_element('cp_responses');
             $response = new backup_nested_element('cp_response', ['id'], [
-                'questionid', 'response', 'score', 'iscorrect', 'timecreated'
+                'questionid', 'response', 'score', 'iscorrect', 'requiresgrading', 'timecreated'
             ]);
 
             $case->add_child($practiceattempts);
@@ -154,7 +156,7 @@ class backup_local_casospracticos_plugin extends backup_local_plugin {
             // Timed attempts.
             $timedattempts = new backup_nested_element('cp_timed_attempts');
             $timedattempt = new backup_nested_element('cp_timed_attempt', ['id'], [
-                'userid', 'token', 'timelimit', 'score', 'maxscore', 'percentage',
+                'userid', 'token', 'timelimit', 'score', 'maxscore', 'percentage', 'gradingstatus',
                 'status', 'responses', 'timestarted', 'timesubmitted', 'timecreated'
             ]);
 

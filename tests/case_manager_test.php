@@ -29,6 +29,32 @@ use advanced_testcase;
 class case_manager_test extends advanced_testcase {
 
     /**
+     * Changing case facts invalidates every verified solution in that case.
+     */
+    public function test_statement_edit_invalidates_verified_question_feedback(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest(true);
+        $generator = $this->getDataGenerator()->get_plugin_generator('local_casospracticos');
+        $case = $generator->create_case(['statement' => '<p>Original facts.</p>']);
+        $questionid = question_manager::create((object) [
+            'caseid' => $case->id,
+            'questiontext' => 'Apply the rule.',
+            'feedbackstatus' => 'verified',
+            'feedbackverifiedat' => 123456789,
+        ]);
+
+        case_manager::update((object) [
+            'id' => $case->id,
+            'statement' => '<p>Changed facts.</p>',
+            'statementformat' => FORMAT_HTML,
+        ]);
+
+        $question = question_manager::get($questionid);
+        $this->assertEquals('needs_review', $question->feedbackstatus);
+        $this->assertNull($question->feedbackverifiedat);
+    }
+
+    /**
      * Set up test fixtures.
      */
     protected function setUp(): void {

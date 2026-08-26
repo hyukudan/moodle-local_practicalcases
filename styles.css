@@ -405,3 +405,26 @@ pre.bg-light {
         grid-template-columns: 1fr;
     }
 }
+
+/* ====== Action toolbar (index.php) ====== */
+
+.cp-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* ====== Case view action toolbar (case_view.php) ====== */
+/* Scoped fallback for browsers/themes where BS5 flex gap utilities are missing. */
+.case-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+/* Comfortable mobile touch targets; keep icon + label vertically centred. */
+.case-actions .btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ====== Access / purchase CTA (access.php) ====== */
+
+.cp-access-cta { max-width: 640px; }

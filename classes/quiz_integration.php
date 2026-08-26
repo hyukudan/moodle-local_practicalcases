@@ -435,8 +435,8 @@ class quiz_integration {
             $cpquestion->questiontext,
             $cpquestion->questiontextformat,
             $mark,
-            $cpquestion->generalfeedback ?? '',
-            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            feedback_view_builder::compose_for_quiz($cpquestion),
+            FORMAT_HTML,
             0.3333333
         );
 
@@ -483,8 +483,8 @@ class quiz_integration {
             $cpquestion->questiontext,
             $cpquestion->questiontextformat,
             $mark,
-            $cpquestion->generalfeedback ?? '',
-            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            feedback_view_builder::compose_for_quiz($cpquestion),
+            FORMAT_HTML,
             1
         );
 
@@ -530,8 +530,8 @@ class quiz_integration {
             $cpquestion->questiontext,
             $cpquestion->questiontextformat,
             $mark,
-            $cpquestion->generalfeedback ?? '',
-            $cpquestion->generalfeedbackformat ?? FORMAT_HTML,
+            feedback_view_builder::compose_for_quiz($cpquestion),
+            FORMAT_HTML,
             0.3333333
         );
 
